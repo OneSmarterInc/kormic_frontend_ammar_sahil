@@ -25,7 +25,7 @@ function clearSecrets() {
   $('setup-key').textContent = ''; $('backup-codes').textContent = '';
   $('saved-codes').checked = false; $('finish-enrollment').disabled = true;
 }
-function back() { clearSecrets(); show('password-form','Sign in','Choose your account type. We’ll open the right workspace after you sign in.'); }
+function back() { clearSecrets(); show('password-form','Kormic Login','Select your Kormic role. We’ll open the correct workspace after you sign in.'); }
 async function run(form, action) {
   if (pending || !client) return;
   pending = true;

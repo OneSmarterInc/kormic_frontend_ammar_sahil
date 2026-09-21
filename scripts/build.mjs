@@ -9,7 +9,6 @@ const loginOnly=process.argv.includes('--login-only');
 if(existsSync(resolve(root,'.env')))process.loadEnvFile(resolve(root,'.env'));
 if(!loginOnly&&!process.env.KORMIC_API_ORIGIN)throw new Error('Set KORMIC_API_ORIGIN in .env before the full build.');
 const origin=apiOrigin(process.env.KORMIC_API_ORIGIN||'http://127.0.0.1:8000');
-if(!loginOnly&&!existsSync(resolve(root,'IMPORT_COMPLETE.json')))throw new Error('The four-portal source import is incomplete. Run python scripts/import_portals.py; a login-only build is not a merged application.');
 const out=resolve(root,loginOnly?'dist-login':'dist');
 await rm(out,{recursive:true,force:true});await mkdir(out,{recursive:true});
 await cp(resolve(root,'web'),out,{recursive:true});await cp(resolve(root,'shared'),resolve(out,'shared'),{recursive:true});

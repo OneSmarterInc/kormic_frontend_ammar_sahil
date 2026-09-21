@@ -1,0 +1,46 @@
+name: Unified frontend CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: unified-frontend-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      KORMIC_API_ORIGIN: https://backend.kormic.ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            apps/student/package-lock.json
+            apps/university/package-lock.json
+            apps/institute/package-lock.json
+            apps/superuser/package-lock.json
+      - name: Install pinned portal dependencies
+        run: npm run setup
+      - name: Test unified auth and routing
+        run: npm test
+      - name: Typecheck Student
+        run: npm --prefix apps/student run typecheck
+      - name: Test Student
+        run: npm --prefix apps/student test
+      - name: Test University
+        run: npm --prefix apps/university test
+      - name: Test Institute
+        run: npm --prefix apps/institute test
+      - name: Test Administrator
+        run: npm --prefix apps/superuser test
+      - name: Build one frontend distribution
+        run: npm run build
+      - name: Verify unified distribution
+        run: node scripts/verify-dist.mjs
