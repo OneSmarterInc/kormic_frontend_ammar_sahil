@@ -121,3 +121,17 @@ test('portal-core Vite alias resolves shared dependencies from each app with one
     assert.ok(setup.includes(`'${dependency}'`));
   }
 });
+
+test('portal-core resolves through each portal node_modules with one React copy', async () => {
+  for (const role of ['university', 'institute', 'superuser']) {
+    const config = await text(`apps/${role}/vite.config.js`);
+    assert.ok(config.includes("./node_modules/@kormic/portal-core/src"));
+    assert.ok(config.includes("dedupe: ['react', 'react-dom', 'react-router-dom']"));
+    assert.ok(config.includes("preserveSymlinks: true"));
+  }
+
+  const setup = await text('scripts/setup.mjs');
+  assert.ok(setup.includes("npm"));
+  assert.ok(setup.includes("packages','portal-core"));
+  assert.ok(setup.includes("['react','react-dom','react-router-dom','axios','clsx','lucide-react']"));
+});
