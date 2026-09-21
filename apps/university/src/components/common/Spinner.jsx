@@ -1,1 +1,1 @@
-export { default } from "../../../../../packages/portal-core/src/components/common/Spinner.jsx";
+export { default } from "@kormic/portal-core/components/common/Spinner.jsx";
