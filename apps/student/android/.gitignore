@@ -1,0 +1,24 @@
+# OSX
+#
+.DS_Store
+
+# Android/IntelliJ
+#
+build/
+.idea
+.gradle
+local.properties
+*.iml
+*.hprof
+.cxx/
+
+# Bundle artifacts
+*.jsbundle
+
+# Firebase native config
+google-services.json
+firebase/google-services.json
+android/app/google-services.json
+
+# Environment
+.env
