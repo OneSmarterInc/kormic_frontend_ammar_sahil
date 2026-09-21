@@ -1,0 +1,67 @@
+name: Verify and import frontend snapshots
+on:
+  push:
+    branches: [main]
+    paths: ['.migration/seed-*.b64', '.github/workflows/ingest-source.yml']
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: verified-source-import
+  cancel-in-progress: false
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Unpack verified original frontend files
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, json, pathlib, re, zlib
+          root = pathlib.Path.cwd()
+          manifest = root / 'SOURCE_FILES.json'
+          ledger = json.loads(manifest.read_text()) if manifest.exists() else {}
+          added = 0
+          for batch in sorted(root.glob('.migration/seed-*.b64')):
+            entries = json.loads(zlib.decompress(base64.b64decode(batch.read_text(), validate=True)))
+            for item in entries:
+              path = pathlib.PurePosixPath(item['path'])
+              if len(path.parts) < 3 or path.parts[0] != 'apps' or path.parts[1] not in ('student', 'university', 'institute', 'superuser') or any(p in ('..', '.git') for p in path.parts):
+                raise ValueError('Unsafe import path')
+              if path.name == '.env' or (path.name.startswith('.env.') and path.name not in ('.env.example', '.env.sample', '.env.template')):
+                raise ValueError('Refusing to publish environment secrets')
+              data = item['content'].encode('utf-8')
+              digest = hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest()
+              if digest != item['sha']:
+                raise ValueError('Content hash mismatch: ' + str(path))
+              if re.search(rb'(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}|AKIA[A-Z0-9]{16}|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----)', data):
+                raise ValueError('Potential credential requires review: ' + str(path))
+              if ledger.get(str(path)) == digest:
+                continue
+              dest = root / path
+              if dest.exists() and dest.read_bytes() != data:
+                raise ValueError('Refusing to overwrite a differing file: ' + str(path))
+              dest.parent.mkdir(parents=True, exist_ok=True)
+              dest.write_bytes(data)
+              ledger[str(path)] = digest
+              added += 1
+          manifest.write_text(json.dumps(ledger, indent=2) + '\n')
+          print('Imported', added, 'hash-verified frontend files;', len(ledger), 'total.')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add SOURCE_FILES.json
+          if test -d apps; then git add apps; fi
+          if ! git diff --cached --quiet; then
+            git commit -m "Import hash-verified original frontend snapshot files"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Remove unused one-time transfer key artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method DELETE "repos/${{ github.repository }}/actions/artifacts/10625085556" || true
