@@ -1,1 +1,1 @@
-export * from "../../../../packages/portal-core/src/tokenStorage.js";
+export * from "@kormic/portal-core/tokenStorage.js";
