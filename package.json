@@ -1,0 +1,15 @@
+{
+  "name": "kormic-unified-frontends",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=22.16"},
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev:login": "node scripts/serve.mjs --login-only",
+    "test": "node --test tests/*.test.mjs",
+    "build:login": "node scripts/build.mjs --login-only",
+    "build": "node scripts/build.mjs",
+    "preview": "node scripts/serve.mjs"
+  }
+}

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="description" content="Sign in to your Kormic student, university, institute, or administrator account.">
+  <title>Sign in · Kormic</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/login.css">
+  <script src="/config.js" defer></script>
+  <script type="module" src="/login.mjs"></script>
+</head>
+<body>
+  <main class="shell">
+    <aside class="intro" aria-label="About Kormic">
+      <a class="wordmark" href="/login"><span class="mark" aria-hidden="true">K</span>Kormic</a>
+      <div class="intro-copy"><p class="eyebrow">YOUR KORMIC WORKSPACE</p><h1>One place.<br>Every possibility.</h1><p class="lede">Your profile, your institution, and your next step — connected.</p><div class="portal-tags"><span>Students</span><span>Universities</span><span>Institutes</span><span>Administrators</span></div></div>
+      <p class="security-note">Your account permissions and two-factor authentication remain in place.</p>
+    </aside>
+    <section class="form-area" aria-labelledby="form-title">
+      <div class="form-card">
+        <a class="mobile-brand" href="/login">Kormic</a>
+        <p class="eyebrow muted">WELCOME TO KORMIC</p>
+        <h2 id="form-title">Sign in</h2>
+        <p id="form-description" class="description">Choose your account type. We’ll open the right workspace after you sign in.</p>
+        <p id="notice" class="notice" role="status" hidden></p>
+        <p id="error" class="error" role="alert" hidden></p>
+        <div id="forms">
+          <form id="password-form">
+            <label for="portal">Account type</label>
+            <select id="portal" name="portal" required><option value="student">Student</option><option value="university">University</option><option value="institute">Institute</option><option value="superuser">Administrator</option></select>
+            <label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="username" required maxlength="254">
+            <label for="password">Password</label><div class="password-wrap"><input id="password" name="password" type="password" autocomplete="current-password" required><button type="button" id="show-password" class="show" aria-label="Show password" aria-pressed="false">Show</button></div>
+            <button class="primary" type="submit">Continue</button>
+            <button class="text-button" id="forgot" type="button">Forgot your password?</button>
+            <p id="student-links" class="student-links"><a href="/student/?signup=1">Create or claim your student account</a></p>
+          </form>
+          <form id="totp-form" hidden><label for="totp-code">Authenticator or backup code</label><input id="totp-code" name="code" autocomplete="one-time-code" required maxlength="100" spellcheck="false"><button class="primary" type="submit">Verify and sign in</button><button class="text-button back" type="button">Back to sign in</button></form>
+          <form id="enroll-form" hidden><p class="description">Add a new time-based account in your authenticator app using this setup key. Then enter its six-digit code.</p><code id="setup-key" class="setup-key"></code><button id="copy-key" class="secondary" type="button">Copy setup key</button><label for="enroll-code">Six-digit code</label><input id="enroll-code" name="code" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" maxlength="6" required><button class="primary" type="submit">Enable two-factor authentication</button><button class="text-button back" type="button">Back to sign in</button></form>
+          <section id="backup-panel" hidden><p class="description">Save these one-use backup codes somewhere safe. This is the only time they are shown.</p><pre id="backup-codes"></pre><button id="copy-codes" class="secondary" type="button">Copy backup codes</button><label class="checkbox"><input id="saved-codes" type="checkbox"> I have saved my backup codes.</label><button id="finish-enrollment" class="primary" type="button" disabled>Continue to sign in</button></section>
+          <form id="forgot-form" hidden><label for="reset-email">Email address</label><input id="reset-email" name="email" type="email" autocomplete="username" required maxlength="254"><button class="primary" type="submit">Send reset code</button><button class="text-button back" type="button">Back to sign in</button></form>
+          <form id="reset-otp-form" hidden><label for="reset-otp">Email reset code</label><input id="reset-otp" name="otp" autocomplete="one-time-code" required maxlength="100"><button class="primary" type="submit">Verify reset code</button><button class="text-button back" type="button">Back to sign in</button></form>
+          <form id="reset-password-form" hidden><label for="new-password">New password</label><input id="new-password" name="new_password" type="password" autocomplete="new-password" required><label for="confirm-password">Confirm new password</label><input id="confirm-password" type="password" autocomplete="new-password" required><button class="primary" type="submit">Reset password</button><button class="text-button back" type="button">Back to sign in</button></form>
+        </div>
+        <p class="form-footer">Use the account provided by your institution or your existing student account.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
