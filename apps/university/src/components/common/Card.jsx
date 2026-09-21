@@ -1,1 +1,1 @@
-export { default, CardHeader, CardBody } from "../../../../../packages/portal-core/src/components/common/Card.jsx";
+export { default, CardHeader, CardBody } from "@kormic/portal-core/components/common/Card.jsx";
