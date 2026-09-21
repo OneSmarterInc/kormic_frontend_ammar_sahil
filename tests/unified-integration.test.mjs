@@ -88,7 +88,7 @@ test('all three portals share token storage, auth context, guards, and common pr
     assert.ok((await text(`apps/${role}/src/lib/tokenStorage.js`)).includes('packages/portal-core/src/tokenStorage.js'));
     assert.ok((await text(`apps/${role}/src/context/AuthContext.jsx`)).includes('packages/portal-core/src/AuthContext.jsx'));
     assert.ok((await text(`apps/${role}/src/components/auth/guards.jsx`)).includes('packages/portal-core/src/guards.jsx'));
-    for (const component of ['Input.jsx', 'EmptyState.jsx', 'Spinner.jsx']) {
+    for (const component of ['Input.jsx', 'EmptyState.jsx', 'Spinner.jsx', 'Button.jsx', 'Card.jsx', 'ErrorBanner.jsx', 'ErrorBoundary.jsx', 'Modal.jsx']) {
       assert.ok((await text(`apps/${role}/src/components/common/${component}`)).includes('packages/portal-core/src/components/common'));
     }
   }
