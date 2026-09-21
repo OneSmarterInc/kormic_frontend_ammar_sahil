@@ -8,10 +8,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '@kormic/portal-core': fileURLToPath(
-        new URL('../../packages/portal-core/src', import.meta.url)
+        new URL('./node_modules/@kormic/portal-core/src', import.meta.url)
       ),
     },
     dedupe: ['react', 'react-dom', 'react-router-dom'],
+    preserveSymlinks: true,
   },
   server: {
     port: 5173,
