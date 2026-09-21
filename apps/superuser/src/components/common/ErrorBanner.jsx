@@ -1,1 +1,1 @@
-export { default } from "../../../../../packages/portal-core/src/components/common/ErrorBanner.jsx";
+export { default } from "@kormic/portal-core/components/common/ErrorBanner.jsx";
