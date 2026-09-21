@@ -8,6 +8,8 @@ export interface ClaimPrefill {
   year_in_college: string;
   program_name: string;
   city: string;
+  country: string;
+  region: string;
   state: string;
   institute_id?: string;
   institute_name?: string;
