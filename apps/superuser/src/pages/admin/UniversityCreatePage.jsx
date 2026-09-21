@@ -10,6 +10,7 @@ import Button from "../../components/common/Button";
 import ErrorBanner from "../../components/common/ErrorBanner";
 import { createUniversity } from "../../api/superuserApi";
 import { useAction } from "../../hooks/useAsync";
+import { countryLabel, UNIVERSITY_COUNTRY_CODES } from "../../lib/countries";
 
 export default function UniversityCreatePage() {
   const navigate = useNavigate();
@@ -91,7 +92,11 @@ export default function UniversityCreatePage() {
               </Field>
               <Field label="Country" required error={errors.country?.[0]}>
                 <Select value={country} onChange={(e) => setCountry(e.target.value)} required>
-                  <option value="US">United States (US)</option>
+                  {UNIVERSITY_COUNTRY_CODES.map((code) => (
+                    <option key={code} value={code}>
+                      {countryLabel(code)} ({code})
+                    </option>
+                  ))}
                 </Select>
               </Field>
               <Field label="Description" hint="Optional — can be edited later.">
