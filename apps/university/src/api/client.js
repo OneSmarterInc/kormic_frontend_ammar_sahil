@@ -1,1 +1,1 @@
-export { default, BASE_URL, PORTAL, cookieTransport, cookiePost, requestRefresh } from "../../../../packages/portal-core/src/clients/university.js";
+export { default, BASE_URL, PORTAL, cookieTransport, cookiePost, requestRefresh } from "@kormic/portal-core/clients/university.js";
