@@ -17,5 +17,14 @@ for(const role of ['student','university','institute','superuser']){
         throw new Error(`Missing portal-core peer dependency "${dependency}" in apps/${role}/node_modules after npm ci.`);
       }
     }
+
+    console.log(`Installing @kormic/portal-core into apps/${role} without modifying its lockfile…`);
+    const coreInstall=spawnSync(
+      process.platform==='win32'?'npm.cmd':'npm',
+      ['install','--no-save','--package-lock=false',resolve(root,'packages','portal-core')],
+      {cwd,stdio:'inherit',shell:process.platform==='win32'}
+    );
+    if(coreInstall.error)throw coreInstall.error;
+    if(coreInstall.status!==0)process.exit(coreInstall.status||1);
   }
 }
