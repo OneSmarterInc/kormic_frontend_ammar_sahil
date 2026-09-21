@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/models/onboarding.ts",
+    "src/screens/TotpSetupScreen.tsx",
+    "src/services/api.ts",
+    "src/services/tokenStorage.ts",
+    "src/utils/validation.ts",
+    "src/components/PrimaryButton.tsx",
+    "src/components/ScreenShell.tsx",
+    "src/components/SectionLabel.tsx",
+    "src/qrcode-terminal.d.ts"
+  ],
+  "exclude": ["node_modules", "node_modules/**/*", "node_modules/expo-file-system/**/*", "src/screens/ProfileScreen.tsx"]
+}
