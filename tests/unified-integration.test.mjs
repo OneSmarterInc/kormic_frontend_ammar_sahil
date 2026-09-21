@@ -94,12 +94,17 @@ test('all three portals share token storage, auth context, guards, and common pr
   }
 });
 
-test('superuser create pages submit required country codes', async () => {
+test('superuser create pages submit required country codes from the ISO option source', async () => {
+  const countries = await text('apps/superuser/src/lib/countries.js');
   const institute = await text('apps/superuser/src/pages/admin/InstituteCreatePage.jsx');
   const university = await text('apps/superuser/src/pages/admin/UniversityCreatePage.jsx');
+
+  assert.ok(countries.includes('COUNTRY_CODES'));
+  assert.ok(countries.includes('COUNTRY_CODES.filter((code) => code !== "US")'));
+  assert.ok(countries.includes('UNIVERSITY_COUNTRY_CODES = Object.freeze(["US"])'));
+
   assert.ok(institute.includes('country,'));
-  assert.ok(institute.includes('value="IN"'));
-  assert.doesNotMatch(institute, /option value="US"/);
+  assert.ok(institute.includes('INSTITUTE_COUNTRY_CODES.map'));
   assert.ok(university.includes('country,'));
-  assert.ok(university.includes('value="US"'));
+  assert.ok(university.includes('UNIVERSITY_COUNTRY_CODES.map'));
 });
