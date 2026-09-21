@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { ArrowLeft, Landmark, UserPlus2 } from "lucide-react";
 import PageHeader from "../../components/layout/PageHeader";
 import Card, { CardBody, CardHeader } from "../../components/common/Card";
-import { Field, Input, Textarea } from "../../components/common/Input";
+import { Field, Input, Select, Textarea } from "../../components/common/Input";
 import PasswordCreateFields from "../../components/common/PasswordCreateFields";
 import Button from "../../components/common/Button";
 import ErrorBanner from "../../components/common/ErrorBanner";
@@ -14,6 +14,7 @@ import { useAction } from "../../hooks/useAsync";
 export default function InstituteCreatePage() {
   const navigate = useNavigate();
   const [institutionName, setInstitutionName] = useState("");
+  const [country, setCountry] = useState("IN");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -25,6 +26,7 @@ export default function InstituteCreatePage() {
   const { execute, loading, error } = useAction(() => {
     const payload = {
       institution_name: institutionName,
+      country,
       email: adminEmail,
       password: adminPassword,
     };
@@ -85,6 +87,23 @@ export default function InstituteCreatePage() {
                   placeholder="Wright State Feeder Institute"
                   required
                 />
+              </Field>
+              <Field label="Country" required error={errors.country?.[0]}>
+                <Select value={country} onChange={(e) => setCountry(e.target.value)} required>
+                  <option value="IN">India (IN)</option>
+                  <option value="GB">United Kingdom (GB)</option>
+                  <option value="CA">Canada (CA)</option>
+                  <option value="AU">Australia (AU)</option>
+                  <option value="NZ">New Zealand (NZ)</option>
+                  <option value="SG">Singapore (SG)</option>
+                  <option value="AE">United Arab Emirates (AE)</option>
+                  <option value="SA">Saudi Arabia (SA)</option>
+                  <option value="DE">Germany (DE)</option>
+                  <option value="FR">France (FR)</option>
+                  <option value="NL">Netherlands (NL)</option>
+                  <option value="JP">Japan (JP)</option>
+                  <option value="KR">South Korea (KR)</option>
+                </Select>
               </Field>
               <Field label="Contact email" hint="Optional — can be edited later.">
                 <Input
