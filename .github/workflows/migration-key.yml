@@ -1,0 +1,22 @@
+name: Prepare secure source transfer
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/migration-key.yml]
+permissions:
+  contents: read
+jobs:
+  key:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Generate ephemeral transport key
+        run: |
+          mkdir -p /tmp/transfer
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out /tmp/transfer/private.pem 2>/dev/null
+          openssl pkey -in /tmp/transfer/private.pem -pubout
+      - uses: actions/upload-artifact@v4
+        with:
+          name: one-time-migration-key
+          path: /tmp/transfer/private.pem
+          retention-days: 1
