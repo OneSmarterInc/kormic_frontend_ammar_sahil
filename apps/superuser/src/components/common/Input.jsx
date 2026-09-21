@@ -1,1 +1,1 @@
-export * from "../../../../../packages/portal-core/src/components/common/Input.jsx";
+export * from "@kormic/portal-core/components/common/Input.jsx";
