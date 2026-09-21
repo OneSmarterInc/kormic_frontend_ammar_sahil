@@ -70,7 +70,7 @@ for (const [path, portal] of [
 ]) {
   test(`${path} delegates to the shared portal client`, async () => {
     const source = await text(path);
-    assert.ok(source.includes(`packages/portal-core/src/clients/${portal}.js`));
+    assert.ok(source.includes(`@kormic/portal-core/clients/${portal}.js`));
   });
 }
 
@@ -85,11 +85,11 @@ test('shared portal client owns error normalization and auth exemptions for all 
 
 test('all three portals share token storage, auth context, guards, and common primitives', async () => {
   for (const role of ['university', 'institute', 'superuser']) {
-    assert.ok((await text(`apps/${role}/src/lib/tokenStorage.js`)).includes('packages/portal-core/src/tokenStorage.js'));
-    assert.ok((await text(`apps/${role}/src/context/AuthContext.jsx`)).includes('packages/portal-core/src/AuthContext.jsx'));
-    assert.ok((await text(`apps/${role}/src/components/auth/guards.jsx`)).includes('packages/portal-core/src/guards.jsx'));
+    assert.ok((await text(`apps/${role}/src/lib/tokenStorage.js`)).includes('@kormic/portal-core/tokenStorage.js'));
+    assert.ok((await text(`apps/${role}/src/context/AuthContext.jsx`)).includes('@kormic/portal-core/AuthContext.jsx'));
+    assert.ok((await text(`apps/${role}/src/components/auth/guards.jsx`)).includes('@kormic/portal-core/guards.jsx'));
     for (const component of ['Input.jsx', 'EmptyState.jsx', 'Spinner.jsx', 'Button.jsx', 'Card.jsx', 'ErrorBanner.jsx', 'ErrorBoundary.jsx', 'Modal.jsx']) {
-      assert.ok((await text(`apps/${role}/src/components/common/${component}`)).includes('packages/portal-core/src/components/common'));
+      assert.ok((await text(`apps/${role}/src/components/common/${component}`)).includes('@kormic/portal-core/components/common'));
     }
   }
 });
@@ -107,4 +107,17 @@ test('superuser create pages submit required country codes from the ISO option s
   assert.ok(institute.includes('INSTITUTE_COUNTRY_CODES.map'));
   assert.ok(university.includes('country,'));
   assert.ok(university.includes('UNIVERSITY_COUNTRY_CODES.map'));
+});
+
+test('portal-core Vite alias resolves shared dependencies from each app with one React copy', async () => {
+  for (const role of ['university', 'institute', 'superuser']) {
+    const config = await text(`apps/${role}/vite.config.js`);
+    assert.ok(config.includes("'@kormic/portal-core'"));
+    assert.ok(config.includes("dedupe: ['react', 'react-dom', 'react-router-dom']"));
+  }
+
+  const setup = await text('scripts/setup.mjs');
+  for (const dependency of ['react', 'react-dom', 'react-router-dom', 'axios', 'clsx', 'lucide-react']) {
+    assert.ok(setup.includes(`'${dependency}'`));
+  }
 });
