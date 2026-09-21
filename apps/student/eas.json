@@ -1,0 +1,30 @@
+{
+  "cli": {
+    "version": ">= 20.5.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://backend.kormic.ai/api"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://backend.kormic.ai/api"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://backend.kormic.ai/api"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

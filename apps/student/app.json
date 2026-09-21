@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "Kormic Student",
+    "slug": "kormic-student",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "kormicstudent",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.kormic.student",
+      "associatedDomains": [
+        "applinks:app.kormic.ai"
+      ]
+    },
+    "android": {
+      "package": "com.kormic.student",
+      "googleServicesFile": "./firebase/google-services.json",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "app.kormic.ai",
+              "path": "/claim"
+            },
+            {
+              "scheme": "https",
+              "host": "app.kormic.ai",
+              "path": "/claim/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "plugins": [
+      "expo-font",
+      "expo-secure-store",
+      "expo-notifications",
+      "@react-native-community/datetimepicker"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a68e49e4-277c-4056-af1c-e741dad8edc4"
+      }
+    }
+  }
+}
