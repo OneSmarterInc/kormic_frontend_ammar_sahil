@@ -58,6 +58,9 @@ export function ClaimCodeScreen({
             required
           />
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <Text style={styles.hintText}>
+            If a code doesn’t work, request a new code and try again.
+          </Text>
         </View>
       </View>
     </ScreenShell>
@@ -86,6 +89,12 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: colors.error,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  hintText: {
+    color: colors.textMuted,
     fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 18,
