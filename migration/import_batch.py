@@ -1,5 +1,5 @@
 """One-time migration helper. Signed source URLs are never logged or committed."""
-import base64, concurrent.futures, hashlib, json, pathlib, re, urllib.request, sys
+import base64, concurrent.futures, hashlib, json, pathlib, re, urllib.request, sys, zlib
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -13,7 +13,10 @@ def load_batch(path):
     envelope = json.loads(path.read_text())
     dec = lambda value: base64.b64decode(value, validate=True)
     key = private.decrypt(dec(envelope['key']), padding.OAEP(mgf=padding.MGF1(hashes.SHA256()), algorithm=hashes.SHA256(), label=None))
-    return json.loads(AESGCM(key).decrypt(dec(envelope['nonce']), dec(envelope['ciphertext']), b'kormic-source-transfer-v1'))
+    data = AESGCM(key).decrypt(dec(envelope['nonce']), dec(envelope['ciphertext']), b'kormic-source-transfer-v1')
+    if envelope.get('compressed'):
+        data = zlib.decompress(data)
+    return json.loads(data)
 
 def download(item, batch):
     rel = pathlib.PurePosixPath(item['path'])
@@ -23,10 +26,11 @@ def download(item, batch):
     if not item['url'].startswith(expected_prefix):
         raise ValueError('Unexpected download host or source')
     try:
-        with urllib.request.urlopen(item['url'], timeout=45) as response:
+        request = urllib.request.Request(item['url'], headers={'User-Agent': 'Kormic-Source-Migration', 'Accept': 'application/octet-stream'})
+        with urllib.request.urlopen(request, timeout=45) as response:
             data = response.read()
-    except Exception:
-        raise RuntimeError('Download failed for ' + str(rel)) from None
+    except Exception as error:
+        raise RuntimeError('Download failed for ' + str(rel) + ': ' + type(error).__name__ + ' ' + str(getattr(error, 'code', 'network'))) from None
     sha = hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest()
     if sha != item['sha']:
         raise ValueError('Source hash mismatch: ' + str(rel))
