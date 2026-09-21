@@ -1,0 +1,31 @@
+import { test, expect, management } from './fixtures.js';
+test('create, read, edit and delete an institute with cancellation and conflict protection', async ({ page, api }) => {
+  api.authenticated = true;
+  await page.goto(`/#${management}`);
+  await page.getByLabel(/Institute name/).fill('Test Institute');
+  await page.getByLabel(/Admin email/).fill('admin@example.test');
+  await page.locator('input[type="password"]').nth(0).fill('Test-password-123!');
+  await page.locator('input[type="password"]').nth(1).fill('Test-password-123!');
+  await page.getByRole('button', { name: 'Create institute' }).click();
+  await expect(page).toHaveURL(/#\/admin\/institutes\/11$/);
+  await expect(page.getByRole('heading', { name: 'Test Institute', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Edit info' }).click();
+  await page.getByRole('dialog').getByLabel(/^Name/).fill('Updated Institute');
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByRole('heading', { name: 'Updated Institute', exact: true })).toBeVisible();
+  expect(api.calls.find(c => c.method === 'PATCH').body.name).toBe('Updated Institute');
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+  expect(api.calls.filter(c => c.method === 'DELETE')).toHaveLength(0);
+  api.deleteConflict = true;
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  await page.getByRole('button', { name: 'Delete permanently' }).click();
+  await expect(page.getByText('Institute still has an admin account').first()).toBeVisible();
+  expect(api.institutes).toHaveLength(1);
+  // Simulate an operator removing dependent records in a separate workflow.
+  api.deleteConflict = false;
+  await page.getByRole('button', { name: 'Delete permanently' }).click();
+  await expect(page).toHaveURL(/#\/admin\/institutes$/);
+  await expect(page.getByRole('heading', { name: 'Institutes', exact: true })).toBeVisible();
+  expect(api.institutes).toHaveLength(0);
+});
