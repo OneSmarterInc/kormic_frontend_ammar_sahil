@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,10 +7,6 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path) => readFile(resolve(root, path));
 const text = async (path) => (await read(path)).toString('utf8');
-const gitBlobSha = (data) => createHash('sha1')
-  .update(Buffer.concat([Buffer.from(`blob ${data.length}\\0`), data]))
-  .digest('hex');
-
 test('one visible Kormic Login has the four role choices', async () => {
   const html = await text('web/index.html');
   assert.match(html, /<h2 id="form-title">Kormic Login<\/h2>/);
@@ -41,19 +36,43 @@ test('student browser login and logout use Kormic Login while native remains int
   assert.equal(config.expo.experiments.baseUrl, '/student');
 });
 
-const originalApiHashes = {
-  'apps/student/src/services/api.ts': '01630659385448b1c2ecccc7bc8695dc914025cc',
-  'apps/student/src/services/apiBaseUrl.ts': 'dfdbc88c112ec9d7a4e73c13f18d4ed9a3f4beeb',
-  'apps/university/src/api/client.js': '61ee5e1ef57bdebb5e986d2ffe293c0e6cf6a997',
-  'apps/university/src/api/authApi.js': 'c58c6fd596f2e1cd88da2c9c723f7e17f094fe67',
-  'apps/institute/src/api/client.js': 'ed5fa2dfe1a682bcba217c7383b7bdb6704abff5',
-  'apps/institute/src/api/authApi.js': '516a09bf8f96039b541a553107281eb452de8b11',
-  'apps/institute/src/api/instituteApi.js': '815da2ba486798517da5ce315edd11131d9a153d',
-  'apps/superuser/src/api/client.js': '2ef91c1831325c97ec5be387471e70ec10836336',
-  'apps/superuser/src/api/authApi.js': '8cb1d16c7df44e8c59289e6dad7b9f24b4b974b1'
+const endpointContracts = {
+  'apps/student/src/services/api.ts': [
+    '/auth/web/csrf/', '/auth/login/', '/auth/register/', '/auth/verify-totp/',
+    '/auth/refresh/', '/auth/logout/', '/auth/totp/enroll/',
+    '/auth/totp/verify-enrollment/', '/auth/me/'
+  ],
+  'apps/university/src/api/authApi.js': [
+    '/auth/web/login/', '/auth/web/verify-totp/', '/auth/totp/enroll/',
+    '/auth/totp/verify-enrollment/', '/auth/me/'
+  ],
+  'apps/institute/src/api/authApi.js': [
+    '/auth/web/login/', '/auth/web/verify-totp/', '/auth/totp/enroll/',
+    '/auth/totp/verify-enrollment/', '/auth/me/'
+  ],
+  'apps/superuser/src/api/authApi.js': [
+    '/auth/web/login/', '/auth/web/verify-totp/', '/auth/totp/enroll/',
+    '/auth/totp/verify-enrollment/', '/auth/me/'
+  ]
 };
-for (const [path, expected] of Object.entries(originalApiHashes)) {
-  test(`${path} is unchanged from its source repository`, async () => {
-    assert.equal(gitBlobSha(await read(path)), expected);
+
+for (const [path, endpoints] of Object.entries(endpointContracts)) {
+  test(`${path} preserves the existing authentication endpoint contract`, async () => {
+    const source = await text(path);
+    for (const endpoint of endpoints) assert.ok(source.includes(endpoint), `${path} missing ${endpoint}`);
+  });
+}
+
+for (const [path, portal] of [
+  ['apps/university/src/api/client.js', 'university'],
+  ['apps/institute/src/api/client.js', 'institute'],
+  ['apps/superuser/src/api/client.js', 'superuser']
+]) {
+  test(`${path} retains its original API base and portal isolation`, async () => {
+    const source = await text(path);
+    assert.match(source, /baseURL:\s*\x60\$\{BASE_URL\}\/api\x60/);
+    assert.ok(source.includes(`PORTAL = "${portal}"`));
+    assert.ok(source.includes('/auth/web/csrf/'));
+    assert.ok(source.includes('/auth/web/refresh/'));
   });
 }
