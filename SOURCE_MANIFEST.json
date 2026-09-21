@@ -1,6 +1,19 @@
 {
-  "student": {"repository": "OneSmarterInc/Kormic_frontend_student_sahil_ammar", "commit": "2e88970c0e97b72c0f94183fe76d22f797384f79"},
-  "university": {"repository": "OneSmarterInc/Kormic_frontend_University_sahil_ammar", "commit": "d24574859c62ad22dbd1548bae04e889667a1763"},
-  "institute": {"repository": "OneSmarterInc/Kormic_frontend_Institutes_sahil_ammar", "commit": "2d3a09cb21342fa96de9aee0b8075fef09b56341"},
-  "superuser": {"repository": "OneSmarterInc/Kormic_frontend_Superuser_sahil_ammar", "commit": "db721d34e319a7e17fe70fb567c99967615bb863"}
+  "student": {
+    "repository": "OneSmarterInc/Kormic_frontend_student_sahil_ammar",
+    "commit": "2e88970c0e97b72c0f94183fe76d22f797384f79",
+    "scope": "Web/Expo application source used by the single browser frontend. Android native Gradle wrapper/resources remain in the original Student repository."
+  },
+  "university": {
+    "repository": "OneSmarterInc/Kormic_frontend_University_sahil_ammar",
+    "commit": "d24574859c62ad22dbd1548bae04e889667a1763"
+  },
+  "institute": {
+    "repository": "OneSmarterInc/Kormic_frontend_Institutes_sahil_ammar",
+    "commit": "2d3a09cb21342fa96de9aee0b8075fef09b56341"
+  },
+  "superuser": {
+    "repository": "OneSmarterInc/Kormic_frontend_Superuser_sahil_ammar",
+    "commit": "db721d34e319a7e17fe70fb567c99967615bb863"
+  }
 }
