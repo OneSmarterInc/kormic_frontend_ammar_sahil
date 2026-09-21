@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   hintText: {
-    color: colors.textMuted,
+    color: colors.muted,
     fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 18,
