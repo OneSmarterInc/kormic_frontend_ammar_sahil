@@ -1,0 +1,68 @@
+name: Full baseline CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  student-app-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      EXPO_PUBLIC_API_BASE_URL: https://backend.kormic.ai/api
+      CI: "true"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate Expo and native app-link configuration
+        run: node scripts/check-app-links.mjs
+
+      - name: Strict type-check for claim transport
+        run: npx tsc --noEmit -p tsconfig.claim-flow.json
+
+      - name: Strict type-check for Basic Info persistence
+        run: npx tsc --noEmit -p tsconfig.basic-info.json
+
+      - name: Lint changed onboarding persistence files
+        run: npx eslint src/models/onboarding.ts src/screens/TotpSetupScreen.tsx
+
+      - name: Lint notification fallback and tests
+        run: npx eslint src/services/notifications.ts __tests__/notifications.test.ts
+
+      - name: Lint claim transport and tests
+        run: npx eslint src/services/apiTransport.ts __tests__/apiTransport.test.ts jest.setup.ts
+
+      - name: Run notification polling regression tests
+        run: npm test -- __tests__/notifications.test.ts
+
+      - name: Run claim transport regression tests
+        run: npm test -- __tests__/apiTransport.test.ts
+
+      - name: Run complete Jest suite
+        run: npm test
+
+      - name: Lint complete student app
+        run: npm run lint
+
+      - name: Type-check complete student app
+        run: npm run typecheck
+
+      - name: Export Android, iOS, and web bundles
+        run: npx expo export --platform all
