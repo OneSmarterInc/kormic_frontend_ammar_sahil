@@ -44,7 +44,7 @@ export function ClaimCodeScreen({
     >
       <View style={styles.content}>
         <Text style={styles.title}>Enter your code</Text>
-        <Text style={styles.subhead}>We sent a 6-digit code to {maskedEmail}. It expires soon.</Text>
+        <Text style={styles.subhead}>We sent a 6-digit code to the email address on your invitation. It expires soon.</Text>
 
         <View style={styles.form}>
           <SectionLabel>Verification</SectionLabel>
