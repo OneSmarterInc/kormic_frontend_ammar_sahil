@@ -9,9 +9,8 @@ import {
 } from "./components/auth/guards";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 
-import LandingPage from "./pages/LandingPage";
+import UnifiedPortalEntry from "./components/auth/UnifiedPortalEntry";
 import NotFoundPage from "./pages/NotFoundPage";
-import LoginPage from "./pages/auth/LoginPage";
 import TotpEnrollPage from "./pages/auth/TotpEnrollPage";
 
 import InstituteLayout from "./layouts/InstituteLayout";
@@ -43,8 +42,8 @@ function App() {
 
           <Routes>
             {/* Public Routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
+            <Route path="/" element={<UnifiedPortalEntry />} />
+            <Route path="/login" element={<UnifiedPortalEntry />} />
 
             {/* TOTP Enrollment */}
             <Route element={<RequireEnrollable />}>

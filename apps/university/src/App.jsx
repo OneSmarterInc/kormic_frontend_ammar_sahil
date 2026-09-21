@@ -4,14 +4,12 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { RequireAuth, RequireEnrollable, RequireOwnUniversity, RequireRole } from "./components/auth/guards";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 
-import LandingPage from "./pages/LandingPage";
+import UnifiedPortalEntry from "./components/auth/UnifiedPortalEntry";
 import NotFoundPage from "./pages/NotFoundPage";
 import AccessRestrictedPage from "./pages/AccessRestrictedPage";
 import TotpEnrollPage from "./pages/auth/TotpEnrollPage";
-import UniversityLoginPage from "./pages/auth/UniversityLoginPage";
 // University registration is superuser-only — not offered from this frontend.
 // import UniversityRegisterPage from "./pages/auth/UniversityRegisterPage";
-import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 
 import UniversityLayout from "./layouts/UniversityLayout";
 import DashboardPage from "./pages/university/DashboardPage";
@@ -44,11 +42,11 @@ function App() {
             }}
           />
           <Routes>
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<UnifiedPortalEntry />} />
             <Route path="/access-restricted" element={<AccessRestrictedPage />} />
-            <Route path="/login" element={<UniversityLoginPage />} />
+            <Route path="/login" element={<UnifiedPortalEntry />} />
             {/* <Route path="/register" element={<UniversityRegisterPage />} /> */}
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/forgot-password" element={<UnifiedPortalEntry />} />
 
             <Route element={<RequireEnrollable />}>
               <Route path="/totp/enroll" element={<TotpEnrollPage />} />

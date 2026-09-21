@@ -8,8 +8,7 @@ import {
   RequireRole,
 } from "./components/auth/guards";
 
-import LandingPage from "./pages/LandingPage";
-import LoginPage from "./pages/auth/LoginPage";
+import UnifiedPortalEntry from "./components/auth/UnifiedPortalEntry";
 import TotpEnrollPage from "./pages/auth/TotpEnrollPage";
 
 import AdminLayout from "./layouts/AdminLayout";
@@ -58,8 +57,8 @@ function App() {
 
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/" element={<UnifiedPortalEntry />} />
+          <Route path="/login" element={<UnifiedPortalEntry />} />
 
           {/* TOTP Enrollment */}
           <Route element={<RequireEnrollable />}>

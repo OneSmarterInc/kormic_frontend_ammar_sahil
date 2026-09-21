@@ -171,6 +171,9 @@ export function useStudentSession({
     setProfileError('');
     setProfileLoading(false);
     dispatch({ type: 'LOGOUT' });
+    if (Platform.OS === 'web') {
+      window.location.replace('/login?portal=student');
+    }
   }, [state.authSession]);
 
   useEffect(() => {

@@ -5,7 +5,7 @@ import {
 } from '@expo-google-fonts/fraunces';
 import { Inter_400Regular, Inter_600SemiBold, useFonts as useInter } from '@expo-google-fonts/inter';
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
-import { ActivityIndicator, BackHandler, StatusBar, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Platform, StatusBar, StyleSheet, View } from 'react-native';
 import { ProgressHeader } from './components/ProgressHeader';
 import { useStudentSession } from './features/auth/useStudentSession';
 import { FloatingBotLauncher } from './features/chat/FloatingBotLauncher';
@@ -109,6 +109,15 @@ export default function App() {
     claimLinkHandledRef,
     onNotificationOpen: openNotificationChat,
   });
+
+  // Browser users authenticate through the single Kormic Login. Native login,
+  // registration, and trusted claim-link flows keep their existing behavior.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || restoringSession || state.authSession?.access) return;
+    const signupFlow = new URLSearchParams(window.location.search).get('signup') === '1';
+    if (signupFlow || claimLinkHandledRef.current) return;
+    window.location.replace('/login?portal=student');
+  }, [restoringSession, state.authSession?.access, claimLinkHandledRef]);
 
   const handleBack = useCallback(() => {
     if (state.route === 'BotScreen') {
