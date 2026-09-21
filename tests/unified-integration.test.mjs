@@ -68,11 +68,38 @@ for (const [path, portal] of [
   ['apps/institute/src/api/client.js', 'institute'],
   ['apps/superuser/src/api/client.js', 'superuser']
 ]) {
-  test(`${path} retains its original API base and portal isolation`, async () => {
+  test(`${path} delegates to the shared portal client`, async () => {
     const source = await text(path);
-    assert.match(source, /baseURL:\s*\x60\$\{BASE_URL\}\/api\x60/);
-    assert.ok(source.includes(`PORTAL = "${portal}"`));
-    assert.ok(source.includes('/auth/web/csrf/'));
-    assert.ok(source.includes('/auth/web/refresh/'));
+    assert.ok(source.includes(`packages/portal-core/src/clients/${portal}.js`));
   });
 }
+
+test('shared portal client owns error normalization and auth exemptions for all portals', async () => {
+  const source = await text('packages/portal-core/src/client.js');
+  assert.ok(source.includes('axios.isCancel(error)'));
+  assert.ok(source.includes('Something went wrong on our end. Please try again in a moment.'));
+  assert.ok(source.includes('.replace(/\\/+$/, "")'));
+  assert.ok(source.includes('/auth/forgot-password/'));
+  assert.ok(source.includes('/auth/reset-password/'));
+});
+
+test('all three portals share token storage, auth context, guards, and common primitives', async () => {
+  for (const role of ['university', 'institute', 'superuser']) {
+    assert.ok((await text(`apps/${role}/src/lib/tokenStorage.js`)).includes('packages/portal-core/src/tokenStorage.js'));
+    assert.ok((await text(`apps/${role}/src/context/AuthContext.jsx`)).includes('packages/portal-core/src/AuthContext.jsx'));
+    assert.ok((await text(`apps/${role}/src/components/auth/guards.jsx`)).includes('packages/portal-core/src/guards.jsx'));
+    for (const component of ['Input.jsx', 'EmptyState.jsx', 'Spinner.jsx']) {
+      assert.ok((await text(`apps/${role}/src/components/common/${component}`)).includes('packages/portal-core/src/components/common'));
+    }
+  }
+});
+
+test('superuser create pages submit required country codes', async () => {
+  const institute = await text('apps/superuser/src/pages/admin/InstituteCreatePage.jsx');
+  const university = await text('apps/superuser/src/pages/admin/UniversityCreatePage.jsx');
+  assert.ok(institute.includes('country,'));
+  assert.ok(institute.includes('value="IN"'));
+  assert.doesNotMatch(institute, /option value="US"/);
+  assert.ok(university.includes('country,'));
+  assert.ok(university.includes('value="US"'));
+});
