@@ -10,6 +10,7 @@ import Button from "../../components/common/Button";
 import ErrorBanner from "../../components/common/ErrorBanner";
 import { createInstitute } from "../../api/superuserApi";
 import { useAction } from "../../hooks/useAsync";
+import { countryLabel, INSTITUTE_COUNTRY_CODES } from "../../lib/countries";
 
 export default function InstituteCreatePage() {
   const navigate = useNavigate();
@@ -90,19 +91,11 @@ export default function InstituteCreatePage() {
               </Field>
               <Field label="Country" required error={errors.country?.[0]}>
                 <Select value={country} onChange={(e) => setCountry(e.target.value)} required>
-                  <option value="IN">India (IN)</option>
-                  <option value="GB">United Kingdom (GB)</option>
-                  <option value="CA">Canada (CA)</option>
-                  <option value="AU">Australia (AU)</option>
-                  <option value="NZ">New Zealand (NZ)</option>
-                  <option value="SG">Singapore (SG)</option>
-                  <option value="AE">United Arab Emirates (AE)</option>
-                  <option value="SA">Saudi Arabia (SA)</option>
-                  <option value="DE">Germany (DE)</option>
-                  <option value="FR">France (FR)</option>
-                  <option value="NL">Netherlands (NL)</option>
-                  <option value="JP">Japan (JP)</option>
-                  <option value="KR">South Korea (KR)</option>
+                  {INSTITUTE_COUNTRY_CODES.map((code) => (
+                    <option key={code} value={code}>
+                      {countryLabel(code)} ({code})
+                    </option>
+                  ))}
                 </Select>
               </Field>
               <Field label="Contact email" hint="Optional — can be edited later.">
