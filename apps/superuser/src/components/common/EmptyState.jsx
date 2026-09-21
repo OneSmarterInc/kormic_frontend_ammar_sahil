@@ -1,1 +1,1 @@
-export { default } from "../../../../../packages/portal-core/src/components/common/EmptyState.jsx";
+export { default } from "@kormic/portal-core/components/common/EmptyState.jsx";
