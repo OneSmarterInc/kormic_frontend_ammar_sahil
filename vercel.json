@@ -3,21 +3,55 @@
   "buildCommand": "npm test && npm run build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/login", "destination": "/index.html" },
-    { "source": "/claim", "destination": "/claim/index.html" },
-    { "source": "/claim/", "destination": "/claim/index.html" },
-    { "source": "/student", "destination": "/student/index.html" },
-    { "source": "/university", "destination": "/university/index.html" },
-    { "source": "/institute", "destination": "/institute/index.html" },
-    { "source": "/superuser", "destination": "/superuser/index.html" }
+    {
+      "source": "/login",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/claim",
+      "destination": "/claim/index.html"
+    },
+    {
+      "source": "/claim/",
+      "destination": "/claim/index.html"
+    },
+    {
+      "source": "/student",
+      "destination": "/student/index.html"
+    },
+    {
+      "source": "/university",
+      "destination": "/university/index.html"
+    },
+    {
+      "source": "/institute",
+      "destination": "/institute/index.html"
+    },
+    {
+      "source": "/superuser",
+      "destination": "/superuser/index.html"
+    }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "X-Frame-Options", "value": "DENY" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Content-Security-Policy-Report-Only",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://backend.kormic.ai; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+        }
       ]
     }
   ]
