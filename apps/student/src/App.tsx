@@ -10,6 +10,7 @@ import { ProgressHeader } from './components/ProgressHeader';
 import { useStudentSession } from './features/auth/useStudentSession';
 import { FloatingBotLauncher } from './features/chat/FloatingBotLauncher';
 import { useClaimFlow } from './features/claim/useClaimFlow';
+import { StudentNotificationBell } from './features/notifications/StudentNotificationBell';
 import { useAgentNotifications } from './features/notifications/useAgentNotifications';
 import { getNextRouteAfterStep, hidesBotLauncher, isAuthRoute } from './features/onboarding/navigation';
 import { initialOnboardingState, OnboardingRoute } from './models/onboarding';
@@ -204,6 +205,11 @@ export default function App() {
     />
   );
 
+  const showNotificationBell =
+    Boolean(state.authSession?.access) &&
+    Boolean(state.authSession?.user?.totp_enrolled) &&
+    !isAuthRoute(state.route);
+
   const showBotLauncher =
     Boolean(state.authSession?.access) &&
     !isAuthRoute(state.route) &&
@@ -216,6 +222,9 @@ export default function App() {
       <StatusBar barStyle="light-content" backgroundColor={colors.ink} />
       <ProgressHeader route={state.route} onBack={goToWelcomeFromHeader} />
       {content}
+      {showNotificationBell ? (
+        <StudentNotificationBell session={state.authSession} onOpenChat={onOpenChat} />
+      ) : null}
       {showBotLauncher ? <FloatingBotLauncher onPress={openBotScreen} /> : null}
     </View>
   );
