@@ -2,6 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import clsx from "clsx";
 import {
   Building2,
+  ClipboardList,
   ChevronLeft,
   GraduationCap,
   HelpCircle,
@@ -30,6 +31,7 @@ const NAV_GROUPS = [
       { to: "/admin/students", label: "Students", icon: GraduationCap },
       { to: "/admin/universities", label: "Universities", icon: Building2 },
       { to: "/admin/institutes", label: "Institutes", icon: Landmark },
+      { to: "/admin/roster-students", label: "Roster Students", icon: ClipboardList },
       { to: "/admin/users", label: "Users & Access", icon: UsersRound },
     ],
   },
