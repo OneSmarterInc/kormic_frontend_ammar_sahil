@@ -44,13 +44,8 @@ export default function TopBar({ orgName, withSidebar = false }) {
         <div className="flex shrink-0 items-center justify-end gap-3 sm:gap-6">
           {authenticated ? (
             <>
-              {/* Notifications — reserved for a future release
-              <button
-                className="relative rounded-full p-2 transition-all duration-300 hover:bg-ink-100"
-              >
-                <Bell className="h-4 w-4 text-ink-600" />
-                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-600" />
-              </button> */}
+              {/* Account-scoped notifications */}
+              <NotificationBell client={client} navigate={navigate} />
 
               {/* User */}
 
