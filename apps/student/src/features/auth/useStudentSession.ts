@@ -45,6 +45,12 @@ export function useStudentSession({
 
   const [restoringSession, setRestoringSession] = useState(true);
 
+  // Web redirect decisions must be based on a definitive cookie-restore
+  // result, not on whether the reducer has rendered authSession yet. This
+  // avoids a successful login briefly rendering and then being sent back to
+  // /login during the dispatch/render boundary.
+  const [webSessionMissing, setWebSessionMissing] = useState(false);
+
   const loadProfileForSession = useCallback(async (session: AuthSession) => {
     setProfileError('');
     setProfileLoading(true);
@@ -182,6 +188,7 @@ export function useStudentSession({
     const restore = async () => {
       const initialUrl = await Linking.getInitialURL();
       if (openClaimFromUrl(initialUrl)) {
+        setWebSessionMissing(false);
         setRestoringSession(false);
         return;
       }
@@ -193,12 +200,18 @@ export function useStudentSession({
           tokens = { access: refreshed.access };
           await saveAccessToken(refreshed.access);
         } catch {
-          setRestoringSession(false);
+          if (active) {
+            setWebSessionMissing(true);
+            setRestoringSession(false);
+          }
           return;
         }
       }
       if (!tokens) {
-        setRestoringSession(false);
+        if (active) {
+          setWebSessionMissing(Platform.OS === 'web');
+          setRestoringSession(false);
+        }
         return;
       }
 
@@ -228,6 +241,7 @@ export function useStudentSession({
           mustEnrollTotp: false,
           totpRequired: false,
         };
+        setWebSessionMissing(false);
         dispatch({ type: 'SET_AUTH_SESSION', session });
         registerForPushNotifications(session).catch((error) => {
           console.log('[notifications] register failed:', error);
@@ -247,6 +261,9 @@ export function useStudentSession({
         }
       } catch {
         await clearSavedTokens();
+        if (active && Platform.OS === 'web') {
+          setWebSessionMissing(true);
+        }
       } finally {
         if (active) {
           setRestoringSession(false);
@@ -267,6 +284,7 @@ export function useStudentSession({
     basicInfoApiError,
     setBasicInfoApiError,
     restoringSession,
+    webSessionMissing,
     continueAfterAuth,
     continueAfterBasicInfo,
     viewProfile,
