@@ -89,7 +89,18 @@ it('restores a browser session using the refresh cookie when memory is empty', a
   await waitFor(() => expect(result.current.restoringSession).toBe(false));
   expect(api.refreshAccessToken).toHaveBeenCalledWith();
   expect(storage.saveAccessToken).toHaveBeenCalledWith('cookie-access');
+  expect(result.current.webSessionMissing).toBe(false);
   expect(inputs.navigate).toHaveBeenCalledWith('Profile');
+});
+
+it('marks a browser session missing only after cookie restoration actually fails', async () => {
+  Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' });
+  jest.mocked(api.refreshAccessToken).mockRejectedValue(new Error('No cookie session'));
+  const inputs = options();
+  const { result } = renderHook(() => useStudentSession(inputs));
+  await waitFor(() => expect(result.current.restoringSession).toBe(false));
+  expect(result.current.webSessionMissing).toBe(true);
+  expect(inputs.dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'SET_AUTH_SESSION' }));
 });
 
 it('uses the notification navigation callback when reopening from a notification', async () => {
