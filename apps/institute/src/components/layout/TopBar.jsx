@@ -1,9 +1,11 @@
+import NotificationBell from "@kormic/portal-core/components/notifications/NotificationBell.jsx";
 import { Link, useNavigate } from "react-router-dom";
 import { Building2, LogOut } from "lucide-react";
 import clsx from "clsx";
 
 import Badge from "../common/Badge";
 import { useAuth } from "../../context/AuthContext";
+import client from "../../api/client";
 
 export default function TopBar({ orgName, withSidebar = false }) {
   const { status, user, logout } = useAuth();
