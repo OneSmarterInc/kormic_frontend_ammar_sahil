@@ -4,7 +4,8 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import { AuthSession } from '../models/onboarding';
-import { API_BASE_URL } from './api';
+import { API_BASE_URL, refreshAccessToken } from './api';
+import { saveAccessToken, saveRefreshToken } from './tokenStorage';
 
 const CHAT_NOTIFICATION_TYPES = ['agent_reply', 'pending_query_resolved', 'agent_initiated'];
 const PUSH_TOKEN_KEY = 'kormic.expoPushToken';
@@ -389,4 +390,106 @@ export async function pollNotifications(session?: AuthSession, since?: string) {
     nextSince: since,
     hasAgentNotification: agentNotifications.length > 0,
   };
+}
+
+
+export type NotificationInboxItem = {
+  id: number;
+  event_type: string;
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+  status?: string;
+  read_at?: string | null;
+  created_at: string;
+};
+
+export type NotificationInboxResponse = {
+  results: NotificationInboxItem[];
+  unread_count: number;
+  pagination?: {
+    page: number;
+    page_size: number;
+    total: number;
+    has_next: boolean;
+  };
+};
+
+async function notificationInboxRequest<T>(
+  session: AuthSession,
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  if (!session.access) throw new Error('Missing auth token.');
+
+  const send = (access: string) =>
+    fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(init.headers ?? {}),
+        Authorization: `Bearer ${access}`,
+      },
+    });
+
+  let response = await send(session.access);
+  if (response.status === 401) {
+    const refresh = session.refresh || (await getSavedRefreshToken());
+    if (!refresh && Platform.OS !== 'web') throw new Error('Session expired.');
+
+    const refreshed = await refreshAccessToken(refresh);
+    session.access = refreshed.access;
+    session.refresh = refreshed.refresh ?? refresh;
+    await saveAccessToken(refreshed.access);
+    if (session.refresh) await saveRefreshToken(session.refresh);
+    response = await send(refreshed.access);
+  }
+
+  const text = await response.text().catch(() => '');
+  if (!response.ok) {
+    throw new Error(`Notification request failed with status ${response.status}: ${text}`);
+  }
+  return (text ? JSON.parse(text) : {}) as T;
+}
+
+export async function listNotificationInbox(
+  session: AuthSession,
+  page = 1,
+  pageSize = 20,
+): Promise<NotificationInboxResponse> {
+  return notificationInboxRequest<NotificationInboxResponse>(
+    session,
+    `/notifications/?page=${page}&page_size=${pageSize}`,
+  );
+}
+
+export async function getNotificationUnreadCount(session: AuthSession): Promise<number> {
+  const data = await notificationInboxRequest<{ unread_count?: number }>(
+    session,
+    '/notifications/unread-count/',
+  );
+  return Number(data.unread_count || 0);
+}
+
+export async function markNotificationRead(
+  session: AuthSession,
+  notificationId: number,
+): Promise<NotificationInboxItem> {
+  return notificationInboxRequest<NotificationInboxItem>(
+    session,
+    `/notifications/${notificationId}/read/`,
+    { method: 'POST' },
+  );
+}
+
+export async function markAllNotificationsRead(session: AuthSession): Promise<void> {
+  await notificationInboxRequest(
+    session,
+    '/notifications/read-all/',
+    { method: 'POST' },
+  );
+}
+
+export function isChatNotification(notification: NotificationInboxItem) {
+  return isAgentNotificationType(getNotificationType(notification.data, notification.event_type));
 }
