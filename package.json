@@ -8,6 +8,7 @@
   },
   "scripts": {
     "setup": "node scripts/setup.mjs",
+    "prebuild": "npm run setup",
     "test": "node --test tests/*.test.mjs",
     "build": "node scripts/build.mjs",
     "preview": "node scripts/serve.mjs"
