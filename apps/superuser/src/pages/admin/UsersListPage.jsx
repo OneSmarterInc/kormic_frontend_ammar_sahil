@@ -89,7 +89,7 @@ export default function UsersListPage() {
     <div>
       <PageHeader
         title="Users & Access"
-        description="Every login on the platform, across students, universities, and superusers."
+        description="Every login account on the platform, including students who registered through an institute roster claim."
         action={
           <Button icon={Plus} onClick={() => setCreating(true)}>
             New superuser
@@ -141,6 +141,7 @@ export default function UsersListPage() {
                   <th className="px-4 py-2.5 font-medium">Role</th>
                   <th className="px-4 py-2.5 font-medium">Status</th>
                   <th className="px-4 py-2.5 font-medium">2FA</th>
+                  <th className="px-4 py-2.5 font-medium">Source</th>
                   <th className="px-4 py-2.5 font-medium">Joined</th>
                   <th className="px-4 py-2.5 font-medium text-right">Actions</th>
                 </tr>
@@ -172,6 +173,20 @@ export default function UsersListPage() {
                           </Badge>
                         ) : (
                           <Badge tone="neutral">Not enrolled</Badge>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {u.account_source === "institute_roster" ? (
+                          <div>
+                            <Badge tone="brand">Institute roster</Badge>
+                            {u.source_institute_name && (
+                              <p className="mt-1 max-w-[180px] truncate text-xs text-ink-400">
+                                {u.source_institute_name}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge tone="neutral">Direct</Badge>
                         )}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-xs text-ink-400">
