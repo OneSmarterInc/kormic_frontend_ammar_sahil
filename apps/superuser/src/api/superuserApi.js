@@ -40,6 +40,31 @@ export const updateUniversity = (id, payload) =>
 export const deleteUniversity = (id) =>
   client.delete(`/superuser/universities/${encodeURIComponent(id)}/`);
 
+
+/* ---------- Roster students — /api/superuser/roster-students/ ---------- */
+
+/** GET all institute-uploaded roster rows with server-side filters/paging. */
+export const listRosterStudents = ({
+  page = 1,
+  pageSize = 25,
+  search,
+  status,
+  instituteId,
+  accountState,
+} = {}) =>
+  client
+    .get("/superuser/roster-students/", {
+      params: {
+        page,
+        page_size: pageSize,
+        ...(search ? { search } : {}),
+        ...(status ? { status } : {}),
+        ...(instituteId ? { institute_id: instituteId } : {}),
+        ...(accountState ? { account_state: accountState } : {}),
+      },
+    })
+    .then((r) => r.data);
+
 /* ---------- Users (cross-role) — /api/superuser/users/ ---------- */
 
 /** GET /api/superuser/users/?role=&search= */
