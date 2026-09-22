@@ -97,6 +97,7 @@ export default function App() {
     basicInfoApiError,
     setBasicInfoApiError,
     restoringSession,
+    webSessionMissing,
     continueAfterAuth,
     continueAfterBasicInfo,
     viewProfile,
@@ -114,11 +115,11 @@ export default function App() {
   // Browser users authenticate through the single Kormic Login. Native login,
   // registration, and trusted claim-link flows keep their existing behavior.
   useEffect(() => {
-    if (Platform.OS !== 'web' || restoringSession || state.authSession?.access) return;
+    if (Platform.OS !== 'web' || restoringSession || !webSessionMissing) return;
     const signupFlow = new URLSearchParams(window.location.search).get('signup') === '1';
     if (signupFlow || claimLinkHandledRef.current) return;
     window.location.replace('/login?portal=student');
-  }, [restoringSession, state.authSession?.access, claimLinkHandledRef]);
+  }, [restoringSession, webSessionMissing, claimLinkHandledRef]);
 
   const handleBack = useCallback(() => {
     if (state.route === 'BotScreen') {
