@@ -28,6 +28,7 @@ import InstituteCreatePage from "./pages/admin/InstituteCreatePage";
 import InstituteDetailPage from "./pages/admin/InstituteDetailPage";
 import InstituteListUploadPage from "./pages/admin/InstituteListUploadPage";
 import InstituteListStudentsPage from "./pages/admin/InstituteListStudentsPage";
+import RosterStudentsPage from "./pages/admin/RosterStudentsPage";
 
 import UsersListPage from "./pages/admin/UsersListPage";
 import UserDetailPage from "./pages/admin/UserDetailPage";
@@ -124,6 +125,11 @@ function App() {
                 <Route
                   path="institutes"
                   element={<InstitutesListPage />}
+                />
+
+                <Route
+                  path="roster-students"
+                  element={<RosterStudentsPage />}
                 />
 
                 <Route
