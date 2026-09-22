@@ -1,0 +1,13 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "skipLibCheck": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "moduleSuffixes": [".native", ""],
+    "types": ["jest"]
+  },
+  "include": ["src", "__tests__", "jest.setup.ts"],
+  "exclude": ["node_modules", "node_modules/**/*", "node_modules/expo-file-system/**/*"]
+}

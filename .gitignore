@@ -1,0 +1,13 @@
+node_modules/
+dist/
+dist-login/
+.expo/
+.env
+.env.*
+!.env.example
+apps.before-import/
+kormic-import-*/
+__pycache__/
+*.pyc
+playwright-report/
+test-results/

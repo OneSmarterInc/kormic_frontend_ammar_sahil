@@ -1,0 +1,85 @@
+name: Student profile contract
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "contracts/student-profile.openapi.json"
+      - "scripts/generate-student-profile-types.mjs"
+      - "src/generated/studentProfileApi.ts"
+      - "src/services/apiTransport.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig*.json"
+      - ".github/workflows/profile-contract-ci.yml"
+  pull_request:
+    paths:
+      - "contracts/student-profile.openapi.json"
+      - "scripts/generate-student-profile-types.mjs"
+      - "src/generated/studentProfileApi.ts"
+      - "src/services/apiTransport.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig*.json"
+      - ".github/workflows/profile-contract-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  profile-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: "true"
+      EXPO_PUBLIC_API_BASE_URL: https://backend.kormic.ai/api
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fail if generated API types drift from schema
+        run: npm run api:check-profile
+
+      - name: Type-check generated profile contract integration
+        run: npx tsc --noEmit -p tsconfig.claim-flow.json
+
+      - name: Lint profile transport
+        run: npx eslint src/services/apiTransport.ts src/generated/studentProfileApi.ts
+
+
+  live-backend-contract:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Fetch live backend profile schema
+        run: curl --fail --silent --show-error --retry 3 "https://backend.kormic.ai/api/schema/?format=json" -o /tmp/student-profile-live.json
+
+      - name: Fail if live backend schema drifted from committed snapshot
+        run: node scripts/check-live-profile-schema.mjs /tmp/student-profile-live.json
+
+
+  # Cross-repository drift guard. Keep this separate from pull-request CI so
+  # ordinary code review does not depend on production network availability.

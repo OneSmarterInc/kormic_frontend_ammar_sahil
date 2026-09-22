@@ -1,0 +1,68 @@
+name: Full baseline CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "31 6 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  web-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Lint complete portal
+        run: npm run lint
+      - name: Run automated tests
+        run: npm test
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Build and run browser regressions
+        run: npm run test:e2e
+      - name: Upload browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+
+  live-api-contract:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      KORMIC_BACKEND_ORIGIN: https://backend.kormic.ai
+    steps:
+      - name: Verify critical backend routes still exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          check_route() {
+            local path="$1"
+            local code
+            code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --retry 2 "${KORMIC_BACKEND_ORIGIN}${path}")"
+            if [[ "$code" == "404" || "$code" == "000" ]]; then
+              echo "Backend contract route missing/unreachable: ${path} (HTTP ${code})"
+              exit 1
+            fi
+            echo "${path}: HTTP ${code}"
+          }
+          check_route "/api/auth/web/csrf/"
+          check_route "/api/university-admin/profile/"
+          check_route "/api/university-admin/knowledge/"

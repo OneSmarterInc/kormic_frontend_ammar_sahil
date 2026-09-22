@@ -1,0 +1,36 @@
+import { test, expect, management } from './fixtures.js';
+test('knowledge fact CRUD preserves data when deletion fails', async ({ page, api }) => {
+  api.authenticated = true;
+  await page.goto(`/#${management}`);
+  await expect(page.getByRole('button', { name: 'Add fact' })).toBeDisabled();
+  await page.getByLabel(/^Topic/).fill('Application deadline');
+  await page.getByLabel(/^Content/).fill('Apply before July 1.');
+  await page.getByRole('button', { name: 'Add fact' }).click();
+  await expect(page.getByText('Apply before July 1.', { exact: true })).toBeVisible();
+  expect(api.calls.find(c => c.method === 'POST' && c.path === '/university-admin/knowledge/').body).toMatchObject({ topic: 'Application deadline', content: 'Apply before July 1.' });
+  await page.getByRole('button', { name: 'Edit Application deadline' }).click();
+  const edit = page.locator('form').filter({ has: page.getByRole('button', { name: 'Save', exact: true }) });
+  await edit.getByLabel(/^Content/).fill('Apply before August 1.');
+  await edit.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Apply before August 1.', { exact: true })).toBeVisible();
+  expect(api.calls.find(c => c.method === 'PATCH').body.content).toBe('Apply before August 1.');
+  await page.getByRole('button', { name: 'Delete Application deadline' }).click();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  expect(api.calls.filter(c => c.method === 'DELETE')).toHaveLength(0);
+  api.deleteConflict = true;
+  await page.getByRole('button', { name: 'Delete Application deadline' }).click();
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(page.getByText('Please retry deletion').first()).toBeVisible();
+  await expect(page.getByText('Apply before August 1.', { exact: true })).toBeVisible();
+  api.deleteConflict = false;
+  await page.getByRole('button', { name: 'Delete Application deadline' }).click();
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(page.getByText('Apply before August 1.', { exact: true })).toHaveCount(0);
+  expect(api.facts).toHaveLength(0);
+});
+test('another university URL redirects to the signed-in university', async ({ page, api }) => {
+  api.authenticated = true;
+  await page.goto('/#/university/99/settings/knowledge-base');
+  await expect(page).toHaveURL(/#\/university\/7\/profiles$/);
+  expect(api.calls.some(c => c.path.includes('/99/'))).toBe(false);
+});

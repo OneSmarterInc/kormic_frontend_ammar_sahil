@@ -1,0 +1,24 @@
+{
+  "installCommand": "npm run setup",
+  "buildCommand": "npm test && npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/login", "destination": "/index.html" },
+    { "source": "/claim", "destination": "/claim/index.html" },
+    { "source": "/claim/", "destination": "/claim/index.html" },
+    { "source": "/student", "destination": "/student/index.html" },
+    { "source": "/university", "destination": "/university/index.html" },
+    { "source": "/institute", "destination": "/institute/index.html" },
+    { "source": "/superuser", "destination": "/superuser/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "X-Frame-Options", "value": "DENY" }
+      ]
+    }
+  ]
+}

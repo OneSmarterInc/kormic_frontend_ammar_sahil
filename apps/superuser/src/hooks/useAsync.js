@@ -1,0 +1,60 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+
+export function useAsync(fn, deps, { enabled = true } = {}) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(enabled);
+  const requestId = useRef(0);
+
+  const run = useCallback(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+    const id = ++requestId.current;
+    setLoading(true);
+    setError(null);
+    fn()
+      .then((result) => {
+        if (id === requestId.current) setData(result);
+      })
+      .catch((err) => {
+        if (id === requestId.current) setError(err);
+      })
+      .finally(() => {
+        if (id === requestId.current) setLoading(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  useEffect(() => {
+    run();
+  }, [run]);
+
+  return { data, error, loading, refetch: run, setData };
+}
+
+/** For POST/PUT-style actions triggered by user events, not on mount. */
+export function useAction(fn) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const execute = useCallback(
+    async (...args) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await fn(...args);
+        return result;
+      } catch (err) {
+        setError(err);
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [fn]
+  );
+
+  return { execute, loading, error, setError };
+}
