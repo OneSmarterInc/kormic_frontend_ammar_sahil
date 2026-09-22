@@ -98,11 +98,11 @@ export default function NotificationBell({ client, navigate, pollMs = 30000 }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 z-50 w-[min(92vw,380px)] overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-2xl">
-          <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3">
-            <div>
-              <p className="text-sm font-semibold text-ink-900">Notifications</p>
-              <p className="text-xs text-ink-500">{unreadCount ? `${unreadCount} unread` : "You're all caught up"}</p>
+        <div className="absolute right-0 top-11 z-50 w-[min(94vw,460px)] min-w-[360px] overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-2xl">
+          <div className="flex items-start justify-between gap-4 border-b border-ink-100 px-5 py-4">
+            <div className="min-w-0">
+              <p className="text-base font-semibold text-ink-900">Notifications</p>
+              <p className="mt-0.5 whitespace-nowrap text-xs text-ink-500">{unreadCount ? `${unreadCount} unread` : "You're all caught up"}</p>
             </div>
             {unreadCount > 0 && (
               <button
@@ -116,11 +116,11 @@ export default function NotificationBell({ client, navigate, pollMs = 30000 }) {
             )}
           </div>
 
-          <div className="max-h-[420px] overflow-y-auto">
+          <div className="max-h-[480px] overflow-y-auto">
             {loading ? (
-              <p className="px-4 py-8 text-center text-sm text-ink-500">Loading notifications…</p>
+              <p className="px-6 py-12 text-center text-sm text-ink-500">Loading notifications…</p>
             ) : items.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-ink-500">No notifications yet.</p>
+              <p className="px-6 py-12 text-center text-sm leading-6 text-ink-500">No notifications yet.</p>
             ) : (
               items.map((item) => (
                 <button
@@ -128,7 +128,7 @@ export default function NotificationBell({ client, navigate, pollMs = 30000 }) {
                   key={item.id}
                   onClick={() => markRead(item)}
                   className={[
-                    "block w-full border-b border-ink-100 px-4 py-3 text-left transition-colors last:border-0 hover:bg-ink-50",
+                    "block w-full border-b border-ink-100 px-5 py-4 text-left transition-colors last:border-0 hover:bg-ink-50",
                     item.read_at ? "bg-white" : "bg-brand-50/60",
                   ].join(" ")}
                 >
