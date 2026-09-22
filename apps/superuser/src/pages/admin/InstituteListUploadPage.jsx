@@ -241,11 +241,10 @@ function ResultSummary({ result, instituteId, onUploadAnother }) {
           <div className="flex flex-wrap gap-2">
             <Badge tone="success">{result.accepted} accepted</Badge>
             <Badge tone={rejected.length ? "danger" : "neutral"}>{rejected.length} rejected</Badge>
-            <Badge tone={skipped.length ? "warning" : "neutral"}>{skipped.length} already claimed</Badge>
+            <Badge tone={skipped.length ? "warning" : "neutral"}>{skipped.length} claimed snapshots preserved</Badge>
           </div>
           <p className="text-sm text-ink-500">
-            The upload only creates the rows — students aren't notified yet. Open the roster to send invite
-            emails.
+            Every accepted row is saved as roster history. New/unclaimed students are not notified yet; open the roster to send invite emails.
           </p>
           <Link to={`/admin/institutes/${instituteId}/lists/${result.list_id}`}>
             <Button icon={Mail}>View roster & send invites</Button>
