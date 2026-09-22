@@ -26,5 +26,18 @@ for(const role of ['student','university','institute','superuser']){
     );
     if(coreInstall.error)throw coreInstall.error;
     if(coreInstall.status!==0)process.exit(coreInstall.status||1);
+
+    // React must come from the portal app, never from a nested portal-core
+    // install. A second React copy causes invalid hook calls even if Vite can
+    // resolve both packages successfully.
+    for(const dependency of ['react','react-dom']){
+      const nested=resolve(cwd,'node_modules','@kormic','portal-core','node_modules',dependency,'package.json');
+      if(existsSync(nested)){
+        throw new Error(
+          `Duplicate ${dependency} detected under @kormic/portal-core in apps/${role}; ` +
+          'portal-core must use the app peer dependency so there is one runtime copy.'
+        );
+      }
+    }
   }
 }
