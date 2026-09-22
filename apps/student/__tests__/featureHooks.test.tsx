@@ -34,7 +34,7 @@ beforeEach(() => jest.clearAllMocks());
 it('claims an invitation through verification, review and account enrollment', async () => {
   jest
     .mocked(api.startStudentClaim)
-    .mockResolvedValue({ masked_email: 'a***@example.test' } as Awaited<
+    .mockResolvedValue({ sent: true } as Awaited<
       ReturnType<typeof api.startStudentClaim>
     >);
   jest.mocked(api.verifyStudentClaim).mockResolvedValue({

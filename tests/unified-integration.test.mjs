@@ -68,11 +68,70 @@ for (const [path, portal] of [
   ['apps/institute/src/api/client.js', 'institute'],
   ['apps/superuser/src/api/client.js', 'superuser']
 ]) {
-  test(`${path} retains its original API base and portal isolation`, async () => {
+  test(`${path} delegates to the shared portal client`, async () => {
     const source = await text(path);
-    assert.match(source, /baseURL:\s*\x60\$\{BASE_URL\}\/api\x60/);
-    assert.ok(source.includes(`PORTAL = "${portal}"`));
-    assert.ok(source.includes('/auth/web/csrf/'));
-    assert.ok(source.includes('/auth/web/refresh/'));
+    assert.ok(source.includes(`@kormic/portal-core/clients/${portal}.js`));
   });
 }
+
+test('shared portal client owns error normalization and auth exemptions for all portals', async () => {
+  const source = await text('packages/portal-core/src/client.js');
+  assert.ok(source.includes('axios.isCancel(error)'));
+  assert.ok(source.includes('Something went wrong on our end. Please try again in a moment.'));
+  assert.ok(source.includes('.replace(/\\/+$/, "")'));
+  assert.ok(source.includes('/auth/forgot-password/'));
+  assert.ok(source.includes('/auth/reset-password/'));
+});
+
+test('all three portals share token storage, auth context, guards, and common primitives', async () => {
+  for (const role of ['university', 'institute', 'superuser']) {
+    assert.ok((await text(`apps/${role}/src/lib/tokenStorage.js`)).includes('@kormic/portal-core/tokenStorage.js'));
+    assert.ok((await text(`apps/${role}/src/context/AuthContext.jsx`)).includes('@kormic/portal-core/AuthContext.jsx'));
+    assert.ok((await text(`apps/${role}/src/components/auth/guards.jsx`)).includes('@kormic/portal-core/guards.jsx'));
+    for (const component of ['Input.jsx', 'EmptyState.jsx', 'Spinner.jsx', 'Button.jsx', 'Card.jsx', 'ErrorBanner.jsx', 'ErrorBoundary.jsx', 'Modal.jsx']) {
+      assert.ok((await text(`apps/${role}/src/components/common/${component}`)).includes('@kormic/portal-core/components/common'));
+    }
+  }
+});
+
+test('superuser create pages submit required country codes from the ISO option source', async () => {
+  const countries = await text('apps/superuser/src/lib/countries.js');
+  const institute = await text('apps/superuser/src/pages/admin/InstituteCreatePage.jsx');
+  const university = await text('apps/superuser/src/pages/admin/UniversityCreatePage.jsx');
+
+  assert.ok(countries.includes('COUNTRY_CODES'));
+  assert.ok(countries.includes('COUNTRY_CODES.filter((code) => code !== "US")'));
+  assert.ok(countries.includes('UNIVERSITY_COUNTRY_CODES = Object.freeze(["US"])'));
+
+  assert.ok(institute.includes('country,'));
+  assert.ok(institute.includes('INSTITUTE_COUNTRY_CODES.map'));
+  assert.ok(university.includes('country,'));
+  assert.ok(university.includes('UNIVERSITY_COUNTRY_CODES.map'));
+});
+
+test('portal-core Vite alias resolves shared dependencies from each app with one React copy', async () => {
+  for (const role of ['university', 'institute', 'superuser']) {
+    const config = await text(`apps/${role}/vite.config.js`);
+    assert.ok(config.includes("'@kormic/portal-core'"));
+    assert.ok(config.includes("dedupe: ['react', 'react-dom', 'react-router-dom']"));
+  }
+
+  const setup = await text('scripts/setup.mjs');
+  for (const dependency of ['react', 'react-dom', 'react-router-dom', 'axios', 'clsx', 'lucide-react']) {
+    assert.ok(setup.includes(`'${dependency}'`));
+  }
+});
+
+test('portal-core resolves through each portal node_modules with one React copy', async () => {
+  for (const role of ['university', 'institute', 'superuser']) {
+    const config = await text(`apps/${role}/vite.config.js`);
+    assert.ok(config.includes("./node_modules/@kormic/portal-core/src"));
+    assert.ok(config.includes("dedupe: ['react', 'react-dom', 'react-router-dom']"));
+    assert.ok(config.includes("preserveSymlinks: true"));
+  }
+
+  const setup = await text('scripts/setup.mjs');
+  assert.ok(setup.includes("npm"));
+  assert.ok(setup.includes("packages','portal-core"));
+  assert.ok(setup.includes("['react','react-dom','react-router-dom','axios','clsx','lucide-react']"));
+});

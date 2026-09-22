@@ -40,8 +40,11 @@ export function ClaimReviewScreen({
 
     if (!value.phone.trim()) {
       errors.phone = 'Phone number is required';
-    } else if (!/^\d{10}$/.test(value.phone.trim())) {
-      errors.phone = 'Phone must be 10 digits';
+    } else {
+      const normalizedPhone = value.phone.replace(/[\s().-]/g, '');
+      if (!/^\+?[1-9]\d{7,14}$/.test(normalizedPhone)) {
+        errors.phone = 'Use an international phone number, e.g. +91 98765 43210';
+      }
     }
 
     if (!value.field_of_study.trim()) {
@@ -80,10 +83,16 @@ export function ClaimReviewScreen({
       errors.city = 'City must be at least 2 characters';
     }
 
-    if (!value.state.trim()) {
-      errors.state = 'State/region is required';
-    } else if (value.state.trim().length < 2) {
-      errors.state = 'State/region must be at least 2 characters';
+    if (!(value.region || value.state).trim()) {
+      errors.region = 'State/region is required';
+    } else if ((value.region || value.state).trim().length < 2) {
+      errors.region = 'State/region must be at least 2 characters';
+    }
+
+    if (!value.country.trim()) {
+      errors.country = 'Country is required';
+    } else if (!/^[A-Za-z]{2}$/.test(value.country.trim())) {
+      errors.country = 'Use a two-letter country code';
     }
 
     return errors;
@@ -101,7 +110,8 @@ export function ClaimReviewScreen({
       !value.year_in_college.trim() ||
       !value.program_name.trim() ||
       !value.city.trim() ||
-      !value.state.trim(),
+      !(value.region || value.state).trim() ||
+      !value.country.trim(),
     [value],
   );
 
@@ -154,7 +164,7 @@ export function ClaimReviewScreen({
             value={value.phone}
             onChangeText={update('phone')}
             keyboardType="phone-pad"
-            maxLength={10}
+            maxLength={20}
             required
             error={getError('phone')}
           />
@@ -208,10 +218,19 @@ export function ClaimReviewScreen({
           />
           <TextField
             label="State/region"
-            value={value.state}
-            onChangeText={update('state')}
+            value={value.region || value.state}
+            onChangeText={update('region')}
             required
-            error={getError('state')}
+            error={getError('region')}
+          />
+          <TextField
+            label="Country code"
+            value={value.country}
+            onChangeText={(nextValue) => onChange('country', nextValue.toUpperCase().slice(0, 2))}
+            autoCapitalize="characters"
+            maxLength={2}
+            required
+            error={getError('country')}
           />
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
         </View>

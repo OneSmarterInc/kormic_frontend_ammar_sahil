@@ -44,7 +44,7 @@ export function ClaimCodeScreen({
     >
       <View style={styles.content}>
         <Text style={styles.title}>Enter your code</Text>
-        <Text style={styles.subhead}>We sent a 6-digit code to {maskedEmail}. It expires soon.</Text>
+        <Text style={styles.subhead}>We sent a 6-digit code to the email address on your invitation. It expires soon.</Text>
 
         <View style={styles.form}>
           <SectionLabel>Verification</SectionLabel>
@@ -58,6 +58,9 @@ export function ClaimCodeScreen({
             required
           />
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <Text style={styles.hintText}>
+            If a code doesn’t work, request a new code and try again.
+          </Text>
         </View>
       </View>
     </ScreenShell>
@@ -86,6 +89,12 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: colors.error,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  hintText: {
+    color: colors.muted,
     fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 18,

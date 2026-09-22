@@ -24,6 +24,8 @@ const emptyClaimPrefill: ClaimPrefill = {
   year_in_college: '',
   program_name: '',
   city: '',
+  country: '',
+  region: '',
   state: '',
 };
 export function useClaimFlow(
@@ -83,8 +85,8 @@ export function useClaimFlow(
     setClaimLoading(true);
     setClaimError('');
     try {
-      const data = await startStudentClaim(token);
-      setClaimMaskedEmail(data.masked_email);
+      await startStudentClaim(token);
+      setClaimMaskedEmail('');
       navigate('ClaimCode');
     } catch (error) {
       setClaimError(getErrorMessage(error, 'Unable to start invitation claim'));
@@ -103,8 +105,8 @@ export function useClaimFlow(
     setClaimResending(true);
     setClaimError('');
     try {
-      const data = await startStudentClaim(token);
-      setClaimMaskedEmail(data.masked_email);
+      await startStudentClaim(token);
+      setClaimMaskedEmail('');
     } catch (error) {
       setClaimError(getErrorMessage(error, 'Unable to resend invitation code'));
     } finally {
@@ -167,7 +169,9 @@ export function useClaimFlow(
           year_in_college: claimPrefill.year_in_college,
           program_name: claimPrefill.program_name,
           city: claimPrefill.city,
-          state: claimPrefill.state,
+          country: claimPrefill.country,
+          region: claimPrefill.region || claimPrefill.state,
+          state: claimPrefill.state || claimPrefill.region,
         },
       });
       navigate('ClaimPassword');

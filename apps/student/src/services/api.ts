@@ -102,7 +102,7 @@ export interface ConfirmResetPasswordResponse {
 }
 
 export interface ClaimStartResponse {
-  masked_email: string;
+  sent: boolean;
 }
 
 export interface ClaimPrefillResponse {
@@ -115,6 +115,8 @@ export interface ClaimPrefillResponse {
   year_in_college: string;
   program_name: string;
   city: string;
+  country: string;
+  region: string;
   state: string;
   institute_id?: string;
   institute_name?: string;
@@ -643,6 +645,8 @@ export function confirmStudentClaim(payload: {
     year_in_college: string;
     program_name: string;
     city: string;
+    country: string;
+    region: string;
     state: string;
   };
 }) {

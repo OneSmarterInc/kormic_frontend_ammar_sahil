@@ -10,4 +10,34 @@ for(const role of ['student','university','institute','superuser']){
   const result=spawnSync(process.platform==='win32'?'npm.cmd':'npm',['ci'],{cwd,stdio:'inherit',shell:process.platform==='win32'});
   if(result.error)throw result.error;
   if(result.status!==0)process.exit(result.status||1);
+
+  if(role !== 'student'){
+    for(const dependency of ['react','react-dom','react-router-dom','axios','clsx','lucide-react']){
+      if(!existsSync(resolve(cwd,'node_modules',dependency,'package.json'))){
+        throw new Error(`Missing portal-core peer dependency "${dependency}" in apps/${role}/node_modules after npm ci.`);
+      }
+    }
+
+    console.log(`Installing @kormic/portal-core into apps/${role} without modifying its lockfile…`);
+    const coreInstall=spawnSync(
+      process.platform==='win32'?'npm.cmd':'npm',
+      ['install','--no-save','--package-lock=false',resolve(root,'packages','portal-core')],
+      {cwd,stdio:'inherit',shell:process.platform==='win32'}
+    );
+    if(coreInstall.error)throw coreInstall.error;
+    if(coreInstall.status!==0)process.exit(coreInstall.status||1);
+
+    // React must come from the portal app, never from a nested portal-core
+    // install. A second React copy causes invalid hook calls even if Vite can
+    // resolve both packages successfully.
+    for(const dependency of ['react','react-dom']){
+      const nested=resolve(cwd,'node_modules','@kormic','portal-core','node_modules',dependency,'package.json');
+      if(existsSync(nested)){
+        throw new Error(
+          `Duplicate ${dependency} detected under @kormic/portal-core in apps/${role}; ` +
+          'portal-core must use the app peer dependency so there is one runtime copy.'
+        );
+      }
+    }
+  }
 }
