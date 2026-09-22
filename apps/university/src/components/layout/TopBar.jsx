@@ -1,9 +1,11 @@
+import NotificationBell from "@kormic/portal-core/components/notifications/NotificationBell.jsx";
 import { Link, useNavigate } from "react-router-dom";
 import { Building2, LogOut } from "lucide-react";
 import clsx from "clsx";
 
 import Badge from "../common/Badge";
 import { useAuth } from "../../context/AuthContext";
+import client from "../../api/client";
 import { roleHome } from "../../lib/constants";
 
 export default function TopBar({ universityName, withSidebar = false }) {
@@ -81,34 +83,8 @@ export default function TopBar({ universityName, withSidebar = false }) {
           {authenticated ? (
             <>
 
-              {/* Notification */}
-
-              {/* <button
-                className="
-                  relative
-                  rounded-full
-                  p-2
-                  transition-all
-                  duration-300
-                  hover:bg-ink-100
-                "
-              >
-
-                <Bell className="h-4 w-4 text-ink-600" />
-
-                <span
-                  className="
-                    absolute
-                    right-2
-                    top-2
-                    h-2
-                    w-2
-                    rounded-full
-                    bg-brand-600
-                  "
-                />
-
-              </button> */}
+              {/* Account-scoped notifications */}
+              <NotificationBell client={client} navigate={navigate} />
 
               {/* User */}
 
