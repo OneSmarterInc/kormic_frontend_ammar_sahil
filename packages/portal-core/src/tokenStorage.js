@@ -3,7 +3,7 @@ let accessToken = "";
 let cachedUser = null;
 let generation = 0;
 
-function removeLegacyStorage() {
+export function clearLegacyAuthStorage() {
   try {
     for (const key of ["kormic.access_token", "kormic.refresh_token", "kormic.user"]) {
       globalThis.localStorage?.removeItem(key);
@@ -12,7 +12,7 @@ function removeLegacyStorage() {
     // Storage may be disabled by the browser.
   }
 }
-removeLegacyStorage();
+clearLegacyAuthStorage();
 
 export const getAccessToken = () => accessToken;
 export const setAccessToken = (token) => { accessToken = token || ""; };
@@ -23,5 +23,5 @@ export const clearAuth = () => {
   generation += 1;
   accessToken = "";
   cachedUser = null;
-  removeLegacyStorage();
+  clearLegacyAuthStorage();
 };
