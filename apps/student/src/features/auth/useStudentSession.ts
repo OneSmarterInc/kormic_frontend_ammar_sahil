@@ -14,6 +14,7 @@ import {
   unregisterPushNotifications,
 } from '../../services/notifications';
 import { clearSavedTokens, getSavedTokens, saveAccessToken, saveTokens } from '../../services/tokenStorage';
+import { consumeWebSessionHandoff } from '../../services/webSessionHandoff';
 import { OnboardingAction } from '../../state/onboardingReducer';
 import { isBasicInfoComplete } from '../../utils/validation';
 import { getFirstMissingOnboardingRoute, withProfileCreated } from '../onboarding/navigation';
@@ -206,13 +207,35 @@ export function useStudentSession({
       let restoredWebUser: AuthUser | undefined;
 
       if (Platform.OS === 'web' && !tokens) {
-        let restored = false;
+        // The login page and student portal are separate documents. A
+        // successful TOTP response can be available before the HttpOnly
+        // refresh cookie is observable by the next document, especially when
+        // the frontend and API are on different origins. Prefer the short-
+        // lived access-token handoff first, then fall back to the cookie.
+        const handoffAccess = consumeWebSessionHandoff();
+        if (handoffAccess) {
+          try {
+            const handoffUser = await getMe(handoffAccess);
+            tokens = { access: handoffAccess };
+            restoredWebUser = handoffUser;
+            await saveAccessToken(handoffAccess);
+          } catch {
+            // The handoff may have expired or the access token may already be
+            // invalid. Continue with the normal HttpOnly-cookie restore path.
+          }
+        }
+
+        let restored = Boolean(tokens && restoredWebUser);
+        if (restored) {
+          // The access token is enough to cross the redirect boundary. The
+          // normal refresh-cookie path remains the long-lived browser session.
+        }
 
         // The shared login page stores the browser refresh credential in an
         // HttpOnly cookie. Restore both the access token and the already
         // server-validated user in one request. This avoids a second
         // authentication hop immediately after the cross-document redirect.
-        for (let attempt = 0; attempt < WEB_SESSION_RESTORE_ATTEMPTS && active; attempt += 1) {
+        for (let attempt = 0; !restored && attempt < WEB_SESSION_RESTORE_ATTEMPTS && active; attempt += 1) {
           try {
             const refreshed = await refreshAccessToken();
             tokens = { access: refreshed.access };
