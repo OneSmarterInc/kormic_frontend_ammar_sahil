@@ -86,6 +86,7 @@ export interface RefreshResponse {
   access_token?: string;
   refresh?: string;
   refresh_token?: string;
+  user?: AuthUser;
 }
 
 export interface ForgotPasswordResponse {
