@@ -4,9 +4,10 @@ const query = new URLSearchParams(location.search);
 if (isPortal(query.get('portal'))) $('portal').value = query.get('portal');
 let client;
 try {
-  const configuredOrigin = window.KORMIC_CONFIG?.apiOrigin;
-  const localBrowser = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
-  const origin = localBrowser ? `http://${location.hostname}:8000` : configuredOrigin;
+  // The backend is configured by the frontend build's .env. Do not
+  // override it based on the browser hostname: local frontend development
+  // may intentionally point at a LAN, staging, or remote API.
+  const origin = window.KORMIC_CONFIG?.apiOrigin;
   client = createAuthClient({ origin });
 }
 catch (error) { $('error').textContent = error.message; $('error').hidden = false; $('password-form').querySelector('button[type=submit]').disabled = true; }
