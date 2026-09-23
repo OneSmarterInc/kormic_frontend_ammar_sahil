@@ -14,10 +14,16 @@ if (!envApiBaseUrl) {
   );
 }
 
-export const API_BASE_URL = resolveApiBaseUrl(
-  envApiBaseUrl || 'https://backend.kormic.ai/api',
-  Platform.OS === 'web' && typeof window !== 'undefined' ? window.location?.hostname : undefined,
-);
+const browserHostname = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location?.hostname : undefined;
+const localBrowserApi = browserHostname && ['localhost', '127.0.0.1', '[::1]'].includes(browserHostname)
+  ? `http://${browserHostname}:8000/api`
+  : undefined;
+
+// Never silently route a development build to the production API. Unified
+// builds and direct Expo development both provide EXPO_PUBLIC_API_BASE_URL;
+// loopback web development has a safe local default.
+const configuredApiBaseUrl = envApiBaseUrl || localBrowserApi || 'http://127.0.0.1:8000/api';
+export const API_BASE_URL = resolveApiBaseUrl(configuredApiBaseUrl, browserHostname);
 
 interface ApiErrorBody {
   detail?: string;
