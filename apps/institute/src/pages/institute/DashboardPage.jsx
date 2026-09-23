@@ -101,7 +101,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <Link to="/institute/upload">
-              <Button className="bg-white text-brand-700 hover:bg-white/90" icon={UploadCloud}>
+              <Button className="bg-black text-white hover:bg-black/90" icon={UploadCloud}>
                 Upload a list
               </Button>
             </Link>
