@@ -64,7 +64,7 @@ $('password-form').addEventListener('submit', (event) => {
     if (result.must_enroll_totp && result.access) {
       enrollmentAccess = result.access;
       const enrollment = await client.enroll(enrollmentAccess);
-      if (typeof enrollment.secret !== 'string' || !enrollment.secret || typeof enrollment.provisioning_uri !== 'string' || !enrollment.provisioning_uri) {
+      if (typeof enrollment.secret !== 'string' || !enrollment.secret || typeof enrollment.provisioning_uri !== 'string' || !enrollment.provisioning_uri || typeof enrollment.qr_code !== 'string' || !enrollment.qr_code) {
         throw new AuthError('The backend did not return a complete TOTP enrollment configuration.');
       }
       show('enroll-form','Secure your account','Scan the QR code with your authenticator app, or use manual setup below.');
@@ -76,7 +76,7 @@ $('password-form').addEventListener('submit', (event) => {
       qr.alt = 'TOTP enrollment QR code';
       qr.width = 220;
       qr.height = 220;
-      qr.src = '/api/auth/totp/qr/?data=' + encodeURIComponent(enrollment.provisioning_uri);
+      qr.src = enrollment.qr_code;
       const logo = document.createElement('img');
       logo.className = 'setup-qr-logo';
       logo.src = '/favicon.svg';
