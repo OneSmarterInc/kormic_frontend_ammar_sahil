@@ -110,7 +110,13 @@ export function createAuthClient({ origin, fetchImpl = globalThis.fetch, timeout
   }
 
   async function confirmSession(portal) {
-    const session = await webPost('/auth/web/refresh/', portal);
+    // Browser refresh only validates the existing HttpOnly cookie. It is a
+    // read-only credential exchange, so it intentionally skips the CSRF
+    // bootstrap required by state-changing auth POSTs.
+    const session = await request('/auth/web/refresh/', {
+      method: 'POST',
+      body: { portal },
+    });
     if (typeof session.access !== 'string' || !session.access) throw new AuthError('The backend did not return an access token.');
     // The refresh endpoint has already authenticated the HttpOnly cookie,
     // re-checked the active account, portal role, and confirmed TOTP device,
