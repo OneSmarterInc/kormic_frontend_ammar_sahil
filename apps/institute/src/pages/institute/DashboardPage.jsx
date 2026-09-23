@@ -101,7 +101,11 @@ export default function DashboardPage() {
               </div>
             </div>
             <Link to="/institute/upload">
-              <Button variant="black" icon={UploadCloud}>
+              <Button
+                variant="black"
+                icon={UploadCloud}
+                style={{ backgroundColor: "#000000", color: "#ffffff" }}
+              >
                 Upload a list
               </Button>
             </Link>
