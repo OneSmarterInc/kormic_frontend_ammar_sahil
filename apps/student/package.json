@@ -4,7 +4,7 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "start": "expo start",
+    "start": "node scripts/start-with-root-env.mjs",
     "ios": "expo run:ios",
     "android": "expo run:android",
     "lint": "eslint . --ext .ts,.tsx",
