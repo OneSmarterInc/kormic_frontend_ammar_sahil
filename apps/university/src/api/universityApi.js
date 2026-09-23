@@ -3,7 +3,10 @@ import client from "./client";
 /** GET /api/university/<university_id>/profiles/ — essentials only per student */
 export const listUniversityProfiles = (universityId, signal) =>
   client
-    .get(`/university/${encodeURIComponent(universityId)}/profiles/`, { signal })
+    .get(`/university/${encodeURIComponent(universityId)}/profiles/`, {
+      signal,
+      params: { include_all_interested: "true" },
+    })
     .then((r) => r.data);
 
 /** GET /api/university/<university_id>/profile/<student_id>/ — full profile for the detail view */
