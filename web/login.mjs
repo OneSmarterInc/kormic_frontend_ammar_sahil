@@ -3,7 +3,12 @@ const $ = (id) => document.getElementById(id);
 const query = new URLSearchParams(location.search);
 if (isPortal(query.get('portal'))) $('portal').value = query.get('portal');
 let client;
-try { client = createAuthClient({ origin: window.KORMIC_CONFIG?.apiOrigin }); }
+try {
+  const configuredOrigin = window.KORMIC_CONFIG?.apiOrigin;
+  const localBrowser = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+  const origin = localBrowser ? `http://${location.hostname}:8000` : configuredOrigin;
+  client = createAuthClient({ origin });
+}
 catch (error) { $('error').textContent = error.message; $('error').hidden = false; $('password-form').querySelector('button[type=submit]').disabled = true; }
 let pending = false;
 let mfaToken = '';
