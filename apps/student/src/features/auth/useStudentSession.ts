@@ -27,6 +27,15 @@ interface StudentSessionOptions {
   claimLinkHandledRef: MutableRefObject<boolean>;
   onNotificationOpen: () => void;
 }
+
+const WEB_SESSION_RESTORE_ATTEMPTS = 3;
+const WEB_SESSION_RESTORE_DELAY_MS = 300;
+
+function waitForWebSessionRetry() {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, WEB_SESSION_RESTORE_DELAY_MS);
+  });
+}
 export function useStudentSession({
   state,
   dispatch,
@@ -195,11 +204,27 @@ export function useStudentSession({
 
       let tokens = await getSavedTokens();
       if (Platform.OS === 'web' && !tokens) {
-        try {
-          const refreshed = await refreshAccessToken();
-          tokens = { access: refreshed.access };
-          await saveAccessToken(refreshed.access);
-        } catch {
+        let restored = false;
+
+        // The shared login page stores the browser refresh credential in an
+        // HttpOnly cookie. After a cross-document redirect, give the browser
+        // a short bounded window to make that cookie available to the first
+        // refresh request instead of treating the redirect as a failed login.
+        for (let attempt = 0; attempt < WEB_SESSION_RESTORE_ATTEMPTS && active; attempt += 1) {
+          try {
+            const refreshed = await refreshAccessToken();
+            tokens = { access: refreshed.access };
+            await saveAccessToken(refreshed.access);
+            restored = true;
+            break;
+          } catch {
+            if (attempt + 1 < WEB_SESSION_RESTORE_ATTEMPTS) {
+              await waitForWebSessionRetry();
+            }
+          }
+        }
+
+        if (!restored) {
           if (active) {
             setWebSessionMissing(true);
             setRestoringSession(false);
