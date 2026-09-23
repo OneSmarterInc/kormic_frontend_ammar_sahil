@@ -63,11 +63,14 @@ test('web login carries cookies and CSRF and uses the student portal', async () 
 });
 
 test('web reload can refresh without a JS refresh token and shares concurrent requests', async () => {
-  fetchMock.mockResolvedValueOnce(response({ csrfToken: 'csrf' })).mockResolvedValueOnce(response({ access: 'restored' }));
+  fetchMock.mockResolvedValueOnce(response({ access: 'restored', user: { role: 'student' } }));
   const results = await Promise.all([refreshAccessToken(), refreshAccessToken()]);
   expect(results[0].access).toBe('restored');
-  expect(fetchMock).toHaveBeenCalledTimes(2);
-  expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ portal: 'student' });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock.mock.calls[0][0]).toMatch(/\/auth\/web\/refresh\/$/);
+  expect(fetchMock.mock.calls[0][1].credentials).toBe('include');
+  expect(fetchMock.mock.calls[0][1].headers['X-CSRFToken']).toBeUndefined();
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ portal: 'student' });
 });
 
 test('web logout reaches the cookie endpoint even without an access token', async () => {
