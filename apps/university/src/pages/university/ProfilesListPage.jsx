@@ -21,8 +21,18 @@ export default function ProfilesListPage() {
 
   const profiles = data?.profiles || [];
   const [search, setSearch] = useState("");
+  const [qualificationFilter, setQualificationFilter] = useState("qualified");
+
+  const qualifiedCount = profiles.filter((p) => p.qualified === true).length;
+  const notQualifiedCount = profiles.length - qualifiedCount;
 
   const filteredProfiles = profiles.filter((p) => {
+    const matchesQualification =
+      qualificationFilter === "qualified"
+        ? p.qualified === true
+        : p.qualified !== true;
+    if (!matchesQualification) return false;
+
     const query = search.toLowerCase();
 
     return (
@@ -40,7 +50,7 @@ export default function ProfilesListPage() {
         description="Students who have searched your university and expressed interest in your program."
       />
 
-      <div className="mb-5 flex items-center">
+      <div className="mb-4 flex items-center">
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
 
@@ -52,6 +62,32 @@ export default function ProfilesListPage() {
             className="w-full rounded-xl border border-ink-200 bg-white py-2 pl-10 pr-4 text-sm transition-all duration-300 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
           />
         </div>
+      </div>
+
+      <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-ink-200 bg-white p-1.5 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setQualificationFilter("qualified")}
+          className={
+            qualificationFilter === "qualified"
+              ? "rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition"
+              : "rounded-lg px-4 py-2 text-sm font-medium text-ink-600 transition hover:bg-ink-50"
+          }
+        >
+          Qualified Students ({qualifiedCount})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setQualificationFilter("not_qualified")}
+          className={
+            qualificationFilter === "not_qualified"
+              ? "rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition"
+              : "rounded-lg px-4 py-2 text-sm font-medium text-ink-600 transition hover:bg-ink-50"
+          }
+        >
+          Not Qualified Students ({notQualifiedCount})
+        </button>
       </div>
 
       {loading ? (
@@ -70,8 +106,16 @@ export default function ProfilesListPage() {
         <Card>
           <EmptyState
             icon={Search}
-            title="No matching profiles"
-            description="Try searching with another name, major, institution, or student ID."
+            title={
+              qualificationFilter === "qualified"
+                ? "No qualified students"
+                : "No not-qualified students"
+            }
+            description={
+              qualificationFilter === "qualified"
+                ? "No interested students currently meet the university's configured requirements."
+                : "No interested students currently fall below the university's configured qualification threshold."
+            }
           />
         </Card>
       ) : (
