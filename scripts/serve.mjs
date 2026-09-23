@@ -46,7 +46,14 @@ const server = http.createServer(async (req, res) => {
     try { if ((await stat(file)).isDirectory()) file = resolve(file, 'index.html'); }
     catch { if (portal && !extname(pathname)) file = resolve(base, role, 'index.html'); }
     const data = await readFile(file);
-    res.writeHead(200, {'Content-Type':types[extname(file)] || 'application/octet-stream'});
+    // Local development must never keep an old Expo bundle after rebuilding.
+    // The browser session flow is security-sensitive and depends on the exact
+    // frontend/backend commit pair currently checked out.
+    res.writeHead(200, {
+      'Content-Type':types[extname(file)] || 'application/octet-stream',
+      'Cache-Control':'no-store, no-cache, must-revalidate',
+      'Pragma':'no-cache',
+    });
     res.end(req.method === 'HEAD' ? undefined : data);
   } catch {
     res.writeHead(404, {'Content-Type':'text/plain; charset=utf-8'}); res.end('Not found');
