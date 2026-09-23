@@ -65,8 +65,20 @@ export default function ListStudentsPage() {
 
   const handleSendInvites = async (resend) => {
     try {
-      const res = await sendInvites(resend);
-      toast.success(`${res.invites_sent} invite${res.invites_sent === 1 ? "" : "s"} sent`);
+      const result = await sendInvites(resend);
+      const queued = result.invites_queued ?? 0;
+      const failed = result.invites_failed_to_queue ?? 0;
+      if (failed) {
+        toast.error(
+          String(failed) + ' invite' + (failed === 1 ? '' : 's') +
+            ' could not be queued. Check the delivery status below.'
+        );
+      } else {
+        toast.success(
+          String(queued) + ' invite' + (queued === 1 ? '' : 's') +
+            ' queued for email delivery'
+        );
+      }
       setSendingInvites(false);
       setResendingInvites(false);
       refetch();
@@ -193,6 +205,7 @@ export default function ListStudentsPage() {
                     <th className="px-4 py-2.5 font-medium">Expected grad.</th>
                     <th className="px-4 py-2.5 font-medium">Status</th>
                     <th className="px-4 py-2.5 font-medium">Invited</th>
+                    <th className="px-4 py-2.5 font-medium">Email delivery</th>
                     <th className="px-4 py-2.5 font-medium">Claimed</th>
                     <th className="px-4 py-2.5 font-medium text-right">Actions</th>
                   </tr>
@@ -216,6 +229,9 @@ export default function ListStudentsPage() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-xs text-ink-400">
                         {formatDate(s.invited_at)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <DeliveryBadge status={s.invite_delivery_status} error={s.invite_delivery_error} />
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-xs text-ink-400">
                         {formatDate(s.claimed_at)}
@@ -266,6 +282,24 @@ export default function ListStudentsPage() {
   );
 }
 
+function DeliveryBadge({ status, error }) {
+  if (!status) return <span className="text-xs text-ink-400">—</span>;
+
+  const config = {
+    queued: { label: "Queued", classes: "bg-amber-50 text-amber-700 border-amber-200" },
+    sent: { label: "Sent", classes: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+    failed: { label: "Failed", classes: "bg-red-50 text-red-700 border-red-200" },
+  }[status] || { label: status, classes: "bg-ink-50 text-ink-600 border-ink-200" };
+
+  return (
+    <span
+      title={error || ""}
+      className={"inline-flex max-w-44 items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold " + config.classes}
+    >
+      {config.label}
+    </span>
+  );
+}
 function formatDate(iso) {
   if (!iso) return "—";
   const date = new Date(iso);
