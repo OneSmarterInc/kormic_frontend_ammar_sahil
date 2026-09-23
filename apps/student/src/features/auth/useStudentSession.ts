@@ -1,6 +1,6 @@
 import { Dispatch, MutableRefObject, useCallback, useEffect, useState } from 'react';
 import { Linking, Platform } from 'react-native';
-import { AuthSession, OnboardingRoute, OnboardingState } from '../../models/onboarding';
+import { AuthSession, AuthUser, OnboardingRoute, OnboardingState } from '../../models/onboarding';
 import {
   createStudentProfile,
   getMe,
@@ -203,17 +203,20 @@ export function useStudentSession({
       }
 
       let tokens = await getSavedTokens();
+      let restoredWebUser: AuthUser | undefined;
+
       if (Platform.OS === 'web' && !tokens) {
         let restored = false;
 
         // The shared login page stores the browser refresh credential in an
-        // HttpOnly cookie. After a cross-document redirect, give the browser
-        // a short bounded window to make that cookie available to the first
-        // refresh request instead of treating the redirect as a failed login.
+        // HttpOnly cookie. Restore both the access token and the already
+        // server-validated user in one request. This avoids a second
+        // authentication hop immediately after the cross-document redirect.
         for (let attempt = 0; attempt < WEB_SESSION_RESTORE_ATTEMPTS && active; attempt += 1) {
           try {
             const refreshed = await refreshAccessToken();
             tokens = { access: refreshed.access };
+            restoredWebUser = refreshed.user;
             await saveAccessToken(refreshed.access);
             restored = true;
             break;
@@ -242,19 +245,48 @@ export function useStudentSession({
 
       try {
         let access = tokens.access;
-        let user;
-        try {
-          user = await getMe(access);
-        } catch (restoreError) {
-          if (!tokens.refresh) {
-            throw restoreError;
-          }
+        let user = restoredWebUser;
 
-          const refreshed = await refreshAccessToken(tokens.refresh);
-          access = refreshed.access;
-          await saveAccessToken(access);
-          user = await getMe(access);
+        if (!user) {
+          try {
+            user = await getMe(access);
+          } catch (restoreError) {
+            if (Platform.OS === 'web') {
+              // A browser session has no JS refresh token. If the first
+              // access-token request races the cross-document redirect,
+              // re-read the HttpOnly session cookie and retry as a bounded
+              // session restore instead of declaring the user logged out.
+              let refreshed = false;
+              for (let attempt = 0; attempt < WEB_SESSION_RESTORE_ATTEMPTS && active; attempt += 1) {
+                try {
+                  const next = await refreshAccessToken();
+                  access = next.access;
+                  await saveAccessToken(access);
+                  user = next.user ?? await getMe(access);
+                  refreshed = true;
+                  break;
+                } catch {
+                  if (attempt + 1 < WEB_SESSION_RESTORE_ATTEMPTS) {
+                    await waitForWebSessionRetry();
+                  }
+                }
+              }
+              if (!refreshed || !user) {
+                throw restoreError;
+              }
+            } else {
+              if (!tokens.refresh) {
+                throw restoreError;
+              }
+
+              const refreshed = await refreshAccessToken(tokens.refresh);
+              access = refreshed.access;
+              await saveAccessToken(access);
+              user = await getMe(access);
+            }
+          }
         }
+
         if (!active) {
           return;
         }
