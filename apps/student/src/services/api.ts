@@ -336,14 +336,24 @@ function getApiError(data: ApiErrorBody | undefined, fallback: string) {
 async function requestJson<T>(path: string, init: RequestInit, fallbackError: string): Promise<T> {
   let requestPath = path;
   if (Platform.OS === 'web' && ['/auth/login/', '/auth/register/', '/auth/verify-totp/', '/auth/refresh/', '/auth/logout/'].includes(path)) {
-    const csrfResponse = await fetch(`${API_BASE_URL}/auth/web/csrf/`, { credentials: 'include' });
-    if (!csrfResponse.ok) throw new Error('Unable to initialize secure session');
-    const csrf = await csrfResponse.json();
     requestPath = path.replace('/auth/', '/auth/web/');
+    const refreshOnly = path === '/auth/refresh/';
+    let csrfToken = '';
+    if (!refreshOnly) {
+      const csrfResponse = await fetch(`${API_BASE_URL}/auth/web/csrf/`, { credentials: 'include' });
+      if (!csrfResponse.ok) throw new Error('Unable to initialize secure session');
+      const csrf = await csrfResponse.json();
+      csrfToken = typeof csrf.csrfToken === 'string' ? csrf.csrfToken : '';
+      if (!csrfToken) throw new Error('Unable to initialize secure session');
+    }
     init = {
       ...init,
       credentials: 'include',
-      headers: { ...init.headers, 'Content-Type': 'application/json', 'X-CSRFToken': csrf.csrfToken },
+      headers: {
+        ...init.headers,
+        'Content-Type': 'application/json',
+        ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
+      },
       body: JSON.stringify({ ...(typeof init.body === 'string' ? JSON.parse(init.body) : {}), portal: 'student' }),
     };
   }
