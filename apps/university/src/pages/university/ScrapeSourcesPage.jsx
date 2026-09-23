@@ -414,6 +414,18 @@ export default function ScrapeSourcesPage() {
       setJobError(null);
       toast.success("Crawl started");
     } catch (err) {
+      // A fresh job may exist on the server even if this tab still displays
+      // an older terminal job. Refresh the authoritative job state after a
+      // conflict so the UI never offers "Run again" against an active job.
+      if (err.status === 409) {
+        try {
+          const latest = await universityAdminApi.getLatestAutoDiscoverJob();
+          setJob(latest);
+          setJobError(null);
+        } catch {
+          // Keep the original conflict message if the refresh itself fails.
+        }
+      }
       toast.error(err.message);
     }
   };
