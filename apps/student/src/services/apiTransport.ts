@@ -6,7 +6,7 @@ type FetchInput = Parameters<typeof fetch>[0];
 type FetchInit = Parameters<typeof fetch>[1];
 type FetchImplementation = (input: FetchInput, init?: FetchInit) => Promise<Response>;
 
-const DEFAULT_KORMIC_API_BASE_URL = 'https://backend.kormic.ai/api';
+const DEFAULT_KORMIC_API_BASE_URL = 'http://127.0.0.1:8000/api';
 const STUDENT_PROFILE_FIELD_SET = new Set<string>(STUDENT_PROFILE_UPSERT_FIELDS);
 
 const API_ROUTE_PREFIXES = [
@@ -29,7 +29,10 @@ const API_ROUTE_PREFIXES = [
 function configuredApiBaseUrl() {
   const configured =
     typeof process !== 'undefined' ? process.env?.EXPO_PUBLIC_API_BASE_URL?.trim() : undefined;
-  return configured || DEFAULT_KORMIC_API_BASE_URL;
+  if (configured) return configured;
+  // Keep direct Expo/native development local rather than silently sending
+  // student chat and other API calls to production.
+  return DEFAULT_KORMIC_API_BASE_URL;
 }
 
 function isAbsoluteUrl(value: string) {
