@@ -6,7 +6,13 @@ import { spawnSync } from 'node:child_process';
 import { apiOrigin } from '../shared/auth.mjs';
 const root=fileURLToPath(new URL('..',import.meta.url));
 if(existsSync(resolve(root,'.env')))process.loadEnvFile(resolve(root,'.env'));
-// The frontend app's API URL is authoritative when both variables exist.\n// EXPO_PUBLIC_API_BASE_URL is the value consumed by the student app and may\n// include /api; KORMIC_API_ORIGIN is kept as a backwards-compatible fallback.\nconst configuredApiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();\nconst configuredOrigin = configuredApiBaseUrl\n  ? configuredApiBaseUrl.replace(/\/+$/, '').replace(/\/api$/, '')\n  : process.env.KORMIC_API_ORIGIN?.trim();
+// The frontend app's API URL is authoritative when both variables exist.
+// EXPO_PUBLIC_API_BASE_URL is the value consumed by the student app and may
+// include /api; KORMIC_API_ORIGIN is kept as a backwards-compatible fallback.
+const configuredApiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+const configuredOrigin = configuredApiBaseUrl
+  ? configuredApiBaseUrl.replace(/\/+$/, '').replace(/\/api$/, '')
+  : process.env.KORMIC_API_ORIGIN?.trim();
 if(!configuredOrigin)throw new Error('Set KORMIC_API_ORIGIN or EXPO_PUBLIC_API_BASE_URL in .env before building the unified frontend.');
 const origin=apiOrigin(configuredOrigin);
 const out=resolve(root,'dist');
