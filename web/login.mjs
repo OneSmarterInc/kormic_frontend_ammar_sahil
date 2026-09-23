@@ -111,18 +111,13 @@ $('password-form').addEventListener('submit', (event) => {
     else throw new AuthError('The backend returned an unsupported sign-in response.');
   });
 });
-async function handoffStudentAccess(access) {
+function handoffStudentAccess(access) {
   if (!access) throw new AuthError('The backend did not return a student access token.');
-  // Keep this import dynamic so the shared browser login remains a plain web
-  // module and only the student portal uses the native app's handoff helper.
-  const { saveWebSessionHandoff } = await import('/student/_expo/static/js/webSessionHandoff.js').catch(() => ({ saveWebSessionHandoff: null }));
-  if (typeof saveWebSessionHandoff !== 'function') {
-    // The unified Expo bundle cannot expose a source-module import at runtime.
-    // Use the same short-lived sessionStorage contract directly.
+  try {
     sessionStorage.setItem('kormic.web-session-handoff', JSON.stringify({ access, createdAt: Date.now() }));
-    return;
+  } catch {
+    throw new AuthError('Your browser blocked the temporary sign-in handoff. Please allow session storage and try again.');
   }
-  saveWebSessionHandoff(access);
 }
 
 $('totp-form').addEventListener('submit', (event) => {
