@@ -464,7 +464,7 @@ export default function ScrapeSourcesPage() {
                 loading={stopping}
                 disabled={job.status === "stop_requested"}
               >
-                {job.status === "stop_requested" ? "Stopping..." : "Stop"}
+                {job.status === "stop_requested" ? "Stopping…" : "Stop"}
               </Button>
             ) : (
               <div className="flex items-center gap-2">
@@ -616,7 +616,11 @@ export default function ScrapeSourcesPage() {
                   </div>
                   <div className="flex items-center justify-between text-xs text-ink-400">
                     <span className="truncate">
-                      {job.current_url || "Starting..."}
+                      {job.status === "queued"
+                        ? "Waiting for the crawler worker…"
+                        : job.status === "stop_requested"
+                          ? "Stopping safely…"
+                          : job.current_url || "Starting…"}
                     </span>
                     {/* <span className="shrink-0">
                       {job.pages_crawled} / {job.pages_discovered || "?"} pages
