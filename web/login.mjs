@@ -22,7 +22,7 @@ function show(panel, title, description) {
 function clearSecrets() {
   mfaToken = ''; enrollmentAccess = ''; resetToken = '';
   for (const id of ['password','totp-code','enroll-code','reset-otp','new-password','confirm-password']) $(id).value = '';
-  $('setup-key').textContent = ''; $('backup-codes').textContent = '';
+  $('setup-key').textContent = ''; $('backup-codes').textContent = ''; $('setup-qr').replaceChildren(); $('manual-setup').hidden = true; $('manual-setup-toggle').setAttribute('aria-expanded', 'false');
   $('saved-codes').checked = false; $('finish-enrollment').disabled = true;
 }
 function back() { clearSecrets(); show('password-form','Kormic Login','Select your Kormic role. We’ll open the correct workspace after you sign in.'); }
@@ -64,9 +64,21 @@ $('password-form').addEventListener('submit', (event) => {
     if (result.must_enroll_totp && result.access) {
       enrollmentAccess = result.access;
       const enrollment = await client.enroll(enrollmentAccess);
-      if (typeof enrollment.secret !== 'string' || !enrollment.secret) throw new AuthError('The backend did not return an enrollment key.');
-      show('enroll-form','Secure your account','Set up two-factor authentication before continuing.');
+      if (typeof enrollment.secret !== 'string' || !enrollment.secret || typeof enrollment.provisioning_uri !== 'string' || !enrollment.provisioning_uri) {
+        throw new AuthError('The backend did not return a complete TOTP enrollment configuration.');
+      }
+      show('enroll-form','Secure your account','Scan the QR code with your authenticator app, or use manual setup below.');
+      $('setup-qr').setAttribute('data-value', enrollment.provisioning_uri);
+      $('setup-qr').replaceChildren();
+      const qr = document.createElement('img');
+      qr.alt = 'TOTP enrollment QR code';
+      qr.width = 220;
+      qr.height = 220;
+      qr.src = '/api/auth/totp/qr/?data=' + encodeURIComponent(enrollment.provisioning_uri);
+      $('setup-qr').appendChild(qr);
       $('setup-key').textContent = enrollment.secret;
+      $('manual-setup').hidden = true;
+      $('manual-setup-toggle').setAttribute('aria-expanded', 'false');
     } else if (result.totp_required && result.mfa_token) {
       mfaToken = result.mfa_token;
       show('totp-form','Verify it’s you','Enter the code from your authenticator app, or one unused backup code.');
@@ -121,6 +133,11 @@ $('show-password').addEventListener('click', () => {
   $('show-password').textContent = show ? 'Hide' : 'Show';
   $('show-password').setAttribute('aria-label', show ? 'Hide password' : 'Show password');
   $('show-password').setAttribute('aria-pressed', String(show));
+});
+$('manual-setup-toggle').addEventListener('click', () => {
+  const expanded = !$('manual-setup').hidden;
+  $('manual-setup').hidden = expanded;
+  $('manual-setup-toggle').setAttribute('aria-expanded', String(!expanded));
 });
 for (const [button, target] of [['copy-key','setup-key'],['copy-codes','backup-codes']]) $(button).addEventListener('click', async () => {
   try { await navigator.clipboard.writeText($(target).textContent); message('notice','Copied. Store this somewhere safe.'); }
