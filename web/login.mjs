@@ -96,16 +96,49 @@ $('password-form').addEventListener('submit', (event) => {
     } else if (result.totp_required && result.mfa_token) {
       mfaToken = result.mfa_token;
       show('totp-form','Verify it’s you','Enter the code from your authenticator app, or one unused backup code.');
-    } else if (result.access) { await finish(); }
+    } else if (result.access) {
+      if (activePortal === 'student') {
+        // The student app is a separate document. Keep the successful access
+        // token in a one-minute, session-scoped handoff so a brief cookie
+        // propagation/CORS race cannot turn a successful login into a logout.
+        await handoffStudentAccess(result.access);
+        clearSecrets();
+        location.replace('/student/');
+      } else {
+        await finish();
+      }
+    }
     else throw new AuthError('The backend returned an unsupported sign-in response.');
   });
 });
+async function handoffStudentAccess(access) {
+  if (!access) throw new AuthError('The backend did not return a student access token.');
+  // Keep this import dynamic so the shared browser login remains a plain web
+  // module and only the student portal uses the native app's handoff helper.
+  const { saveWebSessionHandoff } = await import('/student/_expo/static/js/webSessionHandoff.js').catch(() => ({ saveWebSessionHandoff: null }));
+  if (typeof saveWebSessionHandoff !== 'function') {
+    // The unified Expo bundle cannot expose a source-module import at runtime.
+    // Use the same short-lived sessionStorage contract directly.
+    sessionStorage.setItem('kormic.web-session-handoff', JSON.stringify({ access, createdAt: Date.now() }));
+    return;
+  }
+  saveWebSessionHandoff(access);
+}
+
 $('totp-form').addEventListener('submit', (event) => {
   event.preventDefault();
   run(event.currentTarget, async () => {
-    await client.verifyTotp(activePortal, mfaToken, $('totp-code').value);
+    const result = await client.verifyTotp(activePortal, mfaToken, $('totp-code').value);
     $('totp-code').value = ''; mfaToken = '';
-    try { await finish(); } catch (error) { back(); throw error; }
+    try {
+      if (activePortal === 'student' && result.access) {
+        await handoffStudentAccess(result.access);
+        clearSecrets();
+        location.replace('/student/');
+        return;
+      }
+      await finish();
+    } catch (error) { back(); throw error; }
   });
 });
 $('enroll-form').addEventListener('submit', (event) => {
