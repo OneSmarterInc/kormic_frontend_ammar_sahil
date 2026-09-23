@@ -242,7 +242,7 @@ export default function ListStudentsPage() {
                           size="sm"
                           icon={Mail}
                           loading={invitingStudentId === s.id}
-                          disabled={s.status === "claimed" || invitingStudentId === s.id}
+                          disabled={s.status === "claimed" || invitingStudentId !== null}
                           onClick={() => handleSendStudentInvite(s)}
                         >
                           {s.invited_at ? "Resend" : "Invite"}
