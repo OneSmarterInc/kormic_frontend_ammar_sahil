@@ -89,19 +89,46 @@ export default function TotpEnrollPage() {
 }
 
 function EnrollForm({ enrollment, code, setCode, onSubmit, loading, error }) {
+  const [showManualSetup, setShowManualSetup] = useState(false);
+
   return (
     <div className="space-y-5">
       <p className="text-sm text-ink-500">
         Scan this QR code with Google Authenticator, Authy, 1Password, or any TOTP app.
       </p>
-      <div className="flex justify-center rounded-xl border border-ink-200 bg-white p-4">
-        <QRCodeSVG value={enrollment.provisioning_uri} size={180} />
+      <div className="flex justify-center rounded-xl border border-ink-200 bg-white p-5">
+        <div className="relative rounded-lg bg-white p-2">
+          <QRCodeSVG
+            value={enrollment.provisioning_uri}
+            size={210}
+            level="H"
+            includeMargin
+            imageSettings={{
+              src: "/favicon.svg",
+              height: 42,
+              width: 42,
+              excavate: true,
+            }}
+          />
+        </div>
       </div>
       <div>
-        <p className="mb-1 text-xs font-medium text-ink-500">Can't scan? Enter this key manually:</p>
-        <code className="block rounded-lg bg-ink-100 px-3 py-2 text-xs text-ink-800 break-all">
-          {enrollment.secret}
-        </code>
+        <button
+          type="button"
+          className="text-sm font-medium text-brand-600 underline underline-offset-4 hover:text-brand-700"
+          onClick={() => setShowManualSetup((visible) => !visible)}
+          aria-expanded={showManualSetup}
+        >
+          Setup manually
+        </button>
+        {showManualSetup && (
+          <div className="mt-3">
+            <p className="mb-1 text-xs font-medium text-ink-500">Enter this setup key manually:</p>
+            <code className="block rounded-lg bg-ink-100 px-3 py-2 text-xs text-ink-800 break-all">
+              {enrollment.secret}
+            </code>
+          </div>
+        )}
       </div>
       <form onSubmit={onSubmit} className="space-y-4">
         {error && <ErrorBanner error={error} />}
