@@ -32,7 +32,7 @@ import * as universityAdminApi from "../../api/universityAdminApi";
 import { useAction, useAsync } from "../../hooks/useAsync";
 import { isValidUrl } from "../../lib/validators";
 
-const ACTIVE_JOB_STATUSES = ["queued", "running", "stop_requested"];
+const ACTIVE_JOB_STATUSES = ["queued", "running"];
 const SCRAPE_ACTIVE_STATUSES = ["queued", "running"];
 const POLL_INTERVAL_MS = 3000;
 const DEFAULT_MAX_PAGES = 1;
@@ -422,7 +422,7 @@ export default function ScrapeSourcesPage() {
     try {
       const updated = await stopDiscover();
       setJob(updated);
-      toast.success("Stop requested");
+      toast.success("Crawl stopped");
     } catch (err) {
       toast.error(err.message);
     }
