@@ -23,14 +23,18 @@ export default function ProfilesListPage() {
   const [search, setSearch] = useState("");
   const [qualificationFilter, setQualificationFilter] = useState("qualified");
 
-  const qualifiedCount = profiles.filter((p) => p.qualified === true).length;
-  const notQualifiedCount = profiles.length - qualifiedCount;
+  const qualifiedCount = profiles.filter(
+    (p) => p.qualification_status === "qualified" || p.qualified === true
+  ).length;
+  const notQualifiedCount = profiles.filter(
+    (p) => p.qualification_status === "not_qualified"
+  ).length;
 
   const filteredProfiles = profiles.filter((p) => {
     const matchesQualification =
       qualificationFilter === "qualified"
-        ? p.qualified === true
-        : p.qualified !== true;
+        ? p.qualification_status === "qualified" || p.qualified === true
+        : p.qualification_status === "not_qualified";
     if (!matchesQualification) return false;
 
     const query = search.toLowerCase();
@@ -114,7 +118,7 @@ export default function ProfilesListPage() {
             description={
               qualificationFilter === "qualified"
                 ? "No interested students currently meet the university's configured requirements."
-                : "No interested students currently fall below the university's configured qualification threshold."
+                : "No interested students currently fail the university's configured eligibility requirements."
             }
           />
         </Card>
