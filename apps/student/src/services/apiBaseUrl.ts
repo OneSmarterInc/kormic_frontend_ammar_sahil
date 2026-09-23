@@ -6,14 +6,4 @@ export function resolveApiBaseUrl(configuredUrl: string, browserHostname?: strin
   // Local browser development must use the local Django API. A production
   // API here would bypass the local backend and break same-site cookie tests.
   return `http://${browserHostname}:8000/api`;
-  try {
-    const url = new URL(configuredUrl);
-    if (!LOOPBACK_HOSTS.has(url.hostname) || !['http:', 'https:'].includes(url.protocol)) {
-      return configuredUrl;
-    }
-    url.hostname = browserHostname;
-    return url.toString().replace(/\/$/, '');
-  } catch {
-    return configuredUrl;
-  }
 }
