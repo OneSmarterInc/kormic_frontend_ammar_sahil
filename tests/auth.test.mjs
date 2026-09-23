@@ -50,15 +50,23 @@ test('MFA preserves portal and challenge, never sends a refresh token',async()=>
   const{client,calls}=mockClient([{data:{csrfToken:'csrf'}},{data:{access:'access'}}]);await client.verifyTotp('student','challenge',' backup-1 ');
   assert.equal(calls[1].url,'https://backend.kormic.ai/api/auth/web/verify-totp/');assert.deepEqual(calls[1].body,{mfa_token:'challenge',code:'backup-1',portal:'student'});
 });
-test('cookie restoration must succeed before /me and dashboard routing',async()=>{
-  const{client,calls}=mockClient([{data:{csrfToken:'csrf'}},{data:{access:'memory-access'}},{data:user('university')}]);
+test('cookie restoration uses the HttpOnly refresh cookie without a CSRF round trip',async()=>{
+  const{client,calls}=mockClient([{data:{access:'memory-access',user:user('university')}}]);
   assert.equal((await client.confirmSession('university')).role,'university');
-  assert.equal(calls[1].url,'https://backend.kormic.ai/api/auth/web/refresh/');
-  assert.equal(calls[2].url,'https://backend.kormic.ai/api/auth/me/');assert.equal(calls[2].options.headers.Authorization,'Bearer memory-access');
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].url,'https://backend.kormic.ai/api/auth/web/refresh/');
+  assert.equal(calls[0].options.credentials,'include');
+  assert.equal(calls[0].options.headers['X-CSRFToken'],undefined);
+});
+test('cookie restoration falls back to /me when refresh omits user',async()=>{
+  const{client,calls}=mockClient([{data:{access:'memory-access'}},{data:user('university')}]);
+  assert.equal((await client.confirmSession('university')).role,'university');
+  assert.equal(calls.length,2);
+  assert.equal(calls[1].url,'https://backend.kormic.ai/api/auth/me/');
 });
 test('cookie rejection never reaches /me or a dashboard',async()=>{
-  const{client,calls}=mockClient([{data:{csrfToken:'csrf'}},{status:401,data:{detail:'Session expired.'}}]);
-  await assert.rejects(()=>client.confirmSession('student'),e=>e.status===401);assert.equal(calls.length,2);
+  const{client,calls}=mockClient([{status:401,data:{detail:'Session expired.'}}]);
+  await assert.rejects(()=>client.confirmSession('student'),e=>e.status===401);assert.equal(calls.length,1);
 });
 test('wrong server role is denied and selected portal cookie revoked',async()=>{
   const{client,calls}=mockClient([{data:{csrfToken:'csrf'}},{data:{access:'access'}},{data:user('superuser')},{data:{csrfToken:'csrf'}},{status:204}]);
