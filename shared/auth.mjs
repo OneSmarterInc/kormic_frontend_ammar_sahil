@@ -112,7 +112,11 @@ export function createAuthClient({ origin, fetchImpl = globalThis.fetch, timeout
   async function confirmSession(portal) {
     const session = await webPost('/auth/web/refresh/', portal);
     if (typeof session.access !== 'string' || !session.access) throw new AuthError('The backend did not return an access token.');
-    const user = await request('/auth/me/', { access: session.access });
+    // The refresh endpoint has already authenticated the HttpOnly cookie,
+    // re-checked the active account, portal role, and confirmed TOTP device,
+    // and returns the same user representation as /auth/me. Avoid a second
+    // auth request during the browser redirect boundary.
+    const user = session.user ?? await request('/auth/me/', { access: session.access });
     if (user?.role !== portal) {
       try { await webPost('/auth/web/logout/', portal); } catch { /* Still deny access. */ }
       throw new AuthError('This account is not authorized for the selected portal.', 403);
