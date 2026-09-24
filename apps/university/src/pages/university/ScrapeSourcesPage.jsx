@@ -35,7 +35,7 @@ import { isValidUrl } from "../../lib/validators";
 const ACTIVE_JOB_STATUSES = ["queued", "running"];
 const SCRAPE_ACTIVE_STATUSES = ["queued", "running"];
 const POLL_INTERVAL_MS = 3000;
-const DEFAULT_MAX_PAGES = 1;
+const DEFAULT_MAX_PAGES = 50;
 
 export default function ScrapeSourcesPage() {
   const [urls, setUrls] = useState([]);
