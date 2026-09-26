@@ -1,5 +1,5 @@
 import { Dispatch, useCallback, useEffect, useRef, useState } from 'react';
-import { Linking } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import { AuthSession, OnboardingRoute } from '../../models/onboarding';
 import {
   confirmStudentClaim,
@@ -60,7 +60,7 @@ export function useClaimFlow(
 
   const openClaimFromUrl = useCallback(
     (url?: string | null) => {
-      const token = getClaimTokenFromUrl(url);
+      const token = getClaimTokenFromUrl(url, Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : undefined);
       if (!token) {
         return false;
       }

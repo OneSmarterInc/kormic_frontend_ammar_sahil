@@ -48,3 +48,20 @@ describe('invitation deep links', () => {
     }
   });
 });
+
+
+describe('production web invitation links', () => {
+  const previous = __DEV__;
+  beforeEach(() => { Object.defineProperty(globalThis, '__DEV__', { value: false, configurable: true }); });
+  afterEach(() => { Object.defineProperty(globalThis, '__DEV__', { value: previous, configurable: true }); });
+
+  it('prefills a production export served on its own local or deployed origin', () => {
+    expect(getClaimTokenFromUrl('http://127.0.0.1:5173/claim?token=local', 'http://127.0.0.1:5173')).toBe('local');
+    expect(getClaimTokenFromUrl('https://students.example/claim?token=web', 'https://students.example')).toBe('web');
+  });
+  it('does not broaden native hosts or accept other web origins or paths', () => {
+    expect(getClaimTokenFromUrl('https://students.example/claim?token=web')).toBe('');
+    expect(getClaimTokenFromUrl('https://evil.example/claim?token=web', 'https://students.example')).toBe('');
+    expect(getClaimTokenFromUrl('https://students.example/other?token=web', 'https://students.example')).toBe('');
+  });
+});

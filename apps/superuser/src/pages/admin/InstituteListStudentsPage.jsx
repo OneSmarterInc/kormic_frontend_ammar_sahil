@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { ArrowLeft, Download, FileSpreadsheet, Landmark, Mail, RefreshCw, Users } from "lucide-react";
@@ -54,8 +54,16 @@ export default function InstituteListStudentsPage() {
   const listMeta = (listsData?.lists || []).find((l) => String(l.list_id) === String(listId));
   const students = rosterData?.students || [];
 
-  const uninvitedCount = students.filter((s) => !s.invited_at).length;
-  const invitedCount = students.filter((s) => s.invited_at).length;
+  const uninvitedCount = students.filter((s) => s.status === "unclaimed" && (!s.invited_at || s.invite_delivery_status === "failed")).length;
+  const invitedCount = students.filter((s) => s.status === "unclaimed" && s.invite_delivery_status !== "queued").length;
+  const hasPendingInvites = students.some((s) => s.invite_delivery_status === "queued");
+  useEffect(() => {
+    if (!hasPendingInvites) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") refetch();
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [hasPendingInvites, refetch]);
 
   const { execute: sendInvites, loading: sending, error: sendError } = useAction((resend) =>
     sendInstituteListInvites(listId, resend)
@@ -64,7 +72,11 @@ export default function InstituteListStudentsPage() {
   const handleSendInvites = async (resend) => {
     try {
       const res = await sendInvites(resend);
-      toast.success(`${res.invites_sent} invite${res.invites_sent === 1 ? "" : "s"} sent`);
+      if (res.invites_failed || res.invites_failed_to_queue) {
+        toast.error(`${res.invites_failed ?? res.invites_failed_to_queue} invitations failed. Check delivery status and retry.`);
+      } else {
+        toast.success(`${res.invites_sent ?? 0} sent; ${res.invites_pending ?? res.invites_queued ?? 0} queued for email delivery`);
+      }
       setSendingInvites(false);
       setResendingInvites(false);
       refetch();
@@ -89,13 +101,19 @@ export default function InstituteListStudentsPage() {
   const handleSendStudentInvite = async (student) => {
     setInvitingStudentId(student.id);
     try {
-      await sendInstituteListStudentInvite(listId, student.id);
-      toast.success(`Invite sent to ${student.full_name}`);
+      const result = await sendInstituteListStudentInvite(listId, student.id);
+      if (result.invite_delivery_status === "failed") {
+        toast.error("Email delivery failed. Check the delivery status and retry.");
+      } else {
+        toast.success(result.invite_delivery_status === "sent"
+          ? `Invite sent to ${student.full_name}` : `Invite queued for ${student.full_name}`);
+      }
       refetch();
     } catch (err) {
       toast.error(err.message);
     } finally {
       setInvitingStudentId(null);
+      refetch();
     }
   };
 
@@ -109,7 +127,7 @@ export default function InstituteListStudentsPage() {
       </button>
 
       <PageHeader
-        title={listMeta ? `${listMeta.institute_name} — List #${listId}` : `List #${listId}`}
+        title={listMeta ? `${listMeta.institute_name} â€” List #${listId}` : `List #${listId}`}
         description={
           listMeta
             ? `Uploaded by ${listMeta.contact_name} (${listMeta.contact_email})`
@@ -175,7 +193,7 @@ export default function InstituteListStudentsPage() {
           subtitle="Every row from the uploaded CSV, with its invite and claim status."
         />
         <CardBody>
-          {loading ? (
+          {loading && !rosterData ? (
             <Spinner label="Loading roster..." />
           ) : error ? (
             <ErrorBanner error={error} onDismiss={refetch} />
@@ -190,6 +208,7 @@ export default function InstituteListStudentsPage() {
                     <th className="px-4 py-2.5 font-medium">Field / Degree</th>
                     <th className="px-4 py-2.5 font-medium">Expected grad.</th>
                     <th className="px-4 py-2.5 font-medium">Status</th>
+                    <th className="px-4 py-2.5 font-medium">Delivery</th>
                     <th className="px-4 py-2.5 font-medium">Invited</th>
                     <th className="px-4 py-2.5 font-medium">Claimed</th>
                     <th className="px-4 py-2.5 font-medium text-right">Actions</th>
@@ -203,14 +222,19 @@ export default function InstituteListStudentsPage() {
                         <p className="text-xs text-ink-500">{s.email}</p>
                       </td>
                       <td className="px-4 py-3 text-ink-600">
-                        {s.field_of_study || "—"}
-                        {s.degree_level ? ` · ${s.degree_level}` : ""}
+                        {s.field_of_study || "â€”"}
+                        {s.degree_level ? ` Â· ${s.degree_level}` : ""}
                       </td>
-                      <td className="px-4 py-3 text-ink-600">{s.expected_graduation || "—"}</td>
+                      <td className="px-4 py-3 text-ink-600">{s.expected_graduation || "â€”"}</td>
                       <td className="px-4 py-3">
                         <Badge tone={statusTone(s.status)} className="capitalize">
                           {s.status}
                         </Badge>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-xs text-ink-400">
+                        <span title={s.invite_delivery_error || ""} className={s.invite_delivery_status === "failed" ? "text-red-700" : "text-ink-600"}>
+                          {s.invite_delivery_status || "Not sent"}
+                        </span>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-xs text-ink-400">
                         {formatDate(s.invited_at)}
@@ -224,7 +248,7 @@ export default function InstituteListStudentsPage() {
                           size="sm"
                           icon={Mail}
                           loading={invitingStudentId === s.id}
-                          disabled={s.status === "claimed" || invitingStudentId === s.id}
+                          disabled={s.status !== "unclaimed" || s.invite_delivery_status === "queued" || invitingStudentId === s.id}
                           onClick={() => handleSendStudentInvite(s)}
                         >
                           {s.invited_at ? "Resend" : "Invite"}
@@ -247,7 +271,7 @@ export default function InstituteListStudentsPage() {
         title="Send invites"
         confirmLabel="Send invites"
         tone="primary"
-        description={`Emails a claim link to the ${uninvitedCount} row${uninvitedCount === 1 ? "" : "s"} on this list that haven't been invited yet. Already-invited rows are skipped.`}
+        description={`Emails a claim link to the ${uninvitedCount} row${uninvitedCount === 1 ? "" : "s"} on this list that are new or have failed delivery. Sent and queued invitations are skipped.`}
       />
 
       <ConfirmModal
@@ -258,16 +282,16 @@ export default function InstituteListStudentsPage() {
         title="Resend invites"
         confirmLabel="Resend to all invited"
         tone="danger"
-        description={`Re-sends the claim link email to all ${invitedCount} previously-invited row${invitedCount === 1 ? "" : "s"} on this list, including ones who haven't claimed yet.`}
+        description={`Re-sends the claim link email to all ${invitedCount} unclaimed row${invitedCount === 1 ? "" : "s"} on this list. Queued invitations are skipped.`}
       />
     </div>
   );
 }
 
 function formatDate(iso) {
-  if (!iso) return "—";
+  if (!iso) return "â€”";
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "â€”";
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(date);
 }
 

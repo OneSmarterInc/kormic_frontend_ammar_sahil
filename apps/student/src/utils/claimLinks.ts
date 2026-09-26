@@ -12,7 +12,7 @@ function queryTokens(query: string): string[] {
  * Do not use the RN URL shim: its hostname/pathname only parse HTTP(S), so
  * a browser/Jest-only test can pass while custom schemes fail on Android/iOS.
  */
-export function getClaimTokenFromUrl(value?: string | null): string {
+export function getClaimTokenFromUrl(value?: string | null, webOrigin?: string): string {
   if (!value) return '';
   try {
     const parts = /^([a-z][a-z0-9+.-]*):\/\/([^/?#]+)([^?#]*)(?:\?([^#]*))?(?:#(.*))?$/i.exec(value.trim());
@@ -25,9 +25,12 @@ export function getClaimTokenFromUrl(value?: string | null): string {
       /^(app|backend)\.kormic\.ai(?::443)?$/.test(authority) && claimPath;
     const developmentLink = __DEV__ && (scheme === 'http' || scheme === 'https') &&
       /^(localhost|127\.0\.0\.1|10\.0\.2\.2)(?::[0-9]{1,5})?$/.test(authority) && claimPath;
+    // webOrigin is supplied only by the browser's own location, never by a link.
+    const webLink = claimPath && (scheme === 'https' || scheme === 'http') &&
+      !authority.includes('@') && `${scheme}://${authority}` === webOrigin?.toLowerCase();
     const schemeLink = scheme === 'kormicstudent' && authority === 'claim' &&
       (path === '' || path === '/');
-    if (!productionLink && !developmentLink && !schemeLink) return '';
+    if (!productionLink && !developmentLink && !webLink && !schemeLink) return '';
 
     const tokens = queryTokens(parts[4] ?? '');
     // Accept old #token= links only on the same explicitly trusted claim route.

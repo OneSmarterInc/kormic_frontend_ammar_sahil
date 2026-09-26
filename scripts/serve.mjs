@@ -32,7 +32,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (['/', '/login', '/login/'].includes(pathname)) pathname = '/index.html';
-  if (['/claim', '/claim/'].includes(pathname)) pathname = '/claim/index.html';
+  if (['/claim', '/claim/', '/claim/index.html'].includes(pathname)) {
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    pathname = '/claim/index.html';
+  }
 
   const role = pathname.split('/')[1];
   const portal = ['student','university','institute','superuser'].includes(role);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { ArrowLeft, Download, FileSpreadsheet, Landmark, Mail, RefreshCw, Users } from "lucide-react";
@@ -56,8 +56,16 @@ export default function ListStudentsPage() {
   const listMeta = (listsData?.lists || []).find((l) => String(l.list_id) === String(listId));
   const students = rosterData?.students || [];
 
-  const uninvitedCount = students.filter((s) => !s.invited_at).length;
-  const invitedCount = students.filter((s) => s.invited_at).length;
+  const uninvitedCount = students.filter((s) => s.status === "unclaimed" && (!s.invited_at || s.invite_delivery_status === "failed")).length;
+  const invitedCount = students.filter((s) => s.status === "unclaimed" && s.invite_delivery_status !== "queued").length;
+  const hasPendingInvites = students.some((s) => s.invite_delivery_status === "queued");
+  useEffect(() => {
+    if (!hasPendingInvites) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") refetch();
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [hasPendingInvites, refetch]);
 
   const { execute: sendInvites, loading: sending, error: sendError } = useAction((resend) =>
     sendInstituteListInvites(listId, resend)
@@ -67,16 +75,15 @@ export default function ListStudentsPage() {
     try {
       const result = await sendInvites(resend);
       const queued = result.invites_queued ?? 0;
-      const failed = result.invites_failed_to_queue ?? 0;
+      const failed = result.invites_failed ?? result.invites_failed_to_queue ?? 0;
       if (failed) {
         toast.error(
           String(failed) + ' invite' + (failed === 1 ? '' : 's') +
-            ' could not be queued. Check the delivery status below.'
+            ' failed. Check the delivery status below and retry.'
         );
       } else {
         toast.success(
-          String(queued) + ' invite' + (queued === 1 ? '' : 's') +
-            ' queued for email delivery'
+          `${result.invites_sent ?? 0} sent; ${result.invites_pending ?? queued} queued for email delivery`
         );
       }
       setSendingInvites(false);
@@ -103,13 +110,19 @@ export default function ListStudentsPage() {
   const handleSendStudentInvite = async (student) => {
     setInvitingStudentId(student.id);
     try {
-      await sendInstituteListStudentInvite(listId, student.id);
-      toast.success(`Invite sent to ${student.full_name}`);
+      const result = await sendInstituteListStudentInvite(listId, student.id);
+      if (result.invite_delivery_status === "failed") {
+        toast.error("Email delivery failed. Check the delivery status and retry.");
+      } else {
+        toast.success(result.invite_delivery_status === "sent"
+          ? `Invite sent to ${student.full_name}` : `Invite queued for ${student.full_name}`);
+      }
       refetch();
     } catch (err) {
       toast.error(err.message);
     } finally {
       setInvitingStudentId(null);
+      refetch();
     }
   };
 
@@ -189,7 +202,7 @@ export default function ListStudentsPage() {
           subtitle="Every row from the uploaded CSV, with its invite and claim status."
         />
         <CardBody>
-          {loading ? (
+          {loading && !rosterData ? (
             <Spinner label="Loading roster..." />
           ) : error ? (
             <ErrorBanner error={error} onDismiss={refetch} />
@@ -218,10 +231,10 @@ export default function ListStudentsPage() {
                         <p className="text-xs text-ink-500">{s.email}</p>
                       </td>
                       <td className="px-4 py-3 text-ink-600">
-                        {s.field_of_study || "—"}
-                        {s.degree_level ? ` · ${s.degree_level}` : ""}
+                        {s.field_of_study || "â€”"}
+                        {s.degree_level ? ` Â· ${s.degree_level}` : ""}
                       </td>
-                      <td className="px-4 py-3 text-ink-600">{s.expected_graduation || "—"}</td>
+                      <td className="px-4 py-3 text-ink-600">{s.expected_graduation || "â€”"}</td>
                       <td className="px-4 py-3">
                         <Badge tone={statusTone(s.status)} className="capitalize">
                           {s.status}
@@ -265,7 +278,7 @@ export default function ListStudentsPage() {
         title="Send invites"
         confirmLabel="Send invites"
         tone="primary"
-        description={`Emails a claim link to the ${uninvitedCount} row${uninvitedCount === 1 ? "" : "s"} on this list that haven't been invited yet. Already-invited rows are skipped.`}
+        description={`Emails a claim link to the ${uninvitedCount} row${uninvitedCount === 1 ? "" : "s"} on this list that are new or have failed delivery. Sent and queued invitations are skipped.`}
       />
 
       <ConfirmModal
@@ -276,14 +289,14 @@ export default function ListStudentsPage() {
         title="Resend invites"
         confirmLabel="Resend to all invited"
         tone="danger"
-        description={`Re-sends the claim link email to all ${invitedCount} previously-invited row${invitedCount === 1 ? "" : "s"} on this list, including ones who haven't claimed yet.`}
+        description={`Re-sends the claim link email to all ${invitedCount} unclaimed row${invitedCount === 1 ? "" : "s"} on this list. Queued invitations are skipped.`}
       />
     </div>
   );
 }
 
 function DeliveryBadge({ status, error }) {
-  if (!status) return <span className="text-xs text-ink-400">—</span>;
+  if (!status) return <span className="text-xs text-ink-400">â€”</span>;
 
   const config = {
     queued: { label: "Queued", classes: "bg-amber-50 text-amber-700 border-amber-200" },
@@ -301,9 +314,9 @@ function DeliveryBadge({ status, error }) {
   );
 }
 function formatDate(iso) {
-  if (!iso) return "—";
+  if (!iso) return "â€”";
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "â€”";
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(date);
 }
 

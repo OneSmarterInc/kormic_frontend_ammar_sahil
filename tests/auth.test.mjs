@@ -69,7 +69,7 @@ test('cookie rejection never reaches /me or a dashboard',async()=>{
   await assert.rejects(()=>client.confirmSession('student'),e=>e.status===401);assert.equal(calls.length,1);
 });
 test('wrong server role is denied and selected portal cookie revoked',async()=>{
-  const{client,calls}=mockClient([{data:{csrfToken:'csrf'}},{data:{access:'access'}},{data:user('superuser')},{data:{csrfToken:'csrf'}},{status:204}]);
+  const{client,calls}=mockClient([{data:{access:'access'}},{data:user('superuser')},{data:{csrfToken:'csrf'}},{status:204}]);
   await assert.rejects(()=>client.confirmSession('student'),e=>e.status===403);
   assert.equal(calls.at(-1).url,'https://backend.kormic.ai/api/auth/web/logout/');
 });
