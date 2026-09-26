@@ -8,6 +8,7 @@ import Spinner from "../../components/common/Spinner";
 import ErrorBanner from "../../components/common/ErrorBanner";
 import EmptyState from "../../components/common/EmptyState";
 import ChatThread from "../../components/common/ChatThread";
+import AgentMessageDetails, { latestChanges } from '../../components/common/AgentMessageDetails';
 import ProfileSummary from "../../components/university/ProfileSummary";
 import {
   getUniversityProfile,
@@ -16,6 +17,7 @@ import {
 } from "../../api/universityApi";
 import { getAgentName } from "../../api/universityAdminApi";
 import { useAction, useAsync } from "../../hooks/useAsync";
+import { resumeAgentJob } from '../../api/agentJobs';
 
 export default function ProfileDetailPage() {
   const { universityId, studentId } = useParams();
@@ -69,6 +71,7 @@ export default function ProfileDetailPage() {
           </Card>
 
           <PresenterChatCard
+            key={studentId}
             universityId={universityId}
             studentId={studentId}
             agentName={agentInfo?.agent_name}
@@ -81,6 +84,7 @@ export default function ProfileDetailPage() {
 
 function PresenterChatCard({ universityId, studentId, agentName }) {
   const [messages, setMessages] = useState([]);
+  const [resuming, setResuming] = useState(false);
 
   const {
     data: history,
@@ -98,13 +102,28 @@ function PresenterChatCard({ universityId, studentId, agentName }) {
       (history.messages || []).map((m) => ({
         role: m.sender === "assistant" ? "assistant" : "user",
         content: m.content,
+        meta: m.meta,
       }))
     );
   }, [history]);
 
-  const { execute, loading } = useAction((question, history) =>
+  useEffect(() => {
+    const controller = new AbortController();
+    setResuming(true);
+    resumeAgentJob(controller.signal).then(result => {
+      if (result && !controller.signal.aborted) refetchHistory();
+    }).catch(error => {
+      if (!controller.signal.aborted) toast.error(error.message);
+    }).finally(() => {
+      if (!controller.signal.aborted) setResuming(false);
+    });
+    return () => controller.abort();
+  }, [universityId, studentId]);
+
+  const { execute, loading: sending } = useAction((question, history) =>
     chatWithPresenter(universityId, studentId, question, history)
   );
+  const loading = sending || resuming;
 
   const handleSend = async (question) => {
     const history = messages.map((m) => ({
@@ -122,6 +141,7 @@ function PresenterChatCard({ universityId, studentId, agentName }) {
         {
           role: "assistant",
           content: res.answer,
+          meta: res,
         },
       ]);
     } catch (err) {
@@ -138,6 +158,7 @@ function PresenterChatCard({ universityId, studentId, agentName }) {
     }
   };
 
+  const changeStates = latestChanges(messages);
   return (
     <Card className="flex h-full flex-col overflow-hidden transition-all duration-300">
       <CardHeader
@@ -162,6 +183,8 @@ function PresenterChatCard({ universityId, studentId, agentName }) {
             messages={messages}
             onSend={handleSend}
             loading={loading}
+            renderMessageExtras={message => <AgentMessageDetails meta={message.meta} universityId={universityId}
+              changes={changeStates} onSend={handleSend} loading={loading} />}
             placeholder="e.g. Is this student a strong fit? What are the biggest gaps?"
             emptyTitle="Ask about this applicant"
             emptyDescription='Try: "Is this student a strong fit for our MS CS program?"'

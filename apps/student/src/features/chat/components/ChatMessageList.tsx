@@ -5,6 +5,7 @@ import { formatChatDate } from '../chatHistory';
 import { ChatViewState } from '../viewTypes';
 import { FormattedMessageText } from './FormattedMessageText';
 import { UniversityReferences } from './UniversityReferences';
+import { ProfileChanges, profileChangeStates } from './ProfileChanges';
 
 export function ChatMessageList({
   agentName,
@@ -36,6 +37,7 @@ export function ChatMessageList({
   | 'startEditingMessage'
   | 'session'
 >) {
+  const currentChanges = profileChangeStates(messages);
   return (
     <ScrollView
       ref={messagesScrollRef}
@@ -68,6 +70,7 @@ export function ChatMessageList({
               answer={message.answer}
             />
             {message.role === 'aria' ? <UniversityReferences meta={message.meta} session={session} /> : null}
+            {message.role === 'aria' ? <ProfileChanges meta={message.meta} current={currentChanges} /> : null}
             {message.role === 'aria' && message.escalationStatus === 'pending' ? (
               <Text style={styles.escalationText}>
                 I&apos;m checking with the university on this. I&apos;ll let you know.

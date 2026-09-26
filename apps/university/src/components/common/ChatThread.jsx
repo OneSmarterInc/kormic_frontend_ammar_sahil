@@ -205,6 +205,7 @@ export default function ChatThread({
   emptyDescription = "",
   compact = false,
   heightClass,
+  renderMessageExtras,
 }) {
   const [draft, setDraft] = useState("");
   const scrollRef = useRef(null);
@@ -277,6 +278,7 @@ export default function ChatThread({
                 ) : (
                   message.content
                 )}
+                {message.role === 'assistant' && renderMessageExtras?.(message)}
               </div>
             </div>
           ))

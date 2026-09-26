@@ -9,6 +9,7 @@ import Button from "../../components/common/Button";
 import Spinner from "../../components/common/Spinner";
 import ErrorBanner from "../../components/common/ErrorBanner";
 import ChatThread from "../../components/common/ChatThread";
+import AgentMessageDetails, { latestChanges } from '../../components/common/AgentMessageDetails';
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 
 import {
@@ -61,6 +62,7 @@ export default function AgentPreviewPage() {
       (history.messages || []).map((m) => ({
         role: m.sender === "assistant" ? "assistant" : "user",
         content: m.content,
+        meta: m.meta,
       }))
     );
   }, [history]);
@@ -69,6 +71,7 @@ export default function AgentPreviewPage() {
     chatWithUniversityAgent(universityId, message)
   );
   const loading = sending || resuming;
+  const changeStates = latestChanges(messages);
 
   const { execute: clearHistory, loading: clearing } = useAction(() =>
     deleteUniversityChatHistory(universityId)
@@ -101,6 +104,7 @@ export default function AgentPreviewPage() {
           role: "assistant",
           content: res.reply,
           tone: res.pending ? "warning" : undefined,
+          meta: res,
         },
       ]);
 
@@ -153,7 +157,7 @@ export default function AgentPreviewPage() {
         <CardHeader
           icon={Bot}
           title={lastMeta?.agent_name || agentInfo?.agent_name || "Your agent"}
-          subtitle="The same university agent answers questions from student agents."
+          subtitle="Explore student profiles and review proposed updates to your university knowledge."
           action={
             <Button
               type="button"
@@ -185,6 +189,8 @@ export default function AgentPreviewPage() {
               messages={messages}
               onSend={handleSend}
               loading={loading}
+              renderMessageExtras={message => <AgentMessageDetails meta={message.meta} universityId={universityId}
+                changes={changeStates} onSend={handleSend} loading={loading} />}
               placeholder="Ask about interested students, admissions, or university information..."
               emptyTitle="Ask your university agent"
               emptyDescription='Try: "Which interested students meet our admission requirements?"'

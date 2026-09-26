@@ -26,9 +26,9 @@ export const chatWithPresenter = (universityId, studentId, question, history = [
       `/university/${encodeURIComponent(universityId)}/profile/${encodeURIComponent(
         studentId
       )}/chat/`,
-      { question, history }
+      { question, history }, { headers: { 'Idempotency-Key': newRequestId() } }
     )
-    .then((r) => r.data);
+    .then((r) => waitForAgentJob(r.data));
 
 /** GET /api/university/<university_id>/profile/<student_id>/chat/history/ */
 export const getPresenterChatHistory = (universityId, studentId, signal) =>
