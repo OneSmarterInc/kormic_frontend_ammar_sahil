@@ -5,7 +5,7 @@ import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import { AuthSession } from '../models/onboarding';
 import { API_BASE_URL, refreshAccessToken } from './api';
-import { saveAccessToken, saveRefreshToken } from './tokenStorage';
+import { getSavedRefreshToken, saveAccessToken, saveRefreshToken } from './tokenStorage';
 
 const CHAT_NOTIFICATION_TYPES = ['agent_reply', 'pending_query_resolved', 'agent_initiated'];
 const PUSH_TOKEN_KEY = 'kormic.expoPushToken';

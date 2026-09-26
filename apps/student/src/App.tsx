@@ -220,7 +220,7 @@ export default function App() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.ink} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.ink} />
       <ProgressHeader route={state.route} onBack={goToWelcomeFromHeader} />
       {content}
       {showNotificationBell ? (

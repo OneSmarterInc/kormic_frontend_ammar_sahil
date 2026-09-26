@@ -2,10 +2,10 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, fonts } from '../theme/tokens';
 
-export function KormicWordmark() {
+export function KormicWordmark({ size = 24 }: { size?: number }) {
   return (
     <View accessible accessibilityRole="text" accessibilityLabel="Kormic">
-      <Text style={styles.wordmark}>
+      <Text style={[styles.wordmark, { fontSize: size }]}>
         Kor<Text style={styles.accent}>mic</Text>
       </Text>
     </View>

@@ -91,8 +91,8 @@ export function ChipGroup({
 
 const styles = StyleSheet.create({
   errorCard: {
-    backgroundColor: 'rgba(255,176,157,0.10)',
-    borderColor: 'rgba(255,176,157,0.35)',
+    backgroundColor: 'rgba(162,59,50,0.10)',
+    borderColor: 'rgba(162,59,50,0.35)',
     borderRadius: 8,
     borderWidth: 1,
     gap: 10,
@@ -111,8 +111,8 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   card: {
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderColor: 'rgba(255,255,255,0.11)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 8,
     borderWidth: 1,
     gap: 12,
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   fieldLabel: {
-    color: '#A6A7C2',
+    color: '#697267',
     fontFamily: fonts.bodyMedium,
     fontSize: 12,
   },
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   chip: {
-    backgroundColor: '#21498b',
+    backgroundColor: '#eef2e9',
     borderColor: colors.border,
     borderRadius: 8,
     borderWidth: 1,

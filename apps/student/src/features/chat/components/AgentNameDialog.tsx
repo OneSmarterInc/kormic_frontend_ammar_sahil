@@ -34,7 +34,7 @@ export function AgentNameDialog({
             maxLength={100}
             onChangeText={setNameDraft}
             placeholder="Agent name"
-            placeholderTextColor="#777895"
+            placeholderTextColor="#7b817b"
             style={styles.modalInput}
             value={nameDraft}
           />
@@ -56,7 +56,7 @@ export function AgentNameDialog({
               style={[styles.modalPrimaryButton, nameSaving && styles.disabledButton]}
             >
               {nameSaving ? (
-                <ActivityIndicator color="#10112A" size="small" />
+                <ActivityIndicator color="#ffffff" size="small" />
               ) : (
                 <Text style={styles.modalPrimaryText}>Save</Text>
               )}
@@ -80,8 +80,8 @@ const styles = StyleSheet.create({
     padding: 22,
   },
   agentNameModal: {
-    backgroundColor: '#181A38',
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 12,
     borderWidth: 1,
     maxWidth: 420,
@@ -102,8 +102,8 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   modalInput: {
-    backgroundColor: '#202247',
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 8,
     borderWidth: 1,
     color: colors.offWhite,
@@ -121,8 +121,8 @@ const styles = StyleSheet.create({
   },
   modalSecondaryButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 8,
     borderWidth: 1,
     justifyContent: 'center',
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   modalPrimaryText: {
-    color: '#10112A',
+    color: '#ffffff',
     fontFamily: fonts.bodyMedium,
     fontSize: 13,
   },

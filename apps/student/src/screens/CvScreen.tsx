@@ -81,8 +81,8 @@ const styles = StyleSheet.create({
   },
   glyph: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,107,74,0.14)',
-    borderColor: 'rgba(255,107,74,0.44)',
+    backgroundColor: 'rgba(56,90,70,0.14)',
+    borderColor: 'rgba(56,90,70,0.44)',
     borderRadius: 8,
     borderWidth: 1,
     height: 48,
@@ -130,8 +130,8 @@ const styles = StyleSheet.create({
   },
   fileBadge: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,107,74,0.15)',
-    borderColor: 'rgba(255,107,74,0.34)',
+    backgroundColor: 'rgba(56,90,70,0.15)',
+    borderColor: 'rgba(56,90,70,0.34)',
     borderRadius: 8,
     borderWidth: 1,
     height: 44,

@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
   },
   badgeCard: {
     backgroundColor: colors.surface,
-    borderColor: 'rgba(91,141,239,0.35)',
+    borderColor: 'rgba(56,90,70,0.35)',
     borderRadius: radii.card,
     borderWidth: 1,
     gap: 8,

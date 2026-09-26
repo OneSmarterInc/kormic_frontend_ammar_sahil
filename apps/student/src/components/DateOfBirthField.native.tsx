@@ -131,7 +131,7 @@ const webInputStyle = {
 
 const styles = StyleSheet.create({
   wrap: { gap: 6 },
-  label: { color: '#B9B8CC', fontFamily: fonts.bodyMedium, fontSize: 13 },
+  label: { color: '#536149', fontFamily: fonts.bodyMedium, fontSize: 13 },
   star: { color: colors.coral },
   button: {
     flexDirection: 'row',
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.panelInk,
   },
   valueText: { color: colors.offWhite, fontFamily: fonts.body, fontSize: 15 },
-  placeholderText: { color: '#666783', fontFamily: fonts.body, fontSize: 15 },
+  placeholderText: { color: '#7b817b', fontFamily: fonts.body, fontSize: 15 },
   errorBorder: { borderColor: colors.error },
   error: { color: colors.error, fontFamily: fonts.body, fontSize: 12 },
 });

@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
   },
   active: {
     borderColor: colors.coral,
-    backgroundColor: 'rgba(255,107,74,0.16)',
+    backgroundColor: 'rgba(56,90,70,0.16)',
   },
   label: {
     color: colors.offWhite,
@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   activeLabel: {
-    color: '#FFD9CD',
+    color: '#385a46',
     fontFamily: fonts.bodyMedium,
   },
   error: {

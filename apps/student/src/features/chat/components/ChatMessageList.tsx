@@ -4,6 +4,7 @@ import { colors, fonts } from '../../../theme/tokens';
 import { formatChatDate } from '../chatHistory';
 import { ChatViewState } from '../viewTypes';
 import { FormattedMessageText } from './FormattedMessageText';
+import { UniversityReferences } from './UniversityReferences';
 
 export function ChatMessageList({
   agentName,
@@ -66,6 +67,7 @@ export function ChatMessageList({
               question={message.question}
               answer={message.answer}
             />
+            {message.role === 'aria' ? <UniversityReferences meta={message.meta} session={session} /> : null}
             {message.role === 'aria' && message.escalationStatus === 'pending' ? (
               <Text style={styles.escalationText}>
                 I&apos;m checking with the university on this. I&apos;ll let you know.
@@ -196,13 +198,13 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
   },
   ariaBubble: {
-    backgroundColor: '#181A3A',
-    borderColor: 'rgba(255,255,255,0.11)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     maxWidth: '92%',
   },
   userBubble: {
-    backgroundColor: 'rgba(255,107,74,0.18)',
-    borderColor: 'rgba(255,107,74,0.32)',
+    backgroundColor: 'rgba(56,90,70,0.18)',
+    borderColor: 'rgba(56,90,70,0.32)',
     maxWidth: '92%',
   },
   loadingBubble: {
@@ -210,7 +212,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   bubbleLabel: {
-    color: '#A6A7C2',
+    color: '#697267',
     fontFamily: fonts.bodyMedium,
     fontSize: 11,
     textTransform: 'uppercase',
@@ -267,8 +269,8 @@ const styles = StyleSheet.create({
   },
   attachmentChip: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 8,
     borderWidth: 1,
     flexDirection: 'row',
@@ -283,15 +285,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   imageAttachmentCard: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 10,
     borderWidth: 1,
     overflow: 'hidden',
     width: '100%',
   },
   imageAttachment: {
-    backgroundColor: '#202247',
+    backgroundColor: '#ffffff',
     height: 190,
     width: '100%',
   },

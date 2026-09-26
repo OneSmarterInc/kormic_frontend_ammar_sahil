@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Platform } from 'react-native';
 import {
   analyzeGithub,
@@ -29,6 +29,8 @@ export function useGithubProfile({
   const [githubConnected, setGithubConnected] = useState(false);
 
   const [message, setMessage] = useState('');
+  const analysisController = useRef<AbortController | null>(null);
+  useEffect(() => () => { analysisController.current?.abort(); }, [session]);
 
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -40,6 +42,7 @@ export function useGithubProfile({
         if (nextStatus.connected) {
           setGithubConnected(true);
           setMessage('GitHub connected successfully. You can now analyze it.');
+          return;
         }
       } catch (error) {
         console.log('Polling attempt failed:', error);
@@ -98,7 +101,11 @@ export function useGithubProfile({
       setSectionError('');
       setMessage('');
 
-      const result = await analyzeGithub(session);
+      analysisController.current?.abort();
+      const controller = new AbortController();
+      analysisController.current = controller;
+      const result = await analyzeGithub(session, { signal: controller.signal, onProgress: setMessage });
+      if (controller.signal.aborted) return;
       setGithubAnalysis(result);
       await loadGithubHistory();
       await onProfileChanged?.();

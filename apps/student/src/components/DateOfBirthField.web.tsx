@@ -82,7 +82,7 @@ export function DateOfBirthField({ value, error, onChange }: DateOfBirthFieldPro
             selectedTextStyle={styles.selected}
             itemTextStyle={styles.itemText}
             containerStyle={styles.menu}
-            activeColor="rgba(91,141,239,0.18)"
+            activeColor="rgba(56,90,70,0.18)"
             data={monthOptions}
             labelField="label"
             valueField="value"
@@ -100,7 +100,7 @@ export function DateOfBirthField({ value, error, onChange }: DateOfBirthFieldPro
             selectedTextStyle={styles.selected}
             itemTextStyle={styles.itemText}
             containerStyle={styles.menu}
-            activeColor="rgba(91,141,239,0.18)"
+            activeColor="rgba(56,90,70,0.18)"
             data={dayOptions}
             labelField="label"
             valueField="value"
@@ -118,7 +118,7 @@ export function DateOfBirthField({ value, error, onChange }: DateOfBirthFieldPro
             selectedTextStyle={styles.selected}
             itemTextStyle={styles.itemText}
             containerStyle={styles.menu}
-            activeColor="rgba(91,141,239,0.18)"
+            activeColor="rgba(56,90,70,0.18)"
             data={yearOptions}
             labelField="label"
             valueField="value"
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   fieldLabel: {
-    color: '#B9B8CC',
+    color: '#536149',
     fontFamily: fonts.bodyMedium,
     fontSize: 13,
   },
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.panelInk,
   },
   placeholder: {
-    color: '#666783',
+    color: '#7b817b',
     fontFamily: fonts.body,
     fontSize: 14,
   },

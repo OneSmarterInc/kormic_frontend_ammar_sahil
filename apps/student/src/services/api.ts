@@ -1,4 +1,6 @@
 import { Platform } from 'react-native';
+import { AgentJob, newRequestId, waitForAgentJob } from './agentJobs';
+import { GithubJob, waitForGithubJob } from './githubJobs';
 import { resolveApiBaseUrl } from './apiBaseUrl';
 import { AuthSession, AuthUser, BasicInfo, LinkedInScreenshot, SelectedCvFile } from '../models/onboarding';
 import { clearSavedTokens, getTokenGeneration, getSavedRefreshToken, saveAccessToken, saveRefreshToken } from './tokenStorage';
@@ -222,6 +224,11 @@ export interface ChatAttachmentFile {
 }
 
 export interface AriaChatResponse {
+  meta?: Record<string, unknown>;
+  job_id?: string;
+  status?: string;
+  result?: AriaChatResponse;
+  error?: string;
   agent?: string;
   student_id?: string;
   reply?: string;
@@ -263,6 +270,30 @@ export interface GithubAnalysisResponse {
   skills_added?: string[];
   github_result?: Record<string, unknown>;
   message?: string;
+}
+
+export type GithubSyncJob = GithubAnalysisResponse & GithubJob<GithubAnalysisResponse>;
+export interface GithubOverviewResponse {
+  connected: boolean;
+  sync: GithubSyncJob | null;
+  profile: {
+    identity: { login?: string; name?: string; bio?: string; location?: string; followers?: number; following?: number };
+    overview: string;
+    statistics: { repositories?: number; owned?: number; private?: number; forks?: number; stars?: number };
+    languages: Array<{ name: string; repositories: number }>;
+    technologies: Array<{ name: string; projects: number }>;
+    domains: Array<{ name: string; projects: number }>;
+    coverage: { note?: string; repository_list_complete?: boolean; source_projects_analyzed?: number };
+    warnings: Array<{ resource: string; detail: string }>;
+    synced_at: string | null;
+  } | null;
+}
+export interface GithubRepositoryPage {
+  count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  results: Array<{ id: number; name: string }>;
 }
 
 export interface GithubHistoryResponse {
@@ -868,8 +899,8 @@ export function getGithubStatus(session: AuthSession) {
   );
 }
 
-export function analyzeGithub(session: AuthSession) {
-  return requestWithSession<GithubAnalysisResponse>(
+export function startGithubSync(session: AuthSession) {
+  return requestWithSession<GithubSyncJob>(
     session,
     '/profile/github/',
     (accessToken) => ({
@@ -879,6 +910,26 @@ export function analyzeGithub(session: AuthSession) {
     }),
     'Unable to analyze GitHub',
   );
+}
+
+export function getGithubSyncJob(session: AuthSession, id: string) {
+  return requestWithSession<GithubSyncJob>(session, `/profile/github/jobs/${encodeURIComponent(id)}/`,
+    (token) => ({ method: 'GET', headers: authHeaders(token) }), 'Unable to check GitHub extraction');
+}
+
+export async function analyzeGithub(session: AuthSession, options: { signal?: AbortSignal; onProgress?: (message: string) => void } = {}) {
+  const job = await startGithubSync(session);
+  return waitForGithubJob<GithubAnalysisResponse>(job, (id) => getGithubSyncJob(session, id), options);
+}
+
+export function getGithubOverview(session: AuthSession) {
+  return requestWithSession<GithubOverviewResponse>(session, '/profile/github/overview/',
+    (token) => ({ method: 'GET', headers: authHeaders(token) }), 'Unable to load GitHub profile');
+}
+
+export function getGithubRepositories(session: AuthSession, page = 1) {
+  return requestWithSession<GithubRepositoryPage>(session, `/profile/github/repos/?page=${page}`,
+    (token) => ({ method: 'GET', headers: authHeaders(token) }), 'Unable to load repositories');
 }
 
 export function getGithubHistory(session: AuthSession) {
@@ -1106,6 +1157,7 @@ export function chatWithAria(
   message: string,
   attachments: ChatAttachmentFile[] = [],
 ) {
+  const requestId = newRequestId();
   return requestWithSession<AriaChatResponse>(
     session,
     '/chat/agent/',
@@ -1113,7 +1165,7 @@ export function chatWithAria(
       if (attachments.length === 0) {
         return {
           method: 'POST',
-          headers: authHeaders(accessToken),
+          headers: { ...authHeaders(accessToken), 'Idempotency-Key': requestId },
           body: JSON.stringify({ message }),
         };
       }
@@ -1126,12 +1178,24 @@ export function chatWithAria(
 
       return {
         method: 'POST',
-        headers: authHeaders(accessToken, ''),
+        headers: { ...authHeaders(accessToken, ''), 'Idempotency-Key': requestId },
         body: formData,
       };
     },
     'Unable to chat with your agent',
-  );
+  ).then(result => waitForAgentJob(result, id => readAgentJob(session, id)));
+}
+
+export function readAgentJob(session: AuthSession, id: string) {
+  return requestWithSession<AriaChatResponse>(session, `/chat/jobs/${encodeURIComponent(id)}/`,
+    token => ({ method: 'GET', headers: authHeaders(token) }), 'Unable to check chat progress');
+}
+
+export async function resumeAriaJob(session: AuthSession, signal?: AbortSignal) {
+  const job = await requestWithSession<AriaChatResponse & AgentJob<AriaChatResponse>>(session, '/chat/jobs/active/',
+    token => ({ method: 'GET', headers: authHeaders(token) }), 'Unable to check chat progress');
+  if (!job.job_id) return;
+  return waitForAgentJob(job, id => readAgentJob(session, id), signal);
 }
 
 export function getAriaHistory(session: AuthSession) {
@@ -1147,16 +1211,41 @@ export function getAriaHistory(session: AuthSession) {
 }
 
 export function editAriaMessage(session: AuthSession, messageId: number | string, message: string){
+   const requestId = newRequestId();
    return requestWithSession<AriaEditResponse>(
     session,
     `/chat/agent/${encodeURIComponent(String(messageId))}/edit/`,
     (accessToken) => ({
       method: 'PATCH',
-      headers: authHeaders(accessToken),
+      headers: { ...authHeaders(accessToken), 'Idempotency-Key': requestId },
       body: JSON.stringify({ message }),
     }),
     'Unable to edit message',
-  );
+  ).then(result => waitForAgentJob(result, id => readAgentJob(session, id)));
+}
+
+export interface UniversityReference {
+  research_id?: string;
+  id: string;
+  name: string;
+  listed: boolean;
+  source: string;
+  url: string;
+  address?: string;
+  updated_at?: string | null;
+  stale?: boolean;
+  processing?: boolean;
+  progress?: string;
+}
+
+export function readUniversityResearch(session: AuthSession, id: string) {
+  return requestWithSession<UniversityReference>(session, `/university-research/${encodeURIComponent(id.replace(/^public:/, ''))}/`,
+    token => ({ method: 'GET', headers: authHeaders(token) }), 'Unable to read university research');
+}
+
+export function refreshUniversityResearch(session: AuthSession, id: string) {
+  return requestWithSession<{ university: UniversityReference }>(session, `/university-research/${encodeURIComponent(id.replace(/^public:/, ''))}/refresh/`,
+    token => ({ method: 'POST', headers: authHeaders(token) }), 'Unable to update university information');
 }
 
 export function clearAriaChat(session: AuthSession) {

@@ -33,6 +33,7 @@ import RosterStudentsPage from "./pages/admin/RosterStudentsPage";
 import UsersListPage from "./pages/admin/UsersListPage";
 import UserDetailPage from "./pages/admin/UserDetailPage";
 import SettingsPage from "./pages/admin/SettingsPage";
+import UpdateInformationPage from './pages/admin/UpdateInformationPage';
 import AuditLogPage from "./pages/admin/AuditLogPage";
 import AgentAuditLogPage from "./pages/admin/AgentAuditLogPage";
 import EscalationMetricsPage from "./pages/admin/EscalationMetricsPage";
@@ -70,6 +71,7 @@ function App() {
           <Route element={<RequireAuth />}>
             <Route element={<RequireRole role="superuser" />}>
               <Route path="/admin" element={<AdminLayout />}>
+                <Route path="update-information" element={<UpdateInformationPage />} />
 
                 <Route
                   index

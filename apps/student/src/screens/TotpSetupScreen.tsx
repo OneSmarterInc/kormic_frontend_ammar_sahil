@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
   qrWrap: {
     alignItems: 'center',
     alignSelf: 'center',
-    backgroundColor: colors.offWhite,
+    backgroundColor: '#ffffff',
     borderRadius: radii.input,
     padding: 10,
   },
@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#111111',
   },
   qrCellLight: {
-    backgroundColor: colors.offWhite,
+    backgroundColor: '#ffffff',
   },
   setupLabel: {
     color: colors.muted,

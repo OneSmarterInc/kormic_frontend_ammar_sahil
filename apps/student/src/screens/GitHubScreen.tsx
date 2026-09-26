@@ -194,7 +194,7 @@ export function GitHubScreen({ state, dispatch, onContinue }: GitHubScreenProps)
 
     try {
       setAnalyzing(true);
-      const result = await analyzeGithub(state.authSession);
+      const result = await analyzeGithub(state.authSession, { onProgress: setMessage });
       setAnalysis(result);
       dispatch({ type: 'SET_GITHUB_CONNECTED', handle: status.github_username ?? state.githubHandle ?? 'GitHub' });
       onContinue();
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 10,
-    backgroundColor: '#1E1E2E',
+    backgroundColor: '#eef2e9',
     borderColor: colors.line,
     borderWidth: 1,
     alignItems: 'center',

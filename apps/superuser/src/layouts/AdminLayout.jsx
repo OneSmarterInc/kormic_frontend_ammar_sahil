@@ -14,6 +14,7 @@ import {
   Sparkles,
   TrendingUp,
   UsersRound,
+  RefreshCw,
 } from "lucide-react";
 
 import TopBar from "../components/layout/TopBar";
@@ -30,6 +31,7 @@ const NAV_GROUPS = [
     items: [
       { to: "/admin/students", label: "Students", icon: GraduationCap },
       { to: "/admin/universities", label: "Universities", icon: Building2 },
+      { to: '/admin/update-information', label: 'Update information', icon: RefreshCw },
       { to: "/admin/institutes", label: "Institutes", icon: Landmark },
       { to: "/admin/roster-students", label: "Roster Students", icon: ClipboardList },
       { to: "/admin/users", label: "Users & Access", icon: UsersRound },

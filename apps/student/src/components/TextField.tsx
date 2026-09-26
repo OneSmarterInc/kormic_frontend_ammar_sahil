@@ -23,7 +23,7 @@ export function TextField({ label, error, optional,required, rightElement, ...pr
           {...props}
           accessibilityLabel={label}
           accessibilityHint={optional ? 'Optional' : undefined}
-          placeholderTextColor="#666783"
+          placeholderTextColor="#7b817b"
           style={[styles.input, rightElement ? styles.inputWithRightElement : undefined, props.style]}
         />
         {rightElement ? <View style={styles.rightElement}>{rightElement}</View> : null}
@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   label: {
-    color: '#B9B8CC',
+    color: '#536149',
     fontFamily: fonts.bodyMedium,
     fontSize: 13,
   },

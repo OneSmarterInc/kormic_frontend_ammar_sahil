@@ -145,7 +145,7 @@ export function ChatComposer({
           multiline
           onChangeText={setDraft}
           placeholder={`Message ${agentName}...`}
-          placeholderTextColor="#777895"
+          placeholderTextColor="#7b817b"
           style={styles.input}
           value={draft}
         />
@@ -156,7 +156,7 @@ export function ChatComposer({
           style={styles.sendButton}
         >
           {loading ? (
-            <ActivityIndicator color="#1A0F0A" size="small" />
+            <ActivityIndicator color="#ffffff" size="small" />
           ) : (
             <Text style={styles.sendText}>Send</Text>
           )}
@@ -171,8 +171,8 @@ export function ChatComposer({
 
 const styles = StyleSheet.create({
   composer: {
-    backgroundColor: '#151735',
-    borderTopColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: '#f0f1eb',
+    borderTopColor: '#e7e9e2',
     borderTopWidth: 1,
     flexShrink: 0,
     gap: 10,
@@ -188,8 +188,8 @@ const styles = StyleSheet.create({
   },
   suggestionChip: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderColor: 'rgba(255,255,255,0.13)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 999,
     borderWidth: 1,
     flexShrink: 0,
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   composerBox: {
     alignItems: 'flex-end',
     backgroundColor: colors.panelInk,
-    borderColor: 'rgba(255,255,255,0.13)',
+    borderColor: '#e7e9e2',
     borderRadius: 18,
     borderWidth: 1,
     flexDirection: 'row',
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   sendText: {
-    color: '#1A0F0A',
+    color: '#ffffff',
     fontFamily: fonts.bodyMedium,
     fontSize: 14,
   },
@@ -251,8 +251,8 @@ const styles = StyleSheet.create({
   },
   attachButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 999,
     borderWidth: 1,
     height: 48,
@@ -265,8 +265,8 @@ const styles = StyleSheet.create({
   },
   selectedAttachmentChip: {
     alignItems: 'center',
-    backgroundColor: 'rgba(91,141,239,0.14)',
-    borderColor: 'rgba(91,141,239,0.30)',
+    backgroundColor: 'rgba(56,90,70,0.14)',
+    borderColor: 'rgba(56,90,70,0.30)',
     borderRadius: 8,
     borderWidth: 1,
     flexDirection: 'row',

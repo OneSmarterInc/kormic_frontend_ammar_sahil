@@ -167,7 +167,7 @@ export function GithubRepositoryCard({ repository, rank }: { repository: GithubR
 const styles = StyleSheet.create({
   smallButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#ffffff',
     borderColor: 'rgba(214, 6, 6, 0.14)',
     borderRadius: 8,
     borderWidth: 1,
@@ -194,8 +194,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   githubRepoCard: {
-    backgroundColor: 'rgba(91,141,239,0.10)',
-    borderColor: 'rgba(91,141,239,0.24)',
+    backgroundColor: 'rgba(56,90,70,0.10)',
+    borderColor: 'rgba(56,90,70,0.24)',
     borderRadius: 8,
     borderWidth: 1,
     gap: 10,
@@ -241,8 +241,8 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   githubRepoPill: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 999,
     borderWidth: 1,
     color: colors.text,
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   extractedSectionTitle: {
-    color: '#C7C9E0',
+    color: '#536149',
     fontFamily: fonts.bodyMedium,
     fontSize: 12,
     letterSpacing: 0,

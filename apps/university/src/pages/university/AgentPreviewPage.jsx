@@ -19,6 +19,7 @@ import {
 import { getAgentName } from "../../api/universityAdminApi";
 
 import { useAction, useAsync } from "../../hooks/useAsync";
+import { resumeAgentJob } from '../../api/agentJobs';
 
 export default function AgentPreviewPage() {
   const { universityId } = useParams();
@@ -26,6 +27,7 @@ export default function AgentPreviewPage() {
   const [messages, setMessages] = useState([]);
   const [lastMeta, setLastMeta] = useState(null);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  const [resuming, setResuming] = useState(false);
 
   const { data: history, loading: historyLoading, error: historyError, refetch: refetchHistory } = useAsync(
     (signal) => getUniversityChatHistory(universityId, signal),
@@ -33,6 +35,24 @@ export default function AgentPreviewPage() {
   );
 
   const { data: agentInfo } = useAsync(getAgentName, [universityId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setResuming(true);
+    resumeAgentJob(controller.signal).then(result => {
+      if (result && !controller.signal.aborted) refetchHistory();
+    }).catch(error => {
+      if (!controller.signal.aborted) toast.error(error.message);
+    }).finally(() => {
+      if (!controller.signal.aborted) setResuming(false);
+    });
+    return () => controller.abort();
+  }, [universityId]);
+
+  useEffect(() => {
+    setMessages([]);
+    setLastMeta(null);
+  }, [universityId]);
 
   useEffect(() => {
     if (!history) return;
@@ -45,9 +65,10 @@ export default function AgentPreviewPage() {
     );
   }, [history]);
 
-  const { execute, loading } = useAction((message) =>
+  const { execute, loading: sending } = useAction((message) =>
     chatWithUniversityAgent(universityId, message)
   );
+  const loading = sending || resuming;
 
   const { execute: clearHistory, loading: clearing } = useAction(() =>
     deleteUniversityChatHistory(universityId)
@@ -115,7 +136,7 @@ export default function AgentPreviewPage() {
     >
       <PageHeader
         title="University Agent"
-        description="Ask questions on your university profile."
+        description="Ask about your university, interested students, eligibility, and knowledge base."
       />
 
       <Card
@@ -132,7 +153,7 @@ export default function AgentPreviewPage() {
         <CardHeader
           icon={Bot}
           title={lastMeta?.agent_name || agentInfo?.agent_name || "Your agent"}
-          subtitle="Every turn here is logged just like a real student conversation."
+          subtitle="The same university agent answers questions from student agents."
           action={
             <Button
               type="button"
@@ -140,7 +161,7 @@ export default function AgentPreviewPage() {
               variant="secondary"
               icon={Trash2}
               loading={clearing}
-              disabled={messages.length === 0}
+              disabled={messages.length === 0 || loading}
               onClick={() => setConfirmClearOpen(true)}
             >
               Clear conversation
@@ -164,13 +185,29 @@ export default function AgentPreviewPage() {
               messages={messages}
               onSend={handleSend}
               loading={loading}
-              placeholder="Ask something a prospective student might ask..."
-              emptyTitle="Test your agent"
-              emptyDescription='Try: "What is the minimum GPA required to apply?"'
+              placeholder="Ask about interested students, admissions, or university information..."
+              emptyTitle="Ask your university agent"
+              emptyDescription='Try: "Which interested students meet our admission requirements?"'
             />
           )}
         </CardBody>
       </Card>
+
+      {lastMeta?.sources?.length > 0 && (
+        <div className="mx-auto mt-2 w-full max-w-5xl text-xs text-ink-500">
+          <span>Knowledge retrieved for this answer: </span>
+          {lastMeta.sources.map((source, index) => (
+            <span key={source.id ?? index}>
+              {index > 0 && " · "}
+              {/^https?:\/\//i.test(source.source_url || "") ? (
+                <a href={source.source_url} target="_blank" rel="noreferrer" className="underline">
+                  {source.topic}
+                </a>
+              ) : source.topic}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="h-4" />
 

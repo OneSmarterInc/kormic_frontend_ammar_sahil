@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
   },
   thumbImage: {
     aspectRatio: 0.8,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#ffffff',
     borderRadius: 8,
     width: '100%',
   },
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: '#2A2B45',
+    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
   },

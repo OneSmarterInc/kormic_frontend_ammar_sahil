@@ -1,4 +1,5 @@
 import client from "./client";
+import { newRequestId, waitForAgentJob } from './agentJobs';
 
 /** GET /api/university/<university_id>/profiles/ — essentials only per student */
 export const listUniversityProfiles = (universityId, signal) =>
@@ -43,8 +44,8 @@ export const getPresenterChatHistory = (universityId, studentId, signal) =>
 /** POST /api/university/<university_id>/chat/ — preview the university's own program agent */
 export const chatWithUniversityAgent = (universityId, message) =>
   client
-    .post(`/university/${encodeURIComponent(universityId)}/chat/`, { message })
-    .then((r) => r.data);
+    .post(`/university/${encodeURIComponent(universityId)}/chat/`, { message }, { headers: { 'Idempotency-Key': newRequestId() } })
+    .then((r) => waitForAgentJob(r.data));
 
 /** GET /api/university/<university_id>/chat/history/ */
 export const getUniversityChatHistory = (universityId, signal) =>

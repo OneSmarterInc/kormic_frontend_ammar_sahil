@@ -5,6 +5,7 @@ import { colors, fonts, type } from '../../../theme/tokens';
 import { firstProvidedValue, formatDateTime, formatValue } from '../profileValues';
 import { StudentProfile } from '../types';
 import { ProfileAvatar } from './ProfileAvatar';
+import { GithubProfilePanel } from '../../github/GithubProfilePanel';
 import { ChipGroup, FieldRow, InfoCard, ProjectCard } from './ProfileSections';
 
 export type ProfileOverviewProps = {
@@ -13,6 +14,7 @@ export type ProfileOverviewProps = {
   profileImageUrl: string;
   profileImageLoading: boolean;
   session?: AuthSession;
+  onGithubConnect?: () => void;
 };
 
 export function ProfileOverview({
@@ -21,7 +23,8 @@ export function ProfileOverview({
   profileImageUrl,
   profileImageLoading,
   session,
-}: Pick<ProfileOverviewProps, 'profile' | 'skills' | 'profileImageUrl' | 'profileImageLoading' | 'session'>) {
+  onGithubConnect,
+}: ProfileOverviewProps) {
   return (
     <>
       <View style={styles.profileHero}>
@@ -40,6 +43,7 @@ export function ProfileOverview({
       </View>
 
       <View style={styles.form}>
+        {session && onGithubConnect ? <GithubProfilePanel compact session={session} onConnect={onGithubConnect} /> : null}
         <SectionLabel>Personal information</SectionLabel>
         <InfoCard>
           <FieldRow label="Institution" value={profile.institution} />
@@ -139,8 +143,8 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   profileHero: {
-    backgroundColor: 'rgba(255,255,255,0.035)',
-    borderColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 8,
     borderWidth: 1,
     marginBottom: 16,

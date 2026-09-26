@@ -265,7 +265,7 @@ export function LinkedinImageCard({
 const styles = StyleSheet.create({
   smallButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#ffffff',
     borderColor: 'rgba(214, 6, 6, 0.14)',
     borderRadius: 8,
     borderWidth: 1,
@@ -294,8 +294,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   linkedinHistory: {
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderColor: 'rgba(255,255,255,0.11)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 8,
     borderWidth: 1,
     gap: 14,
@@ -320,8 +320,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   linkedinImageCard: {
-    backgroundColor: 'rgba(11,12,29,0.38)',
-    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: '#eef2e9',
+    borderColor: '#e7e9e2',
     borderRadius: 8,
     borderWidth: 1,
     gap: 7,
@@ -331,13 +331,13 @@ const styles = StyleSheet.create({
   },
   linkedinImage: {
     aspectRatio: 0.78,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: '#ffffff',
     borderRadius: 7,
     width: '100%',
   },
   linkedinImagePlaceholder: {
     aspectRatio: 0.78,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: '#ffffff',
     borderRadius: 7,
     width: '100%',
   },
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   extractedSectionTitle: {
-    color: '#C7C9E0',
+    color: '#536149',
     fontFamily: fonts.bodyMedium,
     fontSize: 12,
     letterSpacing: 0,
@@ -361,15 +361,15 @@ const styles = StyleSheet.create({
   },
   linkedinPreviewOverlay: {
     alignItems: 'center',
-    backgroundColor: 'rgba(5,6,18,0.96)',
+    backgroundColor: 'rgba(250,249,246,0.98)',
     flex: 1,
     justifyContent: 'center',
     padding: 18,
   },
   linkedinPreviewClose: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: '#e7e9e2',
+    borderColor: '#e7e9e2',
     borderRadius: 22,
     borderWidth: 1,
     height: 44,
@@ -413,8 +413,8 @@ const styles = StyleSheet.create({
   },
   linkedinZoomButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: '#e7e9e2',
+    borderColor: '#e7e9e2',
     borderRadius: 20,
     borderWidth: 1,
     height: 40,

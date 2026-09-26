@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 7,
     borderRadius: radii.pill,
-    backgroundColor: 'rgba(255,107,74,0.12)',
+    backgroundColor: 'rgba(56,90,70,0.12)',
   },
   markAllText: {
     color: colors.coral,
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.line,
   },
   unreadItem: {
-    backgroundColor: 'rgba(91,141,239,0.08)',
+    backgroundColor: 'rgba(56,90,70,0.08)',
   },
   dot: {
     marginTop: 6,

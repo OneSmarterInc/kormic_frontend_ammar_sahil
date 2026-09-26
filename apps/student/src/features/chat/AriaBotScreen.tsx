@@ -162,15 +162,15 @@ export function AriaBotScreen(props: AriaChatProps) {
 const styles = StyleSheet.create({
   chatShell: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.035)',
-    borderColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 8,
     borderWidth: 1,
     overflow: 'hidden',
   },
   container: {
     flex: 1,
-    backgroundColor: '#0F1026',
+    backgroundColor: '#f0f1eb',
     flexDirection: 'column',
     gap: 0,
     maxHeight: 720,
@@ -183,8 +183,8 @@ const styles = StyleSheet.create({
   },
   clearChatButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 8,
     borderWidth: 1,
     height: 34,

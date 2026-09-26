@@ -12,6 +12,8 @@ export function sectionTitle(section: ProfileSection, agentName: string) {
       return 'Resume history';
     case 'github':
       return 'GitHub';
+    case 'githubProfile':
+      return 'GitHub Profile';
     case 'linkedin':
       return 'LinkedIn';
     case 'aria':
@@ -36,6 +38,7 @@ export function ProfileMenu({
     { key: 'edit', label: 'Edit Profile' },
     { key: 'resumes', label: 'Resume update/view' },
     { key: 'github', label: 'GitHub' },
+    { key: 'githubProfile', label: 'GitHub Profile' },
     { key: 'linkedin', label: 'LinkedIn images' },
   ];
 
@@ -84,7 +87,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   sidebarItemActive: {
-    backgroundColor: 'rgba(255,107,74,0.16)',
+    backgroundColor: 'rgba(56,90,70,0.16)',
   },
   sidebarItemText: {
     color: colors.textSoft,

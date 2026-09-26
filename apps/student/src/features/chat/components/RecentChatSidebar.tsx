@@ -77,8 +77,8 @@ export function RecentChatSidebar({
 
 const styles = StyleSheet.create({
   sidebar: {
-    backgroundColor: '#151735',
-    borderBottomColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: '#f0f1eb',
+    borderBottomColor: '#e7e9e2',
     borderBottomWidth: 1,
     gap: 12,
     padding: 14,
@@ -97,8 +97,8 @@ const styles = StyleSheet.create({
   },
   sidebarIconButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 8,
     borderWidth: 1,
     height: 28,
@@ -117,8 +117,8 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 8,
     borderWidth: 1,
     height: 34,
@@ -135,14 +135,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   threadGroupTitle: {
-    color: '#A6A7C2',
+    color: '#697267',
     fontFamily: fonts.bodyMedium,
     fontSize: 11,
     textTransform: 'uppercase',
   },
   threadItem: {
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 8,
     borderWidth: 1,
     gap: 5,
@@ -150,8 +150,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   threadItemActive: {
-    backgroundColor: 'rgba(255,107,74,0.14)',
-    borderColor: 'rgba(255,107,74,0.30)',
+    backgroundColor: 'rgba(56,90,70,0.14)',
+    borderColor: 'rgba(56,90,70,0.30)',
   },
   threadTitle: {
     color: colors.offWhite,

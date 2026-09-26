@@ -9,6 +9,7 @@ import { colors, fonts } from '../../theme/tokens';
 import { AriaBotScreen } from '../chat/AriaBotScreen';
 import { AriaHeaderCommand } from '../chat/types';
 import { GithubAnalysisDetails } from '../github/GithubAnalysisDetails';
+import { GithubProfilePanel } from '../github/GithubProfilePanel';
 import { useGithubProfile } from '../github/useGithubProfile';
 import { LinkedinImageHistory } from '../linkedin/LinkedinImageHistory';
 import { useLinkedinProfile } from '../linkedin/useLinkedinProfile';
@@ -387,6 +388,10 @@ export function ProfileScreen({
             </View>
           ) : null}
 
+          {section === 'githubProfile' ? (
+            <GithubProfilePanel session={session} onConnect={() => selectSection('github')} onProfileChanged={onProfileChanged} />
+          ) : null}
+
           {section === 'linkedin' ? (
             <SourceEditor
               title="LinkedIn"
@@ -432,6 +437,7 @@ export function ProfileScreen({
 
           {section === 'overview' ? (
             <ProfileOverview
+              onGithubConnect={() => selectSection('github')}
               profile={profile}
               skills={skills}
               profileImageUrl={profileImageUrl}
@@ -459,8 +465,8 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   topBarIconButtonActive: {
-    backgroundColor: 'rgba(255,107,74,0.14)',
-    borderColor: 'rgba(255,107,74,0.32)',
+    backgroundColor: 'rgba(56,90,70,0.14)',
+    borderColor: 'rgba(56,90,70,0.32)',
   },
   ariaActionsMenu: {
     alignItems: 'center',
@@ -484,8 +490,8 @@ const styles = StyleSheet.create({
   },
   topBarIconButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 10,
     borderWidth: 1,
     height: 38,
@@ -494,8 +500,8 @@ const styles = StyleSheet.create({
   },
   menuButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 10,
     borderWidth: 1,
     height: 44,
@@ -551,8 +557,8 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   connectGithubCard: {
-    backgroundColor: 'rgba(91,141,239,0.10)',
-    borderColor: 'rgba(91,141,239,0.22)',
+    backgroundColor: 'rgba(56,90,70,0.10)',
+    borderColor: 'rgba(56,90,70,0.22)',
     borderRadius: 8,
     borderWidth: 1,
     gap: 12,

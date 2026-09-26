@@ -7,6 +7,7 @@ import {
   editAriaMessage,
   getAgentName,
   getAriaHistory,
+  resumeAriaJob,
   updateAgentName,
 } from '../../services/api';
 import {
@@ -164,12 +165,25 @@ export function useAriaChat({
     }
   };
   useEffect(() => {
+    const controller = new AbortController();
     const loadAgent = async () => {
       const nextAgentName = await loadAgentName();
       await loadHistory(nextAgentName, true);
+      if (session && !controller.signal.aborted) {
+        setLoading(true);
+        try {
+          const result = await resumeAriaJob(session, controller.signal);
+          if (result && !controller.signal.aborted) await loadHistory(nextAgentName, true);
+        } catch (error) {
+          if (!controller.signal.aborted) setError(error instanceof Error ? error.message : 'Unable to resume chat.');
+        } finally {
+          if (!controller.signal.aborted) setLoading(false);
+        }
+      }
     };
 
     loadAgent();
+    return () => controller.abort();
   }, [session?.access, session?.user?.student_id, refreshKey]);
   const clearChat = async () => {
     if (!session || clearLoading) {
@@ -255,6 +269,7 @@ export function useAriaChat({
         role: 'aria',
         text: response.reply || response.message || `${response.agent || agentName} did not return a reply.`,
         pending: response.pending === true,
+        meta: response.meta,
         queryId: typeof response.query_id === 'number' ? response.query_id : null,
         escalationStatus: response.pending === true ? 'pending' : null,
         confidence: typeof response.confidence === 'number' ? response.confidence : null,

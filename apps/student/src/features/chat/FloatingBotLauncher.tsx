@@ -27,7 +27,7 @@ const styles = StyleSheet.create({
   botLauncher: {
     alignItems: 'center',
     backgroundColor: colors.coral,
-    borderColor: 'rgba(255,255,255,0.28)',
+    borderColor: '#e7e9e2',
     borderRadius: 28,
     borderWidth: 1,
     bottom: 54,

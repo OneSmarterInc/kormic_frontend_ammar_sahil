@@ -48,7 +48,7 @@ export function ResumeManager({
         >
           {uploadLoading ? (
             <>
-              <ActivityIndicator color="#1A0F0A" size="small" />
+              <ActivityIndicator color="#ffffff" size="small" />
               <Text style={styles.resumeUploadButtonText}>Uploading...</Text>
             </>
           ) : (
@@ -126,8 +126,8 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   resumeIntroCard: {
-    backgroundColor: 'rgba(91,141,239,0.10)',
-    borderColor: 'rgba(91,141,239,0.22)',
+    backgroundColor: 'rgba(56,90,70,0.10)',
+    borderColor: 'rgba(56,90,70,0.22)',
     borderRadius: 8,
     borderWidth: 1,
     gap: 8,
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   },
   smallButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#ffffff',
     borderColor: 'rgba(214, 6, 6, 0.14)',
     borderRadius: 8,
     borderWidth: 1,
@@ -172,8 +172,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   dangerButton: {
-    borderColor: 'rgba(255,176,157,0.45)',
-    backgroundColor: 'rgba(255,176,157,0.08)',
+    borderColor: 'rgba(162,59,50,0.45)',
+    backgroundColor: 'rgba(162,59,50,0.08)',
   },
   dangerButtonText: {
     color: colors.error,
@@ -182,8 +182,8 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   resumeCard: {
-    backgroundColor: 'rgba(255,255,255,0.052)',
-    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: '#ffffff',
+    borderColor: '#e7e9e2',
     borderRadius: 8,
     borderWidth: 1,
     gap: 14,
@@ -196,8 +196,8 @@ const styles = StyleSheet.create({
   },
   fileBadge: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,107,74,0.15)',
-    borderColor: 'rgba(255,107,74,0.34)',
+    backgroundColor: 'rgba(56,90,70,0.15)',
+    borderColor: 'rgba(56,90,70,0.34)',
     borderRadius: 8,
     borderWidth: 1,
     height: 46,
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     opacity: 0.78,
   },
   resumeUploadButtonText: {
-    color: '#1A0F0A',
+    color: '#ffffff',
     fontFamily: fonts.bodyMedium,
     fontSize: 15,
   },

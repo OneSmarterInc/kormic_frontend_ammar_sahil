@@ -40,7 +40,7 @@ export function PrimaryButton({
     ]}
   >
     {loading ? (
-      <ActivityIndicator color={variant === 'secondary' ? colors.offWhite : '#1A0F0A'} />
+      <ActivityIndicator color={variant === 'secondary' ? colors.offWhite : '#ffffff'} />
     ) : (
       <Text style={[styles.label, variant === 'secondary' && styles.secondaryLabel]}>{label}</Text>
     )}
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   label: {
-    color: '#1A0F0A',
+    color: '#ffffff',
     fontFamily: fonts.bodyMedium,
     fontSize: 15,
   },

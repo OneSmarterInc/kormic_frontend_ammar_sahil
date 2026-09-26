@@ -31,7 +31,7 @@ export function DropdownField({ label, value, data, onChange, error, required = 
         selectedTextStyle={styles.selected}
         itemTextStyle={styles.itemText}
         containerStyle={styles.menu}
-        activeColor="rgba(91,141,239,0.18)"
+        activeColor="rgba(56,90,70,0.18)"
         searchPlaceholder="Search..."
         inputSearchStyle={styles.searchInput}
         data={data}
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
   },
 
   label: {
-    color: '#B9B8CC',
+    color: '#536149',
     fontFamily: fonts.bodyMedium,
     fontSize: 13,
   },
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   },
 
   placeholder: {
-    color: '#666783',
+    color: '#7b817b',
   },
 
   selected: {

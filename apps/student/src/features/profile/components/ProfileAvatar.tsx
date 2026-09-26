@@ -125,7 +125,7 @@ export function ProfileAvatar({
 const styles = StyleSheet.create({
   avatar: {
     alignItems: 'center',
-    backgroundColor: '#E9F0FF',
+    backgroundColor: '#eef2e9',
     borderRadius: 28,
     height: 56,
     justifyContent: 'center',
@@ -144,25 +144,25 @@ const styles = StyleSheet.create({
   avatarLoading: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
-    backgroundColor: 'rgba(9,10,27,0.42)',
+    backgroundColor: '#eef2e9',
     justifyContent: 'center',
   },
   avatarText: {
-    color: '#3156A3',
+    color: '#385a46',
     fontFamily: fonts.heading,
     fontSize: 18,
   },
   linkedinPreviewOverlay: {
     alignItems: 'center',
-    backgroundColor: 'rgba(5,6,18,0.96)',
+    backgroundColor: 'rgba(250,249,246,0.98)',
     flex: 1,
     justifyContent: 'center',
     padding: 18,
   },
   linkedinPreviewClose: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: '#e7e9e2',
+    borderColor: '#e7e9e2',
     borderRadius: 22,
     borderWidth: 1,
     height: 44,
@@ -206,8 +206,8 @@ const styles = StyleSheet.create({
   },
   linkedinZoomButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: '#e7e9e2',
+    borderColor: '#e7e9e2',
     borderRadius: 20,
     borderWidth: 1,
     height: 40,

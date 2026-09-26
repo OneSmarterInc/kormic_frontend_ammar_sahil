@@ -99,7 +99,7 @@ export interface ProfileScreenProps {
   onAriaSectionActiveChange?: (active: boolean) => void;
 }
 
-export type ProfileSection = 'overview' | 'edit' | 'resumes' | 'github' | 'linkedin' | 'aria';
+export type ProfileSection = 'overview' | 'edit' | 'resumes' | 'github' | 'githubProfile' | 'linkedin' | 'aria';
 
 /** Shared inputs; each feature hook selects only the dependencies it needs. */
 export interface ProfileFeatureContext extends Pick<

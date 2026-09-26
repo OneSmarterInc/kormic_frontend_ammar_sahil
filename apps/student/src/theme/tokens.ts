@@ -1,18 +1,21 @@
 import { TextStyle } from 'react-native';
 
 export const colors = {
-  ink: '#12132A',
-  panelInk: '#1E2145',
-  surface: '#1E2145',
-  offWhite: '#F6F5F1',
-  text: '#F6F5F1',
-  coral: '#FF6B4A',
-  connectionBlue: '#5B8DEF',
-  muted: '#8A8BA3',
-  line: 'rgba(255,255,255,0.10)',
-  border: 'rgba(255,255,255,0.10)',
-  textSoft: '#CBCAD9',
-  error: '#FFB09D',
+  // Legacy token names remain so the existing screens keep their structure.
+  ink: '#faf9f6',
+  panelInk: '#f0f1eb',
+  surface: '#ffffff',
+  offWhite: '#242c29',
+  text: '#242c29',
+  coral: '#385a46',
+  connectionBlue: '#385a46',
+  muted: '#697267',
+  line: '#e7e9e2',
+  border: '#dce2d3',
+  textSoft: '#536149',
+  error: '#a23b32',
+  accentSoft: '#eef2e9',
+  onAccent: '#ffffff',
 };
 
 export const spacing = {
@@ -30,7 +33,7 @@ export const radii = {
 };
 
 export const fonts = {
-  heading: 'Fraunces_600SemiBold',
+  heading: 'Inter_600SemiBold',
   headingItalic: 'Fraunces_600SemiBold_Italic',
   body: 'Inter_400Regular',
   bodyMedium: 'Inter_600SemiBold',
