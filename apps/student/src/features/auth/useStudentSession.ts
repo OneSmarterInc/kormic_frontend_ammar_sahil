@@ -1,19 +1,22 @@
+import { cacheGeneration, cacheProfile, readCachedProfile } from '../../services/studentCache';
 import { Dispatch, MutableRefObject, useCallback, useEffect, useState } from 'react';
 import { Linking, Platform } from 'react-native';
 import { AuthSession, AuthUser, OnboardingRoute, OnboardingState } from '../../models/onboarding';
 import {
   createStudentProfile,
   getMe,
+  isSessionRejected,
   getStudentProfile,
   logoutSession,
   refreshAccessToken,
+  subscribeSessionExpired,
 } from '../../services/api';
 import {
   registerForPushNotifications,
   shouldOpenAgentChatFromLastNotification,
   unregisterPushNotifications,
 } from '../../services/notifications';
-import { clearSavedTokens, getSavedTokens, saveAccessToken, saveTokens } from '../../services/tokenStorage';
+import { clearSavedTokens, getTokenGeneration, getSavedSessionUser, getSavedTokens, saveAccessToken, saveTokens } from '../../services/tokenStorage';
 import { consumeWebSessionHandoff } from '../../services/webSessionHandoff';
 import { OnboardingAction } from '../../state/onboardingReducer';
 import { isBasicInfoComplete } from '../../utils/validation';
@@ -45,6 +48,9 @@ export function useStudentSession({
   claimLinkHandledRef,
   onNotificationOpen,
 }: StudentSessionOptions) {
+  const [serverError, setServerError] = useState('');
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
+  const retryConnection = useCallback(() => { setServerError(''); setRestoringSession(true); setRestoreAttempt(value => value + 1); }, []);
   const [profile, setProfile] = useState<StudentProfile | undefined>();
 
   const [profileLoading, setProfileLoading] = useState(false);
@@ -61,15 +67,29 @@ export function useStudentSession({
   // /login during the dispatch/render boundary.
   const [webSessionMissing, setWebSessionMissing] = useState(false);
 
+  useEffect(() => subscribeSessionExpired(() => {
+    setProfile(undefined);
+    setProfileError('');
+    setProfileLoading(false);
+    dispatch({ type: 'LOGOUT' });
+    setWebSessionMissing(Platform.OS === 'web');
+  }), [dispatch]);
+
   const loadProfileForSession = useCallback(async (session: AuthSession) => {
     setProfileError('');
     setProfileLoading(true);
 
+    const generation = cacheGeneration();
+    const cached = await readCachedProfile(session);
+    if (cached && generation === cacheGeneration()) { setProfile(cached); setProfileLoading(false); }
     try {
       const nextProfile = await getStudentProfile(session);
+      if (generation !== cacheGeneration()) return;
       setProfile(nextProfile as StudentProfile);
+      setServerError('');
+      await cacheProfile(session, nextProfile as StudentProfile, generation);
     } catch (error) {
-      setProfileError(error instanceof Error ? error.message : 'Unable to load student profile');
+      if (!isSessionRejected(error)) setProfileError('Server error. Your saved profile is still available. Please retry.');
     } finally {
       setProfileLoading(false);
     }
@@ -159,6 +179,7 @@ export function useStudentSession({
   const handleProfileChanged = useCallback(
     async (updatedProfile?: StudentProfile) => {
       if (updatedProfile) {
+        if (state.authSession) await cacheProfile(state.authSession, updatedProfile);
         setProfile(updatedProfile);
         setProfileError('');
         return;
@@ -196,6 +217,7 @@ export function useStudentSession({
     let active = true;
 
     const restore = async () => {
+      const tokenGeneration = getTokenGeneration();
       const initialUrl = await Linking.getInitialURL();
       if (openClaimFromUrl(initialUrl)) {
         setWebSessionMissing(false);
@@ -205,6 +227,19 @@ export function useStudentSession({
 
       let tokens = await getSavedTokens();
       let restoredWebUser: AuthUser | undefined;
+      if (Platform.OS !== 'web' && tokens) {
+        const user = await getSavedSessionUser();
+        if (user && active && tokenGeneration === getTokenGeneration()) {
+          const savedSession: AuthSession = { ...tokens, user, mustEnrollTotp: !user.totp_enrolled, totpRequired: false };
+          const cached = await readCachedProfile(savedSession);
+          if (active && tokenGeneration === getTokenGeneration() && cached && user.totp_enrolled) {
+            dispatch({ type: 'SET_AUTH_SESSION', session: savedSession });
+            setProfile(cached);
+            navigate(getFirstMissingOnboardingRoute(savedSession));
+            setRestoringSession(false);
+          }
+        }
+      }
 
       if (Platform.OS === 'web' && !tokens) {
         // The login page and student portal are separate documents. A
@@ -225,6 +260,7 @@ export function useStudentSession({
           }
         }
 
+        let lastRestoreError: unknown;
         let restored = Boolean(tokens && restoredWebUser);
         if (restored) {
           // The access token is enough to cross the redirect boundary. The
@@ -243,7 +279,8 @@ export function useStudentSession({
             await saveAccessToken(refreshed.access);
             restored = true;
             break;
-          } catch {
+          } catch (error) {
+            lastRestoreError = error;
             if (attempt + 1 < WEB_SESSION_RESTORE_ATTEMPTS) {
               await waitForWebSessionRetry();
             }
@@ -252,7 +289,8 @@ export function useStudentSession({
 
         if (!restored) {
           if (active) {
-            setWebSessionMissing(true);
+            setWebSessionMissing(isSessionRejected(lastRestoreError));
+            if (!isSessionRejected(lastRestoreError)) setServerError('Server error. Please retry.');
             setRestoringSession(false);
           }
           return;
@@ -274,12 +312,14 @@ export function useStudentSession({
           try {
             user = await getMe(access);
           } catch (restoreError) {
+            if (!isSessionRejected(restoreError)) throw restoreError;
             if (Platform.OS === 'web') {
               // A browser session has no JS refresh token. If the first
               // access-token request races the cross-document redirect,
               // re-read the HttpOnly session cookie and retry as a bounded
               // session restore instead of declaring the user logged out.
               let refreshed = false;
+              let refreshError: unknown = restoreError;
               for (let attempt = 0; attempt < WEB_SESSION_RESTORE_ATTEMPTS && active; attempt += 1) {
                 try {
                   const next = await refreshAccessToken();
@@ -288,14 +328,15 @@ export function useStudentSession({
                   user = next.user ?? await getMe(access);
                   refreshed = true;
                   break;
-                } catch {
+                } catch (error) {
+                  refreshError = error;
                   if (attempt + 1 < WEB_SESSION_RESTORE_ATTEMPTS) {
                     await waitForWebSessionRetry();
                   }
                 }
               }
               if (!refreshed || !user) {
-                throw restoreError;
+                throw refreshError;
               }
             } else {
               if (!tokens.refresh) {
@@ -304,13 +345,14 @@ export function useStudentSession({
 
               const refreshed = await refreshAccessToken(tokens.refresh);
               access = refreshed.access;
+              tokens.refresh = refreshed.refresh ?? tokens.refresh;
               await saveAccessToken(access);
               user = await getMe(access);
             }
           }
         }
 
-        if (!active) {
+        if (!active || tokenGeneration !== getTokenGeneration()) {
           return;
         }
 
@@ -321,6 +363,8 @@ export function useStudentSession({
           mustEnrollTotp: false,
           totpRequired: false,
         };
+        await saveTokens(session);
+        setServerError('');
         setWebSessionMissing(false);
         dispatch({ type: 'SET_AUTH_SESSION', session });
         registerForPushNotifications(session).catch((error) => {
@@ -339,10 +383,24 @@ export function useStudentSession({
         if (route === 'Profile') {
           await loadProfileForSession(session);
         }
-      } catch {
-        await clearSavedTokens();
-        if (active && Platform.OS === 'web') {
-          setWebSessionMissing(true);
+      } catch (error) {
+        if (isSessionRejected(error)) {
+          await clearSavedTokens();
+          if (active) setWebSessionMissing(Platform.OS === 'web');
+        } else if (active) {
+          setWebSessionMissing(false);
+          setServerError('Server error. Your session is saved. Please retry.');
+          const user = await getSavedSessionUser();
+          if (user && tokens && active) {
+            const session: AuthSession = { ...tokens, user, mustEnrollTotp: !user.totp_enrolled, totpRequired: false };
+            dispatch({ type: 'SET_AUTH_SESSION', session });
+            const cached = await readCachedProfile(session);
+            if (active) {
+              if (cached) setProfile(cached);
+              else setProfileError('Server error. Connect to load your profile, then retry.');
+              navigate(getFirstMissingOnboardingRoute(session));
+            }
+          }
         }
       } finally {
         if (active) {
@@ -356,8 +414,10 @@ export function useStudentSession({
     return () => {
       active = false;
     };
-  }, [loadProfileForSession, navigate, openClaimFromUrl, claimLinkHandledRef, onNotificationOpen, dispatch]);
+  }, [loadProfileForSession, navigate, openClaimFromUrl, claimLinkHandledRef, onNotificationOpen, dispatch, restoreAttempt]);
   return {
+    serverError,
+    retryConnection,
     profile,
     profileLoading,
     profileError,

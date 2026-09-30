@@ -18,7 +18,7 @@ export async function waitForAgentJob(initial, signal) {
   throw new Error('Response still pending. Reopen chat to check its progress.');
 }
 
-export async function resumeAgentJob(signal) {
-  const { data } = await client.get('/chat/jobs/active/', { signal });
+export async function resumeAgentJob(signal, studentId) {
+  const { data } = await client.get('/chat/jobs/active/', { signal, params: studentId ? { student_id: studentId } : undefined });
   return data.job_id ? waitForAgentJob(data, signal) : null;
 }

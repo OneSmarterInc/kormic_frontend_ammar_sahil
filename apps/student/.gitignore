@@ -2,6 +2,7 @@ node_modules/
 .expo/
 android/app/build/
 android/.gradle/
+builds/
 *.log
 
 .env

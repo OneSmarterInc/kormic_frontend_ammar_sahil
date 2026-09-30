@@ -1,3 +1,4 @@
+import { DocumentProgress, DocumentStatus, documentStatus } from '../components/DocumentProgress';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { PrimaryButton } from '../components/PrimaryButton';
@@ -16,6 +17,7 @@ interface CvScreenProps {
 
 export function CvScreen({ state, services, dispatch, onContinue }: CvScreenProps) {
   const [loading, setLoading] = React.useState(false);
+  const [progress, setProgress] = React.useState<DocumentStatus>();
   const [error, setError] = React.useState('');
 
   const pick = async () => {
@@ -23,9 +25,12 @@ export function CvScreen({ state, services, dispatch, onContinue }: CvScreenProp
     try {
       setLoading(true);
       const file = await services.cv.pickFile();
-      await services.cv.upload(state.authSession, file);
       dispatch({ type: 'SELECT_CV', file });
+      setProgress({ stage: 'uploading', accepted: false });
+      await services.cv.upload(state.authSession, file, { onProgress: job => setProgress(documentStatus(job)) });
+      setProgress({ stage: 'completed', accepted: true });
     } catch (uploadError) {
+      setProgress({ stage: 'failed', accepted: false });
       setError(uploadError instanceof Error ? uploadError.message : 'Unable to upload CV');
     } finally {
       setLoading(false);
@@ -37,10 +42,10 @@ export function CvScreen({ state, services, dispatch, onContinue }: CvScreenProp
       scroll={false}
       footer={
         <PrimaryButton
-          label={state.cvFile ? 'Continue' : 'Upload CV'}
-          onPress={state.cvFile ? onContinue : pick}
-          disabled={loading}
-          loading={loading}
+          label={progress?.stage === 'failed' ? 'Try upload again' : state.cvFile ? 'Continue' : 'Upload CV and update profile'}
+          onPress={state.cvFile && progress?.stage !== 'failed' ? onContinue : pick}
+          disabled={loading && !progress?.accepted}
+          loading={loading && !progress?.accepted}
         />
       }
     >
@@ -49,7 +54,7 @@ export function CvScreen({ state, services, dispatch, onContinue }: CvScreenProp
           <Text style={styles.glyphText}>CV</Text>
         </View>
         <Text style={styles.title}>Upload your CV</Text>
-        <Text style={styles.subhead}>This fills in the rest of your story. Your agent reads it to understand your full background.</Text>
+        <Text style={styles.subhead}>Your resume agent extracts your name, contact details, education, experience, projects and skills. By uploading, you confirm that these details should update your profile. GitHub and LinkedIn remain separate.</Text>
         {state.cvFile ? (
           <View style={styles.fileCard}>
             <View style={styles.fileBadge}>
@@ -57,7 +62,7 @@ export function CvScreen({ state, services, dispatch, onContinue }: CvScreenProp
             </View>
             <View style={styles.fileCopy}>
               <Text style={styles.fileName}>{state.cvFile.name}</Text>
-              <Text style={styles.fileStatus}>Looks good</Text>
+              <Text style={styles.fileStatus}>{progress?.stage === 'completed' ? 'Profile updated' : 'Selected file'}</Text>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel="Remove CV" onPress={() => dispatch({ type: 'REMOVE_CV' })} hitSlop={8}>
               <Text style={styles.remove}>x</Text>
@@ -65,9 +70,10 @@ export function CvScreen({ state, services, dispatch, onContinue }: CvScreenProp
           </View>
         ) : (
           <View style={styles.hint}>
-            <Text style={styles.hintText}>PDF, DOC, or DOCX works fine. CV is required for this simulated flow.</Text>
+            <Text style={styles.hintText}>Upload a PDF or DOCX résumé. Convert older DOC files to PDF first.</Text>
           </View>
         )}
+        <DocumentProgress status={progress} />
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
     </ScreenShell>

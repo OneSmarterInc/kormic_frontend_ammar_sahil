@@ -7,10 +7,12 @@ export function BotScreen({
   session,
   onBack,
   refreshKey,
+  notificationControl,
 }: {
   session?: AuthSession;
   onBack: () => void;
   refreshKey: number;
+  notificationControl?: import("react").ReactNode;
 }) {
   return (
     <View style={styles.botScreen}>
@@ -23,7 +25,8 @@ export function BotScreen({
         >
           <Text style={styles.botBackText}>{'<'}</Text>
         </Pressable>
-        <Text style={styles.botTitle}>Agent chat</Text>
+        <Text style={[styles.botTitle, { flex: 1 }]}>Agent chat</Text>
+        {notificationControl}
       </View>
 
       <View style={styles.botContent}>

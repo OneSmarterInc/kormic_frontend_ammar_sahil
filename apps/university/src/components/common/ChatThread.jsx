@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-import { Loader2, MessageCircle, Send } from "lucide-react";
+import { Loader2, MessageCircle, Send, Bot, User, RefreshCw, AlertCircle } from "lucide-react";
 
 import Button from "./Button";
 import { Input } from "./Input";
@@ -198,8 +198,13 @@ function FormattedMessage({ content }) {
 
 export default function ChatThread({
   messages = [],
+  agentName = 'University assistant',
+  sendError,
+  onRetry,
+  suggestions = [],
   onSend,
   loading = false,
+  activityLabel = 'Thinking…',
   placeholder = "Type your message...",
   emptyTitle = "Start a conversation",
   emptyDescription = "",
@@ -231,18 +236,18 @@ export default function ChatThread({
     heightClass || (compact ? "h-[420px] max-h-[70vh]" : "h-[560px] max-h-[75vh]");
 
   return (
-    <div className={clsx("flex min-h-0 flex-col bg-white", finalHeightClass)}>
+    <div className={clsx("flex min-h-0 flex-col bg-slate-50/60", finalHeightClass)}>
       <div
         ref={scrollRef}
         className={clsx(
-          "min-h-0 flex-1 overflow-y-auto px-5 py-4",
-          hasMessages ? "space-y-3" : "flex items-center justify-center"
+          "min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8",
+          hasMessages ? "space-y-6" : "flex items-center justify-center"
         )}
       >
         {!hasMessages ? (
           <div className="flex flex-col items-center justify-center text-center">
             <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-ink-100">
-              <MessageCircle className="h-6 w-6 text-ink-400" />
+              <Bot className="h-6 w-6 text-brand-600" />
             </div>
 
             <p className="text-sm font-semibold text-ink-900">
@@ -260,19 +265,23 @@ export default function ChatThread({
             <div
               key={`${message.role}-${index}`}
               className={clsx(
-                "flex",
+                "flex gap-3",
                 message.role === "assistant" ? "justify-start" : "justify-end"
               )}
             >
+              {message.role === 'assistant' && <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><Bot size={18}/></div>}
               <div
                 className={clsx(
-                  "max-w-[85%] break-words rounded-2xl px-4 py-2 text-sm leading-relaxed",
+                  "max-w-[88%] sm:max-w-[80%] break-words rounded-2xl px-5 py-4 text-sm leading-7",
                   message.role === "assistant"
-                    ? "bg-ink-100 text-ink-800"
+                    ? "border border-slate-200 bg-white text-ink-800 shadow-sm"
                     : "whitespace-pre-wrap bg-brand-600 text-white",
                   message.tone === "warning" && "bg-amber-50 text-amber-700"
                 )}
               >
+                <div className={clsx("mb-2 flex items-center gap-2 text-xs font-semibold", message.role === 'assistant' ? 'text-brand-600' : 'text-white/80')}>
+                  {message.role === 'assistant' ? agentName : 'You'}
+                </div>
                 {message.role === "assistant" ? (
                   <FormattedMessage content={message.content} />
                 ) : (
@@ -288,32 +297,39 @@ export default function ChatThread({
           <div className="flex justify-start">
             <div className="flex items-center gap-2 rounded-2xl bg-ink-100 px-4 py-2 text-sm text-ink-500">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Generating…</span>
+              <span role="status" aria-live="polite">{activityLabel}</span>
             </div>
           </div>
         )}
       </div>
 
+      {sendError && <div role="alert" className="mx-4 mb-3 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><AlertCircle size={18} className="shrink-0"/><div className="flex-1"><p className="font-semibold">The reply could not be completed</p><p className="mt-1">{sendError}</p></div><button type="button" disabled={loading} onClick={onRetry} className="flex items-center gap-1 font-semibold disabled:opacity-50"><RefreshCw size={15}/>Retry</button></div>}
+      {!hasMessages && suggestions.length > 0 && <div className="flex flex-wrap justify-center gap-2 px-5 pb-5">{suggestions.map(text => <button type="button" disabled={loading} key={text} onClick={()=>onSend(text)} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-ink-700 hover:border-brand-300 hover:bg-brand-50">{text}</button>)}</div>}
       <form
         onSubmit={handleSubmit}
         className="shrink-0 border-t border-ink-100 bg-white p-3"
       >
         <div className="flex items-center gap-2">
-          <Input
+          <textarea
+            aria-label="Message your university agent"
+            rows={2}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {if(e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {e.preventDefault(); handleSubmit(e);}}}
             placeholder={placeholder}
+            className="min-h-[64px] max-h-40 flex-1 resize-y rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-ink-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
           />
 
           <Button
             type="submit"
             icon={Send}
             loading={loading}
-            disabled={!draft.trim()}
+            disabled={loading || !draft.trim()}
           >
             Send
           </Button>
         </div>
+        <p className="mt-2 px-1 text-xs text-ink-400">Enter to send · Shift+Enter for a new line · Changes require your confirmation</p>
       </form>
     </div>
   );

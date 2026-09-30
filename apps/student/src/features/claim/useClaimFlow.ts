@@ -11,7 +11,7 @@ import {
 } from '../../services/api';
 import { saveTokens } from '../../services/tokenStorage';
 import { OnboardingAction } from '../../state/onboardingReducer';
-import { getClaimTokenFromUrl } from '../../utils/claimLinks';
+import { getClaimTokenFromUrl, normalizeClaimInput } from '../../utils/claimLinks';
 import { getErrorMessage } from '../auth/authErrors';
 import { ClaimEditableField, ClaimPrefill } from './types';
 const emptyClaimPrefill: ClaimPrefill = {
@@ -76,9 +76,9 @@ export function useClaimFlow(
   );
 
   const requestClaimCode = useCallback(async () => {
-    const token = claimToken.trim();
+    const token = normalizeClaimInput(claimToken, Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : undefined);
     if (!token) {
-      setClaimError('Paste the invitation token before continuing.');
+      setClaimError('Paste the invitation code or link from your invitation email. The six-digit verification code is entered on the next screen.');
       return;
     }
 
@@ -86,6 +86,7 @@ export function useClaimFlow(
     setClaimError('');
     try {
       await startStudentClaim(token);
+      setClaimToken(token);
       setClaimMaskedEmail('');
       navigate('ClaimCode');
     } catch (error) {

@@ -29,37 +29,34 @@ export function normalizeStudentProfile(profile: StudentProfile | Record<string,
     getRecord(rawProfile.linkedin_profile) || getRecord(getRecord(evidence.linkedin)?.result);
   const manualProfile = getRecord(evidence.manual_profile_api);
   const publications = getArray(researchBlock.publications) || getArray(rawProfile.publications);
-  const skills =
-    getStringArray(skillsBlock.all_skills) ||
-    getStringArray(rawProfile.skills) ||
-    getStringArray(rawProfile.technical_skills) ||
-    getStringArray(resumeEvidence?.skills) ||
-    getStringArray(linkedinProfile?.skills) ||
-    getStringArray(githubAssessment?.frameworks_and_tools) ||
-    [];
-  const technicalSkills =
-    getStringArray(skillsBlock.technical_skills) ||
-    getStringArray(rawProfile.technical_skills) ||
-    getStringArray(resumeEvidence?.technical_skills) ||
-    getStringArray(githubAssessment?.frameworks_and_tools) ||
-    [];
+  const githubLanguages = getArray(githubAssessment?.languages)?.map(value => typeof value === 'string' ? value : getRecord(value)?.name).filter(value => typeof value === 'string') || [];
+  const skills = mergeSkillLists(resumeEvidence?.technical_skills, resumeEvidence?.skills,
+    skillsBlock.all_skills, rawProfile.skills, rawProfile.technical_skills,
+    githubLanguages, githubAssessment?.frameworks_and_tools, linkedinProfile?.skills);
+  const technicalSkills = mergeSkillLists(resumeEvidence?.technical_skills,
+    skillsBlock.technical_skills, rawProfile.technical_skills, githubLanguages,
+    githubAssessment?.frameworks_and_tools);
   const disciplines =
     getStringArray(careerBlock.target_disciplines) ||
     getStringArray(rawProfile.disciplines) ||
     getStringArray(resumeEvidence?.disciplines) ||
     [];
-  const projects =
-    getProjectArray(wrapper.projects) ||
-    getProjectArray(rawProfile.projects) ||
-    getProjectArray(resumeEvidence?.projects) ||
-    getProjectArray(linkedinProfile?.projects) ||
-    [];
+  const projectSources = [resumeEvidence?.projects, wrapper.projects, rawProfile.projects, githubAssessment?.projects, linkedinProfile?.projects];
+  const projects: Project[] = [];
+  const projectKeys = new Set<string>();
+  for (const source of projectSources) {
+    for (const project of getProjectArray(source) || []) {
+      const key = project.title.trim().toLowerCase();
+      if (!projectKeys.has(key)) { projectKeys.add(key); projects.push(project); }
+    }
+  }
 
   return {
     ...rawProfile,
+    linkedin_profile: linkedinProfile,
     student_id: rawProfile.student_id ?? wrapper.student_id,
     profile_image_url: rawProfile.profile_image_url ?? wrapper.profile_image_url,
-    name: rawProfile.name ?? resumeEvidence?.name ?? linkedinProfile?.name ?? manualProfile?.name ?? '',
+    name: firstProvidedValue(rawProfile.name, resumeEvidence?.name, githubAssessment?.name, manualProfile?.name, linkedinProfile?.name) ?? '',
     email: rawProfile.email ?? resumeEvidence?.email ?? manualProfile?.email ?? '',
     country: rawProfile.country ?? linkedinProfile?.location ?? manualProfile?.country ?? '',
     institution: rawProfile.institution ?? resumeEvidence?.institution ?? manualProfile?.institution ?? '',
@@ -199,4 +196,19 @@ export function getExperienceSummary(value: unknown) {
     })
     .filter(Boolean)
     .join('; ');
+}
+
+export function mergeSkillLists(...groups: unknown[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const group of groups) {
+    if (!Array.isArray(group)) continue;
+    for (const item of group) {
+      if (typeof item !== 'string') continue;
+      const value = item.trim();
+      const key = value.toLowerCase().replace(/\s+/g, ' ');
+      if (key && !seen.has(key)) { seen.add(key); result.push(value); }
+    }
+  }
+  return result;
 }

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
@@ -13,30 +14,30 @@ import TotpEnrollPage from "./pages/auth/TotpEnrollPage";
 
 import AdminLayout from "./layouts/AdminLayout";
 
-import DashboardPage from "./pages/admin/DashboardPage";
-import StudentsListPage from "./pages/admin/StudentsListPage";
-import StudentCreatePage from "./pages/admin/StudentCreatePage";
-import StudentDetailPage from "./pages/admin/StudentDetailPage";
+const DashboardPage = lazy(() => import('./pages/admin/DashboardPage'));
+const StudentsListPage = lazy(() => import('./pages/admin/StudentsListPage'));
+const StudentCreatePage = lazy(() => import('./pages/admin/StudentCreatePage'));
+const StudentDetailPage = lazy(() => import('./pages/admin/StudentDetailPage'));
 
-import UniversitiesListPage from "./pages/admin/UniversitiesListPage";
-import UniversityCreatePage from "./pages/admin/UniversityCreatePage";
-import UniversityViewPage from "./pages/admin/UniversityViewPage"; // NEW
-import UniversityDetailPage from "./pages/admin/UniversityDetailPage"; // EDIT PAGE
+const UniversitiesListPage = lazy(() => import('./pages/admin/UniversitiesListPage'));
+const UniversityCreatePage = lazy(() => import('./pages/admin/UniversityCreatePage'));
+const UniversityViewPage = lazy(() => import('./pages/admin/UniversityViewPage'));
+const UniversityDetailPage = lazy(() => import('./pages/admin/UniversityDetailPage'));
 
-import InstitutesListPage from "./pages/admin/InstitutesListPage";
-import InstituteCreatePage from "./pages/admin/InstituteCreatePage";
-import InstituteDetailPage from "./pages/admin/InstituteDetailPage";
-import InstituteListUploadPage from "./pages/admin/InstituteListUploadPage";
-import InstituteListStudentsPage from "./pages/admin/InstituteListStudentsPage";
-import RosterStudentsPage from "./pages/admin/RosterStudentsPage";
+const InstitutesListPage = lazy(() => import('./pages/admin/InstitutesListPage'));
+const InstituteCreatePage = lazy(() => import('./pages/admin/InstituteCreatePage'));
+const InstituteDetailPage = lazy(() => import('./pages/admin/InstituteDetailPage'));
+const InstituteListUploadPage = lazy(() => import('./pages/admin/InstituteListUploadPage'));
+const InstituteListStudentsPage = lazy(() => import('./pages/admin/InstituteListStudentsPage'));
+const RosterStudentsPage = lazy(() => import('./pages/admin/RosterStudentsPage'));
 
-import UsersListPage from "./pages/admin/UsersListPage";
-import UserDetailPage from "./pages/admin/UserDetailPage";
-import SettingsPage from "./pages/admin/SettingsPage";
-import UpdateInformationPage from './pages/admin/UpdateInformationPage';
-import AuditLogPage from "./pages/admin/AuditLogPage";
-import AgentAuditLogPage from "./pages/admin/AgentAuditLogPage";
-import EscalationMetricsPage from "./pages/admin/EscalationMetricsPage";
+const UsersListPage = lazy(() => import('./pages/admin/UsersListPage'));
+const UserDetailPage = lazy(() => import('./pages/admin/UserDetailPage'));
+const SettingsPage = lazy(() => import('./pages/admin/SettingsPage'));
+const UpdateInformationPage = lazy(() => import('./pages/admin/UpdateInformationPage'));
+const AuditLogPage = lazy(() => import('./pages/admin/AuditLogPage'));
+const AgentAuditLogPage = lazy(() => import('./pages/admin/AgentAuditLogPage'));
+const EscalationMetricsPage = lazy(() => import('./pages/admin/EscalationMetricsPage'));
 
 function App() {
   return (
@@ -57,7 +58,7 @@ function App() {
           }}
         />
 
-        <Routes>
+        <Suspense fallback={<div role="status" className="p-8 text-center text-ink-500">Loading screen…</div>}><Routes>
           {/* Public Routes */}
           <Route path="/" element={<UnifiedPortalEntry />} />
           <Route path="/login" element={<UnifiedPortalEntry />} />
@@ -198,7 +199,7 @@ function App() {
             path="*"
             element={<Navigate to="/" replace />}
           />
-        </Routes>
+        </Routes></Suspense>
       </HashRouter>
     </AuthProvider>
   );

@@ -1,323 +1,37 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, AppState, Platform, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { AuthSession } from '../../models/onboarding';
-import {
-  isChatNotification,
-  listNotificationInbox,
-  markAllNotificationsRead,
-  markNotificationRead,
-  NotificationInboxItem,
-} from '../../services/notifications';
-import { colors, fonts, radii } from '../../theme/tokens';
+import { clearNotificationInbox, isChatNotification, listNotificationInbox, markAllNotificationsRead, markNotificationRead, NotificationInboxItem } from '../../services/notifications';
+import { colors, fonts } from '../../theme/tokens';
 
-interface StudentNotificationBellProps {
-  session?: AuthSession;
-  onOpenChat: () => void;
+export function StudentNotificationBell({session,onOpenChat,onOpenQueries}:{session?:AuthSession;onOpenChat:()=>void;onOpenQueries?:(id?:number,direction?:string)=>void}) {
+  const [open,setOpen]=useState(false),[items,setItems]=useState<NotificationInboxItem[]>([]),[unread,setUnread]=useState(0);
+  const [loading,setLoading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
+  const [page,setPage]=useState(1),[hasNext,setHasNext]=useState(false),[expanded,setExpanded]=useState<number>();
+  const version=useRef(0);
+  const refresh=useCallback(async()=>{
+    if(!session?.access||!session.user?.totp_enrolled||AppState.currentState==='background'||(Platform.OS==='web'&&typeof document!=='undefined'&&document.hidden))return;
+    const id=++version.current;setLoading(true);
+    try{const data=await listNotificationInbox(session,page,10);if(id===version.current){setItems(data.results||[]);setUnread(data.unread_count||0);setHasNext(data.pagination?.has_next||false);setError('');}}
+    catch{if(id===version.current)setError('Unable to load notifications. Please try again.');}
+    finally{if(id===version.current)setLoading(false);}
+  },[session,page]);
+  useEffect(()=>{refresh();const timer=setInterval(refresh,30000);return()=>{++version.current;clearInterval(timer);};},[refresh]);
+  useEffect(()=>{if(open)refresh();},[open,refresh]);
+  const mutate=async(action:()=>Promise<unknown>)=>{setBusy(true);++version.current;try{await action();setItems([]);setExpanded(undefined);if(page!==1)setPage(1);else await refresh();}catch{setError('Could not update notifications. Please retry.');}finally{setBusy(false);}};
+  const read=async(item:NotificationInboxItem)=>{if(!session)return;setExpanded(expanded===item.id?undefined:item.id);if(!item.read_at){try{const next=await markNotificationRead(session,item.id);setItems(current=>current.map(n=>n.id===item.id?next:n));setUnread(n=>Math.max(0,n-1));}catch{setError('Unable to mark notification read.');}}};
+  const visit=(item:NotificationInboxItem)=>{setOpen(false);if(item.data?.route==='queries'&&onOpenQueries)onOpenQueries(Number(item.data.query_id),String(item.data.direction||''));else if(isChatNotification(item))onOpenChat();};
+  if(!session?.access||!session.user?.totp_enrolled)return null;
+  return <><Pressable accessibilityRole="button" accessibilityLabel={unread?`Notifications, ${unread} unread`:'Notifications'} onPress={()=>setOpen(true)} style={styles.bell}><MaterialIcons name="notifications-none" size={25} color={colors.text}/>{unread>0?<View style={styles.count}><Text style={styles.countText}>{unread>99?'99+':unread}</Text></View>:null}</Pressable>
+    <Modal transparent visible={open} animationType="fade" onRequestClose={()=>setOpen(false)}><Pressable style={styles.backdrop} onPress={()=>setOpen(false)}><Pressable style={styles.panel} onPress={()=>undefined}>
+      <View style={styles.header}><View style={styles.between}><View><Text style={styles.title}>Notifications</Text><Text style={styles.small}>{unread?`${unread} unread updates`:"You're all caught up"}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close notifications" onPress={()=>setOpen(false)} style={styles.icon}><MaterialIcons name="close" size={22} color={colors.textSoft}/></Pressable></View><View style={styles.actions}><Pressable accessibilityRole="button" disabled={busy||!unread} onPress={()=>mutate(()=>markAllNotificationsRead(session))}><Text style={[styles.link,(!unread||busy)&&{opacity:.4}]}>Mark all read</Text></Pressable><Pressable accessibilityRole="button" disabled={busy} onPress={()=>mutate(()=>clearNotificationInbox(session))}><Text style={styles.link}>Clear all</Text></Pressable></View></View>
+      {error?<View style={styles.error}><Text style={{color:'#ac3333',fontSize:12}}>{error}</Text><Pressable onPress={refresh}><Text style={styles.link}>Retry</Text></Pressable></View>:null}
+      <ScrollView style={styles.list} contentContainerStyle={!items.length?styles.empty:undefined}>
+        {loading&&!items.length?<ActivityIndicator color={colors.coral}/>:!items.length?<><MaterialIcons name="inbox" color={colors.muted} size={36}/><Text style={styles.itemTitle}>No notifications</Text><Text style={styles.small}>New answers and requests will appear here.</Text></>:items.map(item=><View key={item.id} style={[styles.item,!item.read_at&&styles.unread]}><View style={styles.itemRow}><View style={[styles.dot,{backgroundColor:item.read_at?colors.border:colors.coral}]}/><Pressable style={styles.itemBody} onPress={()=>read(item)} accessibilityRole="button"><Text style={styles.itemTitle}>{item.title}</Text>{item.data?.university_name?<Text style={styles.link}>{String(item.data.university_name)}</Text>:null}<Text style={styles.body} numberOfLines={expanded===item.id?undefined:3}>{item.body}</Text><Text style={styles.small}>{new Date(item.created_at).toLocaleString()}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={`Clear notification ${item.id}`} disabled={busy} onPress={()=>mutate(()=>clearNotificationInbox(session,item.id))} style={styles.icon}><MaterialIcons name="close" size={17} color={colors.muted}/></Pressable></View>
+          {expanded===item.id?<View style={styles.details}>{item.data?.question?<><Text style={styles.caption}>QUESTION</Text><Text style={styles.body}>{String(item.data.question)}</Text></>:null}{item.data?.answer?<><Text style={styles.caption}>ANSWER</Text><Text style={styles.body}>{String(item.data.answer)}</Text></>:null}{item.data?.route==='queries'||isChatNotification(item)?<Pressable accessibilityRole="button" onPress={()=>visit(item)}><Text style={styles.link}>{item.data?.route==='queries'?'Open query →':'Open conversation →'}</Text></Pressable>:null}</View>:null}
+        </View>)}
+      </ScrollView><View style={styles.footer}><Pressable accessibilityRole="button" disabled={page<=1||loading} onPress={()=>setPage(page-1)}><Text style={[styles.link,(page<=1||loading)&&{opacity:.3}]}>Previous</Text></Pressable><Text style={styles.small}>Page {page}</Text><Pressable accessibilityRole="button" disabled={!hasNext||loading} onPress={()=>setPage(page+1)}><Text style={[styles.link,(!hasNext||loading)&&{opacity:.3}]}>Next</Text></Pressable></View>
+    </Pressable></Pressable></Modal></>;
 }
-
-function relativeTime(value: string) {
-  const ms = Date.now() - new Date(value).getTime();
-  const seconds = Math.max(0, Math.floor(ms / 1000));
-  if (seconds < 60) return 'Just now';
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
-  return new Date(value).toLocaleDateString();
-}
-
-export function StudentNotificationBell({
-  session,
-  onOpenChat,
-}: StudentNotificationBellProps) {
-  const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<NotificationInboxItem[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(false);
-
-  const refresh = useCallback(async () => {
-    if (!session?.access || !session.user?.totp_enrolled) return;
-    try {
-      const data = await listNotificationInbox(session, 1, 20);
-      setItems(data.results ?? []);
-      setUnreadCount(Number(data.unread_count || 0));
-    } catch (error) {
-      console.log('[notifications] inbox refresh failed:', error);
-    }
-  }, [session]);
-
-  useEffect(() => {
-    if (!session?.access || !session.user?.totp_enrolled) return undefined;
-    refresh();
-    const timer = setInterval(refresh, 30000);
-    return () => clearInterval(timer);
-  }, [refresh, session?.access, session?.user?.totp_enrolled]);
-
-  useEffect(() => {
-    if (open) refresh();
-  }, [open, refresh]);
-
-  if (!session?.access || !session.user?.totp_enrolled) return null;
-
-  const openNotification = async (item: NotificationInboxItem) => {
-    if (!item.read_at) {
-      try {
-        const updated = await markNotificationRead(session, item.id);
-        setItems((current) => current.map((entry) => (entry.id === item.id ? updated : entry)));
-        setUnreadCount((count) => Math.max(0, count - 1));
-      } catch (error) {
-        console.log('[notifications] mark read failed:', error);
-      }
-    }
-
-    setOpen(false);
-    if (isChatNotification(item)) onOpenChat();
-  };
-
-  const markAllRead = async () => {
-    setLoading(true);
-    try {
-      await markAllNotificationsRead(session);
-      const now = new Date().toISOString();
-      setItems((current) => current.map((item) => ({ ...item, read_at: item.read_at || now })));
-      setUnreadCount(0);
-    } catch (error) {
-      console.log('[notifications] mark all read failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={unreadCount ? `Notifications, ${unreadCount} unread` : 'Notifications'}
-        onPress={() => setOpen(true)}
-        style={({ pressed }) => [styles.bellButton, pressed && styles.pressed]}
-      >
-        <Text style={styles.bellGlyph}>🔔</Text>
-        {unreadCount > 0 ? (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-          </View>
-        ) : null}
-      </Pressable>
-
-      <Modal
-        animationType="fade"
-        transparent
-        visible={open}
-        onRequestClose={() => setOpen(false)}
-      >
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
-          <Pressable style={styles.panel} onPress={() => undefined}>
-            <View style={styles.header}>
-              <View>
-                <Text style={styles.title}>Notifications</Text>
-                <Text style={styles.subtitle}>
-                  {unreadCount ? `${unreadCount} unread` : "You're all caught up"}
-                </Text>
-              </View>
-              {unreadCount > 0 ? (
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={loading}
-                  onPress={markAllRead}
-                  style={({ pressed }) => [styles.markAll, pressed && styles.pressed]}
-                >
-                  <Text style={styles.markAllText}>Mark all read</Text>
-                </Pressable>
-              ) : null}
-            </View>
-
-            <ScrollView style={styles.list} contentContainerStyle={items.length ? undefined : styles.emptyWrap}>
-              {items.length === 0 ? (
-                <Text style={styles.empty}>No notifications yet.</Text>
-              ) : (
-                items.map((item) => (
-                  <Pressable
-                    key={item.id}
-                    accessibilityRole="button"
-                    onPress={() => openNotification(item)}
-                    style={({ pressed }) => [
-                      styles.item,
-                      !item.read_at && styles.unreadItem,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <View style={[styles.dot, item.read_at && styles.readDot]} />
-                    <View style={styles.itemBody}>
-                      <View style={styles.itemTop}>
-                        <Text style={styles.itemTitle}>{item.title}</Text>
-                        <Text style={styles.time}>{relativeTime(item.created_at)}</Text>
-                      </View>
-                      {item.body ? <Text style={styles.body}>{item.body}</Text> : null}
-                    </View>
-                  </Pressable>
-                ))
-              )}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
-    </>
-  );
-}
-
-const styles = StyleSheet.create({
-  bellButton: {
-    position: 'absolute',
-    right: 14,
-    top: 42,
-    zIndex: 50,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.offWhite,
-    borderWidth: 1,
-    borderColor: colors.line,
-  },
-  bellGlyph: {
-    fontSize: 19,
-  },
-  badge: {
-    position: 'absolute',
-    right: -4,
-    top: -5,
-    minWidth: 19,
-    height: 19,
-    borderRadius: 10,
-    paddingHorizontal: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.coral,
-  },
-  badgeText: {
-    color: '#fff',
-    fontFamily: fonts.bodyMedium,
-    fontSize: 9,
-  },
-  pressed: {
-    opacity: 0.72,
-  },
-  backdrop: {
-    flex: 1,
-    paddingTop: 90,
-    paddingHorizontal: 14,
-    alignItems: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.38)',
-  },
-  panel: {
-    width: '100%',
-    maxWidth: 390,
-    maxHeight: '72%',
-    borderRadius: radii.card,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.panelInk,
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.line,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  title: {
-    color: colors.offWhite,
-    fontFamily: fonts.bodyMedium,
-    fontSize: 16,
-  },
-  subtitle: {
-    marginTop: 2,
-    color: colors.muted,
-    fontFamily: fonts.body,
-    fontSize: 12,
-  },
-  markAll: {
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: radii.pill,
-    backgroundColor: 'rgba(56,90,70,0.12)',
-  },
-  markAllText: {
-    color: colors.coral,
-    fontFamily: fonts.bodyMedium,
-    fontSize: 11,
-  },
-  list: {
-    flexGrow: 0,
-  },
-  emptyWrap: {
-    minHeight: 140,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  empty: {
-    color: colors.muted,
-    fontFamily: fonts.body,
-    fontSize: 13,
-  },
-  item: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.line,
-  },
-  unreadItem: {
-    backgroundColor: 'rgba(56,90,70,0.08)',
-  },
-  dot: {
-    marginTop: 6,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: colors.connectionBlue,
-  },
-  readDot: {
-    backgroundColor: 'transparent',
-  },
-  itemBody: {
-    flex: 1,
-    minWidth: 0,
-  },
-  itemTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  itemTitle: {
-    flex: 1,
-    color: colors.offWhite,
-    fontFamily: fonts.bodyMedium,
-    fontSize: 13,
-  },
-  time: {
-    color: colors.muted,
-    fontFamily: fonts.body,
-    fontSize: 10,
-  },
-  body: {
-    marginTop: 4,
-    color: colors.textSoft,
-    fontFamily: fonts.body,
-    fontSize: 12,
-    lineHeight: 18,
-  },
-});
+const styles=StyleSheet.create({bell:{width:44,height:44,borderRadius:14,backgroundColor:'#fff',borderWidth:1,borderColor:colors.border,alignItems:'center',justifyContent:'center',zIndex:80},count:{position:'absolute',right:-5,top:-5,minWidth:18,borderRadius:10,backgroundColor:colors.coral,paddingHorizontal:5,paddingVertical:2},countText:{fontSize:10,color:'#fff',fontFamily:fonts.bodyMedium},backdrop:{flex:1,backgroundColor:'rgba(28,38,32,.3)',alignItems:'center',justifyContent:'center',padding:16},panel:{width:'100%',maxWidth:480,maxHeight:'85%',borderRadius:22,backgroundColor:'#fff',overflow:'hidden',borderWidth:1,borderColor:colors.border},header:{padding:20,gap:16,borderBottomWidth:1,borderColor:colors.line},between:{flexDirection:'row',justifyContent:'space-between',gap:12,alignItems:'center'},title:{fontSize:22,fontFamily:fonts.bodyMedium,color:colors.text,marginBottom:4},small:{fontSize:11,lineHeight:18,fontFamily:fonts.body,color:colors.muted},actions:{flexDirection:'row',gap:22},link:{fontSize:12,fontFamily:fonts.bodyMedium,color:colors.coral,lineHeight:20},icon:{padding:5},list:{flexShrink:1},item:{padding:17,borderBottomWidth:1,borderColor:colors.line},unread:{backgroundColor:'#f3f7f0'},itemRow:{flexDirection:'row',gap:10,alignItems:'flex-start'},dot:{width:7,height:7,borderRadius:4,marginTop:7},itemBody:{flex:1,gap:5},itemTitle:{fontFamily:fonts.bodyMedium,fontSize:14,lineHeight:21,color:colors.text},body:{fontFamily:fonts.body,fontSize:13,lineHeight:22,color:colors.textSoft},details:{marginLeft:17,marginTop:12,gap:8,padding:14,borderRadius:12,backgroundColor:colors.panelInk},caption:{fontFamily:fonts.bodyMedium,color:colors.muted,fontSize:10,letterSpacing:1},footer:{padding:17,borderTopWidth:1,borderColor:colors.line,flexDirection:'row',justifyContent:'space-between'},empty:{alignItems:'center',justifyContent:'center',padding:36,gap:10},error:{backgroundColor:'#fff0ee',padding:12,gap:6}});

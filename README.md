@@ -50,19 +50,21 @@ Requirements: Node 22.16+.
 ```powershell
 npm run setup
 Copy-Item .env.example .env
-# Set KORMIC_API_ORIGIN in .env, e.g. https://backend.kormic.ai
+# Set KORMIC_API_ORIGIN_LOCAL and KORMIC_API_ORIGIN_PUBLIC in .env
 npm test
 npm run build
 npm run preview
 ```
 
-`KORMIC_API_ORIGIN` is the backend origin only, without `/api`.
+The root `.env` contains `KORMIC_API_ORIGIN_LOCAL` and `KORMIC_API_ORIGIN_PUBLIC`, both without `/api`. Browser visits on localhost, 127.0.0.1, or ::1 select LOCAL; other hosts select PUBLIC. Native builds use PUBLIC. The build passes both URLs to all portals. Rebuild after editing either value. The real `.env` is Git-ignored.
+
+Standalone Expo starts with `npm start` and reads the root `.env`. EAS cloud builds need `EXPO_PUBLIC_API_BASE_URL` and optionally `EXPO_PUBLIC_LOCAL_API_BASE_URL` configured in their build environment.
 
 For local auth-cookie testing use the same hostname on frontend and backend, for example `127.0.0.1:5173` and `127.0.0.1:8000`.
 
 ## Deployment
 
-`vercel.json` builds and publishes the single `dist/` directory. Configure `KORMIC_API_ORIGIN` in the deployment environment and ensure the deployed frontend origin is allowed by the backend CORS/CSRF settings.
+`vercel.json` builds and publishes the single `dist/` directory. Configure `KORMIC_API_ORIGIN_LOCAL` and `KORMIC_API_ORIGIN_PUBLIC` in the deployment environment and ensure the deployed frontend origin is allowed by the backend CORS/CSRF settings.
 
 Production browser auth requires same-site HTTPS with the backend because the existing refresh cookies are secure, host-only and `SameSite=Lax`.
 

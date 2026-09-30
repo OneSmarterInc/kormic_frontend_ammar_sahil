@@ -1,3 +1,4 @@
+import { AppState, Platform } from 'react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { AuthSession } from '../../models/onboarding';
 import {
@@ -30,7 +31,7 @@ export function useAgentNotifications(session: AuthSession | undefined, onOpenCh
     let inFlight = false;
     let since: string | undefined;
     const runPoll = async () => {
-      if (inFlight) return;
+      if (inFlight || cancelled || AppState.currentState === 'background' || (Platform.OS === 'web' && typeof document !== 'undefined' && document.hidden)) return;
       inFlight = true;
       try {
         const result = await pollNotifications(session, since);
@@ -45,9 +46,11 @@ export function useAgentNotifications(session: AuthSession | undefined, onOpenCh
     };
     void runPoll();
     const interval = setInterval(runPoll, 15000);
+    const listener = AppState.addEventListener('change', state => { if (state === 'active') void runPoll(); });
     return () => {
       cancelled = true;
       clearInterval(interval);
+      listener.remove();
     };
   }, [session?.access, session?.user?.student_id, session?.user?.totp_enrolled]);
 

@@ -68,6 +68,11 @@ const NAV_GROUPS = [
       },
 
       {
+        to: "agent-queries",
+        label: "Queries",
+        icon: Bot,
+      },
+      {
         to: "queries",
         label: "Escalated Queries",
         icon: MessagesSquare,

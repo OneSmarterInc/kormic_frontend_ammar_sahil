@@ -1,3 +1,4 @@
+import { DocumentProgress, DocumentStatus } from '../../components/DocumentProgress';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,6 +17,9 @@ import { colors, fonts } from '../../theme/tokens';
 import { isProtectedLinkedinImageUrl } from '../profile/profileMedia';
 import { formatDate } from '../profile/profileValues';
 import { getLinkedinRecordImageUri } from './linkedinData';
+import { ExtractedGroup } from './ExtractedData';
+import { hasExtractedValue } from './linkedinData';
+import { MaterialIcons } from '@expo/vector-icons';
 
 export function LinkedinImageHistory({
   session,
@@ -24,6 +28,11 @@ export function LinkedinImageHistory({
   records,
   actionLoading,
   onRefresh,
+  extractedData,
+  onUpload,
+  error,
+  progress,
+  onContinue,
 }: {
   session?: AuthSession;
   loading: boolean;
@@ -31,7 +40,29 @@ export function LinkedinImageHistory({
   records: LinkedInHistoryRecord[];
   actionLoading: boolean;
   onRefresh: () => void;
+  extractedData?: Record<string, unknown>;
+  onUpload: () => void;
+  error?: string;
+  progress?: DocumentStatus;
+  onContinue?: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const latestData = extractedData ?? records.find((record) => record.extracted_data)?.extracted_data;
+  const hiddenKeys = new Set(['agent_trace', 'source_files', 'input_files', 'source', 'verified', 'schema_version', 'parser_engine', 'evidence', 'warnings', 'experiences']);
+  const profileData = { ...latestData, experience: latestData?.experience ?? latestData?.experiences };
+  const groups = [
+    { title: 'Profile', keys: ['name', 'headline', 'location', 'email', 'phone', 'about'] },
+    { title: 'Experience', keys: ['experience'] },
+    { title: 'Education', keys: ['education'] },
+    { title: 'Skills', keys: ['skills'] },
+    { title: 'Projects', keys: ['projects'] },
+    { title: 'Certifications', keys: ['certifications'] },
+    { title: 'Posts', keys: ['posts'] },
+  ];
+  const groupedKeys = new Set(groups.flatMap((group) => group.keys));
+  const data = profileData as Record<string, unknown>;
+  const otherDetails = Object.entries(data).filter(([key, value]) => !hiddenKeys.has(key) && !groupedKeys.has(key) && hasExtractedValue(value));
+  const hasDetails = Object.entries(data).some(([key, value]) => !hiddenKeys.has(key) && hasExtractedValue(value));
   const [authorizedImageUris, setAuthorizedImageUris] = useState<Record<string, string>>({});
   const savedImages = records
     .map((record, index) => ({
@@ -54,7 +85,7 @@ export function LinkedinImageHistory({
     let objectUrls: string[] = [];
 
     const loadAuthorizedImages = async () => {
-      if (!session || typeof URL === 'undefined') {
+      if (!expanded || Platform.OS !== 'web' || !session || typeof URL === 'undefined') {
         setAuthorizedImageUris({});
         return;
       }
@@ -94,47 +125,53 @@ export function LinkedinImageHistory({
       cancelled = true;
       objectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
     };
-  }, [records, session?.access, session?.user?.student_id]);
+  }, [expanded, records, session?.access, session?.user?.student_id]);
 
   return (
-    <View style={styles.linkedinHistory}>
-      <View style={styles.linkedinHistoryHeader}>
-        <View style={styles.linkedinHistoryTitleWrap}>
-          <Text style={styles.cardTitle}>Uploaded screenshots</Text>
-          <Text style={styles.metaText}>Review the LinkedIn images used for profile analysis.</Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onRefresh}
-          disabled={loading || actionLoading}
-          style={[styles.smallButton, (loading || actionLoading) && styles.disabledButton]}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.offWhite} size="small" />
-          ) : (
-            <Text style={styles.smallButtonText}>Refresh</Text>
-          )}
+    <View style={styles.page}>
+      <View style={styles.intro}>
+        <Text style={styles.introTitle}>Your LinkedIn profile</Text>
+        <Text style={styles.introText}>Review your experience, education and skills, or upload updated profile screenshots.</Text>
+      </View>
+      <View style={styles.toolbar}>
+        <Pressable accessibilityRole="button" onPress={onUpload} disabled={actionLoading || loading}
+          accessibilityState={{ disabled: actionLoading || loading, busy: actionLoading }}
+          style={[styles.uploadButton, (actionLoading || loading) && styles.disabledButton]}>
+          {actionLoading ? <ActivityIndicator color="#ffffff" size="small" /> : <MaterialIcons name="file-upload" size={20} color="#ffffff" />}
+          <Text style={styles.uploadText}>{actionLoading ? 'Extracting profile…' : 'Upload screenshots'}</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Refresh LinkedIn information" onPress={onRefresh}
+          disabled={loading || actionLoading} style={[styles.refreshButton, (loading || actionLoading) && styles.disabledButton]}>
+          {loading ? <ActivityIndicator color={colors.text} size="small" /> : <MaterialIcons name="refresh" size={22} color={colors.text} />}
         </Pressable>
       </View>
+      <DocumentProgress status={progress} onContinue={onContinue} />
+      {localPreviews.length > 0 ? <View style={styles.linkedinGrid}>{localPreviews.map(preview => <LinkedinImageCard key={preview.id} title={preview.name || preview.label || 'Selected image'} uri={preview.uri} />)}</View> : null}
+      {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
+      {hasDetails ? <View style={styles.details}>
+        {groups.map((group) => {
+          const entries = group.keys.filter((key) => hasExtractedValue(data[key])).map((key) => [key, data[key]] as [string, unknown]);
+          return entries.length ? <ExtractedGroup key={group.title} title={group.title} entries={entries} /> : null;
+        })}
+        {otherDetails.length ? <ExtractedGroup title="Additional details" entries={otherDetails} /> : null}
+      </View> : !loading ? <View style={styles.linkedinHistory}>
+        <Text style={styles.cardTitle}>Build your LinkedIn overview</Text>
+        <Text style={styles.introText}>Upload clear screenshots of your profile to see the extracted information here.</Text>
+      </View> : null}
+      {Array.isArray(latestData?.warnings) && latestData.warnings.length > 0 ?
+        <Text style={styles.metaText}>Some details could not be extracted. Review the information and upload clearer screenshots if anything is missing.</Text> : null}
+      <View style={styles.linkedinHistory}>
+        <Pressable style={styles.galleryToggle} accessibilityRole="button"
+          accessibilityLabel="Uploaded screenshots" accessibilityState={{ expanded }}
+          onPress={() => setExpanded((value) => !value)}>
+          <MaterialIcons name="photo-library" size={21} color={colors.textSoft} />
+          <Text style={styles.galleryTitle}>Uploaded screenshots</Text>
+          <Text style={styles.metaText}>{savedImages.length || localPreviews.length}</Text>
+          <MaterialIcons name={expanded ? 'expand-less' : 'expand-more'} size={24} color={colors.textSoft} />
+        </Pressable>
 
-      {localPreviews.length > 0 ? (
+      {expanded && savedImages.length > 0 ? (
         <View style={styles.linkedinPreviewBlock}>
-          <Text style={styles.extractedSectionTitle}>Just uploaded</Text>
-          <View style={styles.linkedinGrid}>
-            {localPreviews.map((preview) => (
-              <LinkedinImageCard
-                key={preview.id}
-                title={preview.label || preview.name || 'Selected image'}
-                uri={preview.uri}
-              />
-            ))}
-          </View>
-        </View>
-      ) : null}
-
-      {savedImages.length > 0 ? (
-        <View style={styles.linkedinPreviewBlock}>
-          <Text style={styles.extractedSectionTitle}>Saved images</Text>
           <View style={styles.linkedinGrid}>
             {savedImages.map((image) => (
               <LinkedinImageCard
@@ -157,9 +194,10 @@ export function LinkedinImageHistory({
         </View>
       ) : null}
 
-      {!loading && localPreviews.length === 0 && savedImages.length === 0 ? (
+      {expanded && !loading && localPreviews.length === 0 && savedImages.length === 0 ? (
         <Text style={styles.emptyText}>No uploaded LinkedIn images found yet.</Text>
       ) : null}
+    </View>
     </View>
   );
 }
@@ -263,6 +301,18 @@ export function LinkedinImageCard({
 }
 
 const styles = StyleSheet.create({
+  page: { gap: 16 },
+  intro: { backgroundColor: 'rgba(56,90,70,0.08)', borderColor: 'rgba(56,90,70,0.18)', borderWidth: 1, borderRadius: 12, padding: 18, gap: 8 },
+  introTitle: { color: colors.text, fontFamily: fonts.heading, fontSize: 22, lineHeight: 28 },
+  introText: { color: colors.textSoft, fontFamily: fonts.body, fontSize: 15, lineHeight: 23 },
+  toolbar: { flexDirection: 'row', gap: 10 },
+  uploadButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.coral, borderRadius: 12, minHeight: 52, paddingHorizontal: 12 },
+  uploadText: { color: '#ffffff', fontFamily: fonts.bodyMedium, fontSize: 15 },
+  refreshButton: { minHeight: 52, width: 52, borderRadius: 12, borderWidth: 1, borderColor: '#e7e9e2', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff' },
+  errorText: { color: colors.error, fontFamily: fonts.body, fontSize: 14, lineHeight: 21 },
+  details: { gap: 12 },
+  galleryToggle: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 },
+  galleryTitle: { flex: 1, color: colors.text, fontFamily: fonts.bodyMedium, fontSize: 15 },
   smallButton: {
     alignItems: 'center',
     backgroundColor: '#ffffff',
@@ -274,7 +324,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   smallButtonText: {
-    color: colors.offWhite,
+    color: colors.text,
     fontFamily: fonts.bodyMedium,
     fontSize: 13,
   },
@@ -299,7 +349,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     gap: 14,
-    marginTop: 14,
     padding: 14,
   },
   linkedinHistoryHeader: {

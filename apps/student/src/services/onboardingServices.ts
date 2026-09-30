@@ -1,7 +1,7 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { Platform } from 'react-native';
 import { AuthSession, LinkedInScreenshot, SelectedCvFile } from '../models/onboarding';
-import { analyzeGithub, uploadLinkedIn, uploadResume } from './api';
+import { analyzeGithub, uploadLinkedIn, uploadResume, DocumentUploadOptions } from './api';
 
 export interface LivenessService {
   startCheck(): Promise<'success' | 'retry'>;
@@ -13,12 +13,12 @@ export interface GitHubService {
 
 export interface LinkedInService {
   pickScreenshots(existingCount: number): Promise<LinkedInScreenshot[]>;
-  upload(session: AuthSession | undefined, screenshots: LinkedInScreenshot[]): Promise<void>;
+  upload(session: AuthSession | undefined, screenshots: LinkedInScreenshot[], options?: DocumentUploadOptions): Promise<void>;
 }
 
 export interface CvService {
   pickFile(): Promise<SelectedCvFile>;
-  upload(session: AuthSession | undefined, file: SelectedCvFile): Promise<void>;
+  upload(session: AuthSession | undefined, file: SelectedCvFile, options?: DocumentUploadOptions): Promise<void>;
 }
 
 export interface BuildAgentService {
@@ -137,11 +137,11 @@ export const mockOnboardingServices: OnboardingServices = {
         };
       });
     },
-    async upload(session: AuthSession | undefined, screenshots: LinkedInScreenshot[]) {
+    async upload(session: AuthSession | undefined, screenshots: LinkedInScreenshot[], options?: DocumentUploadOptions) {
       if (!session) {
         throw new Error('Missing auth session');
       }
-      await uploadLinkedIn(session, screenshots);
+      await uploadLinkedIn(session, screenshots, options);
     },
   },
   cv: {
@@ -152,7 +152,6 @@ export const mockOnboardingServices: OnboardingServices = {
           multiple: false,
           type: [
             'application/pdf',
-            'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           ],
         });
@@ -174,7 +173,7 @@ export const mockOnboardingServices: OnboardingServices = {
         };
       }
 
-      const [file] = await pickWebFiles('.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document', false);
+      const [file] = await pickWebFiles('.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document', false);
       if (!file) {
         throw new Error('Choose a resume file.');
       }
@@ -186,11 +185,11 @@ export const mockOnboardingServices: OnboardingServices = {
         file,
       };
     },
-    async upload(session: AuthSession | undefined, file: SelectedCvFile) {
+    async upload(session: AuthSession | undefined, file: SelectedCvFile, options?: DocumentUploadOptions) {
       if (!session) {
         throw new Error('Missing auth session');
       }
-      await uploadResume(session, file);
+      await uploadResume(session, file, options);
     },
   },
   buildAgent: {

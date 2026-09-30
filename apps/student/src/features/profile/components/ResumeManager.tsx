@@ -1,4 +1,6 @@
+import { DocumentProgress, DocumentStatus } from '../../../components/DocumentProgress';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
 import { PrimaryButton } from '../../../components/PrimaryButton';
 import { SectionLabel } from '../../../components/SectionLabel';
 import { ResumeRecord } from '../../../services/api';
@@ -17,7 +19,13 @@ export function ResumeManager({
   onDownload,
   onDelete,
   onRefresh,
+  progress,
+  pendingFilename,
+  onContinue,
 }: {
+  progress?: DocumentStatus;
+  pendingFilename?: string;
+  onContinue?: () => void;
   resumes: ResumeRecord[];
   loading: boolean;
   viewLoadingId: string | number | null;
@@ -29,12 +37,13 @@ export function ResumeManager({
   onDelete: (resumeId: ResumeRecord['id']) => void;
   onRefresh: () => void;
 }) {
+  const [confirmUpload, setConfirmUpload] = useState(false);
   return (
     <View style={styles.form}>
       <View style={styles.resumeIntroCard}>
-        <Text style={styles.resumeIntroTitle}>Resume history</Text>
+        <Text style={styles.resumeIntroTitle}>Your resume</Text>
         <Text style={styles.sectionIntro}>
-          Upload a new resume, review previous files, and inspect the parsed profile data from each upload.
+          Your resume is the primary source for your profile. Review your name, contact details, education, experience, projects and skills below, or upload an updated PDF or DOCX.
         </Text>
       </View>
       <View style={styles.resumeActions}>
@@ -43,13 +52,13 @@ export function ResumeManager({
           accessibilityLabel={uploadLoading ? 'Uploading resume' : 'Upload new resume'}
           accessibilityState={{ disabled: uploadLoading, busy: uploadLoading }}
           disabled={uploadLoading}
-          onPress={onUpload}
+          onPress={() => setConfirmUpload(true)}
           style={[styles.resumeUploadButton, uploadLoading && styles.resumeUploadButtonLoading]}
         >
           {uploadLoading ? (
             <>
               <ActivityIndicator color="#ffffff" size="small" />
-              <Text style={styles.resumeUploadButtonText}>Uploading...</Text>
+              <Text style={styles.resumeUploadButtonText}>Reading and extracting your resume…</Text>
             </>
           ) : (
             <Text style={styles.resumeUploadButtonText}>Upload new resume</Text>
@@ -63,16 +72,23 @@ export function ResumeManager({
           loading={loading}
         />
       </View>
+      <DocumentProgress status={progress} filename={pendingFilename} onContinue={onContinue} />
+      {confirmUpload ? <View style={styles.resumeIntroCard}>
+        <Text style={styles.resumeIntroTitle}>Update your profile from a resume?</Text>
+        <Text style={styles.sectionIntro}>Extracted details, including your name and projects, will replace matching profile fields. Your sign-in email, GitHub and LinkedIn records stay separate. Missing details will not erase existing information.</Text>
+        <PrimaryButton label="Choose resume and update profile" onPress={() => { setConfirmUpload(false); onUpload(); }} />
+        <PrimaryButton label="Cancel" variant="secondary" onPress={() => setConfirmUpload(false)} />
+      </View> : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {loading ? <ActivityIndicator color={colors.coral} /> : null}
-      {!loading && resumes.length === 0 ? (
+      {!loading && !pendingFilename && resumes.length === 0 ? (
         <Text style={styles.emptyText}>No resumes uploaded yet.</Text>
       ) : null}
       {resumes.map((resume) => (
         <View key={String(resume.id)} style={styles.resumeCard}>
           <View style={styles.resumeHeader}>
             <View style={styles.fileBadge}>
-              <Text style={styles.fileBadgeText}>PDF</Text>
+              <Text style={styles.fileBadgeText}>{resume.original_filename?.split('.').pop()?.toUpperCase() || 'FILE'}</Text>
             </View>
             <View style={styles.resumeTitleWrap}>
               <Text style={styles.cardTitle}>{resume.original_filename || `Resume ${resume.id}`}</Text>
@@ -111,7 +127,7 @@ export function ResumeManager({
             </Pressable>
           </View>
           <SectionLabel>Extracted data</SectionLabel>
-          <ExtractedData data={resume.extracted_data} />
+          <ExtractedData data={Object.fromEntries(Object.entries(resume.extracted_data || {}).filter(([key]) => !['agent_trace', 'schema_version', 'parser_engine', 'parser_status', 'document_sha256'].includes(key)))} />
         </View>
       ))}
     </View>

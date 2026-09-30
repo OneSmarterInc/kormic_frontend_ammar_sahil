@@ -43,6 +43,7 @@ export type StudentProfile = {
   work_months: number | null;
   github: string;
   linkedin_url: string;
+  linkedin_profile?: Record<string, unknown>;
   notes: string;
   source: string;
   verified: boolean;
@@ -88,6 +89,8 @@ export type StudentProfile = {
 };
 
 export interface ProfileScreenProps {
+  notificationControl?: import("react").ReactNode;
+  queryNavigation?: import("../queries/StudentQueriesPanel").QueryNavigation;
   profile?: StudentProfile;
   loading?: boolean;
   error?: string;
@@ -99,7 +102,7 @@ export interface ProfileScreenProps {
   onAriaSectionActiveChange?: (active: boolean) => void;
 }
 
-export type ProfileSection = 'overview' | 'edit' | 'resumes' | 'github' | 'githubProfile' | 'linkedin' | 'aria';
+export type ProfileSection = 'overview' | 'edit' | 'resumes' | 'github' | 'githubProfile' | 'linkedin' | 'aria' | 'queries';
 
 /** Shared inputs; each feature hook selects only the dependencies it needs. */
 export interface ProfileFeatureContext extends Pick<

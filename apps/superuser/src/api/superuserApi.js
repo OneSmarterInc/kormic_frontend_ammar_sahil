@@ -79,6 +79,9 @@ export const listUsers = ({ role, search } = {}) =>
 export const getUser = (userId) =>
   client.get(`/superuser/users/${encodeURIComponent(userId)}/`).then((r) => r.data);
 
+export const updateUser = (userId, payload) =>
+  client.patch(`/superuser/users/${encodeURIComponent(userId)}/`, payload).then((r) => r.data);
+
 /** PATCH /api/superuser/users/<user_id>/ — activate/deactivate */
 export const setUserActive = (userId, isActive) =>
   client
@@ -208,11 +211,13 @@ export const listAuditLog = ({ userId, action, limit } = {}) =>
     .then((r) => r.data);
 
 /** GET /api/superuser/agent-audit-logs/?since_id=&student_id=&limit= */
-export const listAgentAuditLog = ({ sinceId, studentId, limit } = {}) =>
+export const listAgentAuditLog = ({ sinceId, beforeId, studentId, runId, limit } = {}) =>
   client
     .get("/superuser/agent-audit-logs/", {
       params: {
         ...(sinceId ? { since_id: sinceId } : {}),
+          ...(beforeId ? { before_id: beforeId } : {}),
+          ...(runId ? { run_id: runId } : {}),
         ...(studentId ? { student_id: studentId } : {}),
         ...(limit ? { limit } : {}),
       },

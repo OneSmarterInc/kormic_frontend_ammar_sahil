@@ -1,3 +1,4 @@
+import { documentStatus, DocumentStatus } from '../../components/DocumentProgress';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Sharing from 'expo-sharing';
@@ -19,6 +20,8 @@ export function useResumes({
   setSectionError,
   onProfileChanged,
 }: Pick<ProfileFeatureContext, 'session' | 'services' | 'section' | 'setSectionError' | 'onProfileChanged'>) {
+  const [resumeProgress, setResumeProgress] = useState<DocumentStatus>();
+  const [pendingResumeName, setPendingResumeName] = useState('');
   const [resumes, setResumes] = useState<ResumeRecord[]>([]);
 
   const [resumesLoading, setResumesLoading] = useState(false);
@@ -63,10 +66,14 @@ export function useResumes({
       setResumeUploadLoading(true);
       setSectionError('');
       const file = await services.cv.pickFile();
-      await services.cv.upload(session, file);
+      setPendingResumeName(file.name);
+      setResumeProgress({ stage: 'uploading', accepted: false });
+      await services.cv.upload(session, file, { onProgress: job => setResumeProgress(documentStatus(job)) });
+      setResumeProgress({ stage: 'completed', accepted: true });
       await loadResumes();
       await onProfileChanged?.();
     } catch (uploadError) {
+      setResumeProgress({ stage: 'failed', accepted: false });
       setSectionError(uploadError instanceof Error ? uploadError.message : 'Unable to upload resume');
     } finally {
       setResumeUploadLoading(false);
@@ -182,6 +189,8 @@ export function useResumes({
   };
 
   return {
+    resumeProgress,
+    pendingResumeName,
     resumes,
     resumesLoading,
     resumeUploadLoading,

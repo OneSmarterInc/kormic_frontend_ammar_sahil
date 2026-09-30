@@ -20,6 +20,7 @@ import KnowledgeGroupsPage from "./pages/university/KnowledgeGroupsPage";
 import AgentPreviewPage from "./pages/university/AgentPreviewPage";
 import ProfilesListPage from "./pages/university/ProfilesListPage";
 import ProfileDetailPage from "./pages/university/ProfileDetailPage";
+import AgentQueriesPage from "./pages/university/AgentQueriesPage";
 import QueriesPage from "./pages/university/QueriesPage";
 import KnowledgePage from "./pages/university/KnowledgePage";
 import QuestionLogPage from "./pages/university/QuestionLogPage";
@@ -67,6 +68,7 @@ function App() {
                     <Route path="profiles" element={<ProfilesListPage />} />
                     <Route path="profiles/:studentId" element={<ProfileDetailPage />} />
                     <Route path="queries" element={<QueriesPage />} />
+                    <Route path="agent-queries" element={<AgentQueriesPage />} />
                     <Route path="knowledge" element={<KnowledgePage />} />
                     <Route path="questions" element={<QuestionLogPage />} />
                   </Route>

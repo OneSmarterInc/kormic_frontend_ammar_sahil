@@ -1,3 +1,4 @@
+import { documentStatus, DocumentStatus } from '../../components/DocumentProgress';
 import { useEffect, useState } from 'react';
 import { LinkedInScreenshot } from '../../models/onboarding';
 import {
@@ -21,6 +22,7 @@ export function useLinkedinProfile({
   ProfileFeatureContext,
   'session' | 'services' | 'profile' | 'section' | 'setSectionError' | 'setActionLoading' | 'onProfileChanged'
 >) {
+  const [linkedinProgress, setLinkedinProgress] = useState<DocumentStatus>();
   const [linkedinImages, setLinkedinImages] = useState<LinkedInHistoryRecord[]>([]);
 
   const [linkedinPreviews, setLinkedinPreviews] = useState<LinkedInScreenshot[]>([]);
@@ -83,11 +85,14 @@ export function useLinkedinProfile({
       setActionLoading(true);
       setSectionError('');
       const screenshots = await services.linkedin.pickScreenshots(0);
-      await uploadLinkedIn(session, screenshots);
       setLinkedinPreviews(screenshots);
+      setLinkedinProgress({ stage: 'uploading', accepted: false });
+      await uploadLinkedIn(session, screenshots, { onProgress: job => setLinkedinProgress(documentStatus(job)) });
+      setLinkedinProgress({ stage: 'completed', accepted: true });
       await loadLinkedinImages();
       await onProfileChanged?.();
     } catch (linkedinError) {
+      setLinkedinProgress({ stage: 'failed', accepted: false });
       setSectionError(
         linkedinError instanceof Error ? linkedinError.message : 'Unable to upload LinkedIn images',
       );
@@ -99,6 +104,7 @@ export function useLinkedinProfile({
     setLinkedinUrl(profile.linkedin_url ?? '');
   }, [profile]);
   return {
+    linkedinProgress,
     linkedinImages,
     linkedinPreviews,
     linkedinLoading,

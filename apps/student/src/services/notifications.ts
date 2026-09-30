@@ -4,8 +4,7 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import { AuthSession } from '../models/onboarding';
-import { API_BASE_URL, refreshAccessToken } from './api';
-import { getSavedRefreshToken, saveAccessToken, saveRefreshToken } from './tokenStorage';
+import { API_BASE_URL, fetchWithSession } from './api';
 
 const CHAT_NOTIFICATION_TYPES = ['agent_reply', 'pending_query_resolved', 'agent_initiated'];
 const PUSH_TOKEN_KEY = 'kormic.expoPushToken';
@@ -92,17 +91,17 @@ async function clearSavedPushToken() {
 
 async function postNotificationToken(
   path: '/notifications/register-token/' | '/notifications/unregister-token/',
-  accessToken: string,
+  session: AuthSession,
   body: Record<string, string>,
 ) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetchWithSession(session, `${API_BASE_URL}${path}`, accessToken => ({
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify(body),
-  });
+  }));
 
   const responseText = await response.text().catch(() => '');
 
@@ -194,7 +193,7 @@ export async function registerForPushNotifications(session?: AuthSession) {
     );
     const nextExpoPushToken = tokenResponse.data;
 
-    await postNotificationToken('/notifications/register-token/', session.access, {
+    await postNotificationToken('/notifications/register-token/', session, {
       token: nextExpoPushToken,
       platform: Platform.OS,
     });
@@ -224,7 +223,7 @@ export async function unregisterPushNotifications(session?: AuthSession) {
   const savedToken = await getSavedPushToken();
   if (!savedToken) return;
 
-  await postNotificationToken('/notifications/unregister-token/', session.access, {
+  await postNotificationToken('/notifications/unregister-token/', session, {
     token: savedToken,
   });
 
@@ -343,12 +342,12 @@ export async function pollNotifications(session?: AuthSession, since?: string) {
   const params = new URLSearchParams({ limit: NOTIFICATION_POLL_LIMIT });
   if (effectiveSince) params.set('since', effectiveSince);
 
-  const response = await fetch(`${API_BASE_URL}/notifications/poll/?${params.toString()}`, {
+  const response = await fetchWithSession(session, `${API_BASE_URL}/notifications/poll/?${params.toString()}`, access => ({
     method: 'GET',
     headers: {
-      Authorization: `Bearer ${session.access}`,
+      Authorization: `Bearer ${access}`,
     },
-  });
+  }));
 
   const responseText = await response.text().catch(() => '');
 
@@ -415,35 +414,19 @@ export type NotificationInboxResponse = {
   };
 };
 
-async function notificationInboxRequest<T>(
+export async function notificationInboxRequest<T>(
   session: AuthSession,
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  if (!session.access) throw new Error('Missing auth token.');
-
-  const send = (access: string) =>
-    fetch(`${API_BASE_URL}${path}`, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(init.headers ?? {}),
-        Authorization: `Bearer ${access}`,
-      },
-    });
-
-  let response = await send(session.access);
-  if (response.status === 401) {
-    const refresh = session.refresh || (await getSavedRefreshToken());
-    if (!refresh && Platform.OS !== 'web') throw new Error('Session expired.');
-
-    const refreshed = await refreshAccessToken(refresh);
-    session.access = refreshed.access;
-    session.refresh = refreshed.refresh ?? refresh;
-    await saveAccessToken(refreshed.access);
-    if (session.refresh) await saveRefreshToken(session.refresh);
-    response = await send(refreshed.access);
-  }
+  const response = await fetchWithSession(session, `${API_BASE_URL}${path}`, access => ({
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init.headers ?? {}),
+      Authorization: `Bearer ${access}`,
+    },
+  }));
 
   const text = await response.text().catch(() => '');
   if (!response.ok) {
@@ -492,4 +475,10 @@ export async function markAllNotificationsRead(session: AuthSession): Promise<vo
 
 export function isChatNotification(notification: NotificationInboxItem) {
   return isAgentNotificationType(getNotificationType(notification.data, notification.event_type));
+}
+
+
+export async function clearNotificationInbox(session: AuthSession, notificationId?: number): Promise<void> {
+  await notificationInboxRequest(session, notificationId ? `/notifications/${notificationId}/clear/` : '/notifications/clear-all/', {method:'POST'});
+  if (Platform.OS !== 'web' && !notificationId) await Notifications.dismissAllNotificationsAsync();
 }

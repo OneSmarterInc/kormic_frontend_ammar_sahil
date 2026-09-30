@@ -22,10 +22,12 @@ import Badge, { roleTone } from "../../components/common/Badge";
 import Button from "../../components/common/Button";
 import Modal from "../../components/common/Modal";
 import ConfirmModal from "../../components/common/ConfirmModal";
-import { Field } from "../../components/common/Input";
+import { Field, Input } from "../../components/common/Input";
 import PasswordInput from "../../components/common/PasswordInput";
 import {
   deleteUser,
+  deleteStudent,
+  updateUser,
   getUser,
   removeUserTotp,
   resetUserPassword,
@@ -44,6 +46,8 @@ export default function UserDetailPage() {
   const [removingTotp, setRemovingTotp] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [purging, setPurging] = useState(false);
 
   const { data: account, loading, error, refetch, setData: setAccount } = useAsync(
     () => getUser(userId),
@@ -66,6 +70,9 @@ export default function UserDetailPage() {
 
   const { execute: doDelete, loading: deletingLoading, error: deleteError } = useAction(() =>
     deleteUser(account.user_id)
+  );
+  const { execute: doPurge, loading: purgingLoading, error: purgeError } = useAction(() =>
+    deleteStudent(account.student_id)
   );
 
   const handleToggleActive = async () => {
@@ -114,6 +121,14 @@ export default function UserDetailPage() {
     }
   };
 
+  const handlePurge = async () => {
+    try {
+      await doPurge();
+      toast.success("Student profile and account deleted");
+      navigate("/admin/users");
+    } catch (err) { toast.error(err.message); }
+  };
+
   if (loading) return <Spinner label="Loading user..." />;
   if (error) return <ErrorBanner error={error} onDismiss={refetch} />;
 
@@ -156,7 +171,8 @@ export default function UserDetailPage() {
       </div>
 
       <Card>
-        <CardHeader icon={UserRound} title="Account" subtitle={account.email} />
+        <CardHeader icon={UserRound} title="Account" subtitle={account.email}
+          action={<Button variant="secondary" size="sm" onClick={() => setEditing(true)}>Edit details</Button>} />
         <CardBody>
           <dl className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -270,6 +286,12 @@ export default function UserDetailPage() {
               Revoke sessions
             </Button>
           </ActionRow>
+          {account.role === "student" && account.student_id && (
+            <ActionRow icon={Trash2} title="Delete student profile and account"
+              description="Permanently removes the login, student profile, and its associated data.">
+              <Button variant="danger" size="sm" disabled={isSelf} onClick={() => setPurging(true)}>Delete profile</Button>
+            </ActionRow>
+          )}
         </CardBody>
       </Card>
 
@@ -289,6 +311,13 @@ export default function UserDetailPage() {
         />
       </Card>
 
+      {editing && <EditUserModal account={account} onClose={() => setEditing(false)} onDone={updated => {
+        setAccount(updated); setEditing(false); toast.success("User details updated");
+      }} />}
+      <ConfirmModal open={purging} onClose={() => setPurging(false)} onConfirm={handlePurge}
+        loading={purgingLoading} error={purgeError} title="Delete student profile and account"
+        confirmLabel="Delete profile permanently"
+        description={`Permanently delete ${account.email}'s login, student profile, uploads, and associated records. This cannot be undone.`} />
       <ResetPasswordModal
         open={resettingPassword}
         onClose={() => setResettingPassword(false)}
@@ -308,7 +337,7 @@ export default function UserDetailPage() {
         tone="danger"
         title="Remove 2FA"
         confirmLabel="Remove 2FA"
-        description={`${account.email} will be signed out of their authenticator and required to re-enroll TOTP on their next login.`}
+        description={`${account.email}'s authenticator and backup codes will be removed, refresh sessions revoked, and TOTP enrollment required on their next login.`}
       />
 
       <ConfirmModal
@@ -381,30 +410,55 @@ function ResetPasswordModal({ open, onClose, userId, onDone }) {
       open={open}
       onClose={handleClose}
       title="Reset password"
+      disableClose={loading}
       footer={
         <>
-          <Button variant="secondary" onClick={handleClose}>
+          <Button variant="secondary" onClick={handleClose} disabled={loading}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} loading={loading}>
+          <Button type="submit" form="admin-reset-password" loading={loading}>
             Reset password
           </Button>
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form id="admin-reset-password" onSubmit={handleSubmit} className="space-y-4">
         {error && <ErrorBanner error={error} />}
-        <Field label="New password" required hint="Must pass Django's password validators.">
+        <Field label="New password" required hint="Use at least 8 characters. Avoid common passwords and the user's name or email.">
           <PasswordInput
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            minLength={8}
+            autoComplete="new-password"
             autoFocus
           />
         </Field>
       </form>
     </Modal>
   );
+}
+
+function EditUserModal({ account, onClose, onDone }) {
+  const [name, setName] = useState(account.name || "");
+  const [email, setEmail] = useState(account.email || "");
+  const { execute, loading, error } = useAction(() => updateUser(account.user_id, { name: name.trim(), email: email.trim() }));
+  const submit = async event => {
+    event.preventDefault();
+    try { onDone(await execute()); } catch { /* Render the API error below. */ }
+  };
+  const fieldErrors = error?.data || {};
+  return <Modal open onClose={onClose} disableClose={loading} title="Edit user details" footer={<>
+    <Button variant="secondary" onClick={onClose} disabled={loading}>Cancel</Button>
+    <Button type="submit" form="admin-edit-user" loading={loading}>Save changes</Button>
+  </>}>
+    <form id="admin-edit-user" onSubmit={submit} className="space-y-4">
+      {error && <ErrorBanner error={error} />}
+      <Field label="Full name" required error={fieldErrors.name?.[0]}><Input value={name} onChange={e => setName(e.target.value)} required maxLength={150} /></Field>
+      <Field label="Email" required error={fieldErrors.email?.[0]}><Input type="email" value={email} onChange={e => setEmail(e.target.value)} required maxLength={150} /></Field>
+      <p className="text-sm text-ink-500">The name and email also update the linked student profile. Changing the email revokes refresh sessions.</p>
+    </form>
+  </Modal>;
 }
 
 function formatDate(iso) {

@@ -231,10 +231,10 @@ export default function ListStudentsPage() {
                         <p className="text-xs text-ink-500">{s.email}</p>
                       </td>
                       <td className="px-4 py-3 text-ink-600">
-                        {s.field_of_study || "â€”"}
-                        {s.degree_level ? ` Â· ${s.degree_level}` : ""}
+                        {s.field_of_study || "—"}
+                        {s.degree_level ? ` · ${s.degree_level}` : ""}
                       </td>
-                      <td className="px-4 py-3 text-ink-600">{s.expected_graduation || "â€”"}</td>
+                      <td className="px-4 py-3 text-ink-600">{s.expected_graduation || "—"}</td>
                       <td className="px-4 py-3">
                         <Badge tone={statusTone(s.status)} className="capitalize">
                           {s.status}
@@ -296,7 +296,7 @@ export default function ListStudentsPage() {
 }
 
 function DeliveryBadge({ status, error }) {
-  if (!status) return <span className="text-xs text-ink-400">â€”</span>;
+  if (!status) return <span className="text-xs text-ink-400">—</span>;
 
   const config = {
     queued: { label: "Queued", classes: "bg-amber-50 text-amber-700 border-amber-200" },
@@ -314,9 +314,9 @@ function DeliveryBadge({ status, error }) {
   );
 }
 function formatDate(iso) {
-  if (!iso) return "â€”";
+  if (!iso) return "—";
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "â€”";
+  if (Number.isNaN(date.getTime())) return "—";
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(date);
 }
 

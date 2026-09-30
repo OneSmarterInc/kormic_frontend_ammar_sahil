@@ -47,12 +47,12 @@ export function ClaimLandingScreen({
         </Text>
 
         <View style={styles.form}>
-          <SectionLabel>Invitation link</SectionLabel>
+          <SectionLabel>Your invitation</SectionLabel>
           <TextField
-            label="Invitation token"
+            label="Invitation code or link"
             value={token ?? ''}
             onChangeText={onTokenChange}
-            placeholder="Paste token from invite link"
+            placeholder="Paste the code or link from your email"
             autoCapitalize="none"
             autoCorrect={false}
             required

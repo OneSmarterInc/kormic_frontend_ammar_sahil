@@ -85,6 +85,8 @@ export default function ProfileDetailPage() {
 function PresenterChatCard({ universityId, studentId, agentName }) {
   const [messages, setMessages] = useState([]);
   const [resuming, setResuming] = useState(false);
+  const [sendError, setSendError] = useState('');
+  const [lastQuestion, setLastQuestion] = useState('');
 
   const {
     data: history,
@@ -110,7 +112,7 @@ function PresenterChatCard({ universityId, studentId, agentName }) {
   useEffect(() => {
     const controller = new AbortController();
     setResuming(true);
-    resumeAgentJob(controller.signal).then(result => {
+    resumeAgentJob(controller.signal, studentId).then(result => {
       if (result && !controller.signal.aborted) refetchHistory();
     }).catch(error => {
       if (!controller.signal.aborted) toast.error(error.message);
@@ -125,13 +127,15 @@ function PresenterChatCard({ universityId, studentId, agentName }) {
   );
   const loading = sending || resuming;
 
-  const handleSend = async (question) => {
+  const handleSend = async (question, retry = false) => {
+    setSendError('');
+    setLastQuestion(question);
     const history = messages.map((m) => ({
       role: m.role === "assistant" ? "assistant" : "user",
       content: m.content,
     }));
 
-    setMessages((m) => [...m, { role: "user", content: question }]);
+    if (!retry) setMessages((m) => [...m, { role: "user", content: question }]);
 
     try {
       const res = await execute(question, history);
@@ -145,16 +149,7 @@ function PresenterChatCard({ universityId, studentId, agentName }) {
         },
       ]);
     } catch (err) {
-      toast.error(err.message);
-
-      setMessages((m) => [
-        ...m,
-        {
-          role: "assistant",
-          content: `Presenter failed: ${err.message}`,
-          tone: "warning",
-        },
-      ]);
+      setSendError(err.message);
     }
   };
 
@@ -179,6 +174,9 @@ function PresenterChatCard({ universityId, studentId, agentName }) {
         ) : (
           <ChatThread
             compact
+            agentName={agentName || 'University assistant'}
+            sendError={sendError}
+            onRetry={() => handleSend(lastQuestion, true)}
             heightClass="h-full"
             messages={messages}
             onSend={handleSend}

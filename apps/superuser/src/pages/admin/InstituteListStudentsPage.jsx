@@ -127,7 +127,7 @@ export default function InstituteListStudentsPage() {
       </button>
 
       <PageHeader
-        title={listMeta ? `${listMeta.institute_name} â€” List #${listId}` : `List #${listId}`}
+        title={listMeta ? `${listMeta.institute_name} — List #${listId}` : `List #${listId}`}
         description={
           listMeta
             ? `Uploaded by ${listMeta.contact_name} (${listMeta.contact_email})`
@@ -222,10 +222,10 @@ export default function InstituteListStudentsPage() {
                         <p className="text-xs text-ink-500">{s.email}</p>
                       </td>
                       <td className="px-4 py-3 text-ink-600">
-                        {s.field_of_study || "â€”"}
-                        {s.degree_level ? ` Â· ${s.degree_level}` : ""}
+                        {s.field_of_study || "—"}
+                        {s.degree_level ? ` · ${s.degree_level}` : ""}
                       </td>
-                      <td className="px-4 py-3 text-ink-600">{s.expected_graduation || "â€”"}</td>
+                      <td className="px-4 py-3 text-ink-600">{s.expected_graduation || "—"}</td>
                       <td className="px-4 py-3">
                         <Badge tone={statusTone(s.status)} className="capitalize">
                           {s.status}
@@ -289,9 +289,9 @@ export default function InstituteListStudentsPage() {
 }
 
 function formatDate(iso) {
-  if (!iso) return "â€”";
+  if (!iso) return "—";
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "â€”";
+  if (Number.isNaN(date.getTime())) return "—";
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(date);
 }
 

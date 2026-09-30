@@ -1,3 +1,4 @@
+import { StudentQueriesPanel } from '../queries/StudentQueriesPanel';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -27,6 +28,8 @@ import { useProfileImage } from './useProfileImage';
 import { useResumes } from './useResumes';
 
 export function ProfileScreen({
+  notificationControl,
+  queryNavigation,
   profile: loadedProfile,
   loading = false,
   error,
@@ -38,8 +41,9 @@ export function ProfileScreen({
   onAriaSectionActiveChange,
 }: ProfileScreenProps) {
   const profile = useMemo(() => normalizeStudentProfile(loadedProfile ?? sampleProfile), [loadedProfile]);
-  const skills = profile.technical_skills?.length ? profile.technical_skills : profile.skills;
+  const skills = profile.skills;
   const [section, setSectionState] = useState<ProfileSection>('aria');
+  useEffect(() => { if (queryNavigation) { setSectionState('queries'); setMenuOpen(false); } }, [queryNavigation]);
   const [sectionHistory, setSectionHistory] = useState<ProfileSection[]>([]);
   const [agentName, setAgentName] = useState('Aria');
   const [ariaHeaderCommand, setAriaHeaderCommand] = useState<AriaHeaderCommand | undefined>();
@@ -97,22 +101,16 @@ export function ProfileScreen({
   };
 
   const goBackSection = useCallback(() => {
-    if (sectionHistory.length > 0) {
-      const prevSection = sectionHistory[sectionHistory.length - 1];
-      setSectionHistory((prev) => prev.slice(0, prev.length - 1));
-      if (prevSection) {
-        setSectionState(prevSection);
-      }
-      return true;
-    }
-
+    if (menuOpen) { setMenuOpen(false); return true; }
+    if (ariaActionsOpen) { setAriaActionsOpen(false); return true; }
     if (section !== 'aria') {
+      setSectionHistory([]);
       setSectionState('aria');
       return true;
     }
 
     return false;
-  }, [section, sectionHistory]);
+  }, [section, menuOpen, ariaActionsOpen]);
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -128,6 +126,8 @@ export function ProfileScreen({
     resumes,
     resumesLoading,
     resumeUploadLoading,
+    resumeProgress,
+    pendingResumeName,
     viewLoadingId,
     deleteLoadingId,
     loadResumes,
@@ -136,6 +136,7 @@ export function ProfileScreen({
     removeResume,
   } = useResumes({ session, services, section, setSectionError, onProfileChanged });
   const {
+    githubAccepted,
     githubAnalysis,
     githubHistory,
     githubLoading,
@@ -148,6 +149,7 @@ export function ProfileScreen({
   const {
     linkedinImages,
     linkedinPreviews,
+    linkedinProgress,
     linkedinLoading,
     linkedinUrl,
     setLinkedinUrl,
@@ -212,7 +214,7 @@ export function ProfileScreen({
           onPress={() => setMenuOpen((value) => !value)}
           style={styles.menuButton}
         >
-          <Text style={styles.menuIcon}>☰</Text>
+          <MaterialIcons name="menu" size={24} color={colors.text} />
         </Pressable>
 
         {!menuOpen ? (
@@ -221,6 +223,7 @@ export function ProfileScreen({
               {section === 'overview' ? 'Complete profile' : sectionTitle(section, agentName)}
             </Text>
 
+            {notificationControl}
             {section === 'aria' ? (
               <View style={styles.topBarActions}>
                 {/* More button */}
@@ -308,6 +311,9 @@ export function ProfileScreen({
 
           {section === 'resumes' ? (
             <ResumeManager
+              progress={resumeProgress}
+              pendingFilename={pendingResumeName}
+              onContinue={() => selectSection('aria')}
               resumes={resumes}
               loading={resumesLoading}
               viewLoadingId={viewLoadingId}
@@ -375,6 +381,7 @@ export function ProfileScreen({
                     onPrimary={() => undefined}
                     onSecondary={runGithubAnalysis}
                   />
+                  {actionLoading && githubAccepted ? <PrimaryButton label="Continue in background" onPress={() => selectSection('aria')} /> : null}
                   {message ? <Text style={styles.successText}>{message}</Text> : null}
                   {sectionError ? <Text style={styles.errorTextMsg}>{sectionError}</Text> : null}
                   <GithubAnalysisDetails
@@ -388,36 +395,20 @@ export function ProfileScreen({
             </View>
           ) : null}
 
+          {section === 'queries' ? <StudentQueriesPanel session={session} selection={queryNavigation} /> : null}
           {section === 'githubProfile' ? (
             <GithubProfilePanel session={session} onConnect={() => selectSection('github')} onProfileChanged={onProfileChanged} />
           ) : null}
 
           {section === 'linkedin' ? (
-            <SourceEditor
-              title="LinkedIn"
-              description={
-                profile.linkedin_url
-                  ? 'Update the saved URL or upload screenshots for a fresh analysis.'
-                  : 'Upload profile screenshots.'
-              }
-              value={linkedinUrl}
-              onChange={setLinkedinUrl}
-              placeholder="https://www.linkedin.com/in/username"
-              primaryLabel="Save URL"
-              secondaryLabel="Upload images"
-              showUrlField={false}
-              showPrimaryAction={false}
-              disabled={actionLoading}
-              error={sectionError}
-              onPrimary={() => savePlainUrl('linkedin_url', linkedinUrl)}
-              onSecondary={uploadLinkedinImages}
-            />
-          ) : null}
-
-          {section === 'linkedin' ? (
             <LinkedinImageHistory
+              onUpload={uploadLinkedinImages}
+              error={sectionError}
+              extractedData={profile.linkedin_profile}
               session={session}
               loading={linkedinLoading}
+              progress={linkedinProgress}
+              onContinue={() => selectSection('aria')}
               localPreviews={linkedinPreviews}
               records={linkedinImages}
               onRefresh={loadLinkedinImages}

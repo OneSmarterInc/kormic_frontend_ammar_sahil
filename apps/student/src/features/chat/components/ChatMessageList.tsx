@@ -11,6 +11,7 @@ export function ChatMessageList({
   agentName,
   messages,
   loading,
+  activityLabel,
   historyLoading,
   messagesScrollRef,
   shouldScrollMessagesToEndRef,
@@ -26,6 +27,7 @@ export function ChatMessageList({
   | 'agentName'
   | 'messages'
   | 'loading'
+  | 'activityLabel'
   | 'historyLoading'
   | 'messagesScrollRef'
   | 'shouldScrollMessagesToEndRef'
@@ -52,7 +54,7 @@ export function ChatMessageList({
     >
       {historyLoading ? (
         <View style={styles.messageRow}>
-          <View style={[styles.bubble, styles.ariaBubble, styles.loadingBubble]}>
+          <View accessibilityLiveRegion="polite" style={[styles.bubble, styles.ariaBubble, styles.loadingBubble]}>
             <ActivityIndicator color={colors.coral} size="small" />
             <Text style={styles.loadingText}>Loading {agentName} history...</Text>
           </View>
@@ -68,8 +70,9 @@ export function ChatMessageList({
               isUniversityResponse={message.escalationStatus === 'resolved'}
               question={message.question}
               answer={message.answer}
+              sourceCards={message.role === 'aria'}
             />
-            {message.role === 'aria' ? <UniversityReferences meta={message.meta} session={session} /> : null}
+            {message.role === 'aria' ? <UniversityReferences meta={message.meta} session={session} text={message.answer ?? message.text} /> : null}
             {message.role === 'aria' ? <ProfileChanges meta={message.meta} current={currentChanges} /> : null}
             {message.role === 'aria' && message.escalationStatus === 'pending' ? (
               <Text style={styles.escalationText}>
@@ -169,7 +172,7 @@ export function ChatMessageList({
         <View style={styles.messageRow}>
           <View style={[styles.bubble, styles.ariaBubble, styles.loadingBubble]}>
             <ActivityIndicator color={colors.coral} size="small" />
-            <Text style={styles.loadingText}>{agentName} is reading your profile...</Text>
+            <Text style={styles.loadingText}>{activityLabel}</Text>
           </View>
         </View>
       ) : null}

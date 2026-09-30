@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Linking,Platform, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, Linking,Platform, StyleSheet, Text, View } from 'react-native';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { ScreenShell } from '../components/ScreenShell';
@@ -54,10 +54,13 @@ export function GitHubScreen({ state, dispatch, onContinue }: GitHubScreenProps)
   const [status, setStatus] = useState<GithubViewStatus>({ connected: state.githubStatus === 'connected' });
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [accepted, setAccepted] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [analysis, setAnalysis] = useState<GithubAnalysisResponse | undefined>();
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   const loadStatus = useCallback(async (options?: { silent?: boolean }) => {
     setError('');
@@ -91,7 +94,7 @@ export function GitHubScreen({ state, dispatch, onContinue }: GitHubScreenProps)
   }, [dispatch, state.authSession]);
 
   const pollStatusAfterOAuth = useCallback(async () => {
-    for (let attempt = 0; attempt < 20; attempt += 1) {
+    for (let attempt = 0; attempt < 150 && mounted.current; attempt += 1) {
       const nextStatus = await loadStatus({ silent: true });
 
       if (nextStatus?.connected) {
@@ -103,8 +106,16 @@ export function GitHubScreen({ state, dispatch, onContinue }: GitHubScreenProps)
       await wait(2000);
     }
 
+    if (!mounted.current) return;
     setConnecting(false);
     setMessage('If GitHub says connected, return here and tap Connect GitHub again to refresh the status.');
+  }, [loadStatus]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void loadStatus({ silent: true });
+    });
+    return () => subscription.remove();
   }, [loadStatus]);
 
   useEffect(() => {
@@ -150,6 +161,9 @@ export function GitHubScreen({ state, dispatch, onContinue }: GitHubScreenProps)
     }
 
     dispatch({ type: 'SET_GITHUB_CONNECTING' });
+    // Open during the user gesture; opening after awaiting the API is blocked
+    // by browsers that enforce popup restrictions.
+    const popup = isWeb && typeof window !== 'undefined' ? window.open('about:blank', '_blank') : null;
     try {
       setConnecting(true);
       const data = await getGithubConnectUrl(state.authSession);
@@ -159,12 +173,11 @@ export function GitHubScreen({ state, dispatch, onContinue }: GitHubScreenProps)
       }
 
       if (isWeb && typeof window !== 'undefined' && typeof window.open === 'function') {
-        const popup = window.open(data.authorize_url, '_blank');
-
         if (!popup) {
           setMessage('GitHub opened in a new browser tab. Complete authorization there, then return here.');
           await Linking.openURL(data.authorize_url);
         } else {
+          popup.location.href = data.authorize_url;
           popup.focus();
           setMessage('Complete GitHub authorization in the new tab, then return here.');
         }
@@ -177,6 +190,7 @@ export function GitHubScreen({ state, dispatch, onContinue }: GitHubScreenProps)
       setMessage('Complete GitHub authorization in the browser, then return here.');
       pollStatusAfterOAuth();
     } catch (connectError) {
+      popup?.close();
       setError(connectError instanceof Error ? connectError.message : 'Unable to start GitHub OAuth.');
       dispatch({ type: 'SET_GITHUB_ERROR' });
       setConnecting(false);
@@ -194,10 +208,11 @@ export function GitHubScreen({ state, dispatch, onContinue }: GitHubScreenProps)
 
     try {
       setAnalyzing(true);
-      const result = await analyzeGithub(state.authSession, { onProgress: setMessage });
+      setAccepted(false);
+      const result = await analyzeGithub(state.authSession, { onProgress: setMessage, onAccepted: () => setAccepted(true) });
       setAnalysis(result);
       dispatch({ type: 'SET_GITHUB_CONNECTED', handle: status.github_username ?? state.githubHandle ?? 'GitHub' });
-      onContinue();
+      setMessage('GitHub processing complete. You can continue.');
     } catch (analysisError) {
       setError(analysisError instanceof Error ? analysisError.message : 'Unable to analyze GitHub.');
       dispatch({ type: 'SET_GITHUB_ERROR' });
@@ -221,9 +236,9 @@ export function GitHubScreen({ state, dispatch, onContinue }: GitHubScreenProps)
         <>
           <PrimaryButton
             testID="connect-github-button"
-            label={connected ? 'Analyze GitHub' : 'Connect GitHub'}
-            onPress={connected ? analyze : connect}
-            loading={connecting || analyzing}
+            label={accepted ? 'Continue' : connected ? 'Analyze GitHub' : 'Connect GitHub'}
+            onPress={accepted ? onContinue : connected ? analyze : connect}
+            loading={connecting || (analyzing && !accepted)}
           />
           <PrimaryButton label="Skip for now" onPress={() => setSkipVisible(true)} variant="secondary"/>
         </>

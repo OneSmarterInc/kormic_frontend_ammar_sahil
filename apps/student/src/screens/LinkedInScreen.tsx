@@ -1,3 +1,4 @@
+import { DocumentProgress, DocumentStatus, documentStatus } from '../components/DocumentProgress';
 import React, { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { PrimaryButton } from '../components/PrimaryButton';
@@ -17,6 +18,7 @@ interface LinkedInScreenProps {
 
 export function LinkedInScreen({ state, services, dispatch, onContinue }: LinkedInScreenProps) {
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = React.useState<DocumentStatus>();
   const [error, setError] = useState('');
   const [skipVisible, setSkipVisible] = useState(false);
 
@@ -26,9 +28,12 @@ export function LinkedInScreen({ state, services, dispatch, onContinue }: Linked
     try {
       setLoading(true);
       const screenshots = await services.linkedin.pickScreenshots(state.linkedinScreenshots.length);
-      await services.linkedin.upload(state.authSession, [...state.linkedinScreenshots, ...screenshots]);
       screenshots.forEach((screenshot) => dispatch({ type: 'ADD_LINKEDIN_SCREENSHOT', screenshot }));
+      setProgress({ stage: 'uploading', accepted: false });
+      await services.linkedin.upload(state.authSession, [...state.linkedinScreenshots, ...screenshots], { onProgress: job => setProgress(documentStatus(job)) });
+      setProgress({ stage: 'completed', accepted: true });
     } catch (uploadError) {
+      setProgress({ stage: 'failed', accepted: false });
       setError(uploadError instanceof Error ? uploadError.message : 'Unable to upload LinkedIn profile');
     } finally {
       setLoading(false);
@@ -47,10 +52,10 @@ export function LinkedInScreen({ state, services, dispatch, onContinue }: Linked
       footer={
         <>
           <PrimaryButton
-            label={state.linkedinScreenshots.length > 0 ? 'Continue' : 'Upload screenshots'}
-            onPress={state.linkedinScreenshots.length > 0 ? onContinue : add}
-            disabled={loading}
-            loading={loading}
+            label={progress?.stage === 'failed' ? 'Try upload again' : state.linkedinScreenshots.length > 0 ? 'Continue' : 'Upload screenshots'}
+            onPress={state.linkedinScreenshots.length > 0 && progress?.stage !== 'failed' ? onContinue : add}
+            disabled={loading && !progress?.accepted}
+            loading={loading && !progress?.accepted}
           />
           <PrimaryButton label="Skip for now" onPress={() => setSkipVisible(true)} variant="secondary" disabled={loading} />
         </>
@@ -85,10 +90,11 @@ export function LinkedInScreen({ state, services, dispatch, onContinue }: Linked
               </Pressable>
             </View>
           ))}
-          <Pressable accessibilityRole="button" accessibilityLabel="Add more LinkedIn screenshots" onPress={add} style={styles.add}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Add more LinkedIn screenshots" onPress={add} disabled={loading} style={styles.add}>
             <Text style={styles.addText}>+</Text>
           </Pressable>
         </View>
+        <DocumentProgress status={progress} />
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <Text style={styles.consequence}>
           You can continue, but your agent may have less verified information to work with.

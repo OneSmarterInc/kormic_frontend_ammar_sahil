@@ -56,7 +56,7 @@ it('claims an invitation through verification, review and account enrollment', a
   });
   expect(api.startStudentClaim).not.toHaveBeenCalled();
   act(() => {
-    result.current.openClaimFromUrl('kormicstudent://claim?token=invitation');
+    result.current.openClaimFromUrl('kormicstudent://claim?token=0123456789abcdef0123456789abcdef');
   });
   await act(async () => {
     await result.current.requestClaimCode();
@@ -65,7 +65,7 @@ it('claims an invitation through verification, review and account enrollment', a
   await act(async () => {
     await result.current.verifyClaimCode('123456');
   });
-  expect(api.verifyStudentClaim).toHaveBeenCalledWith({ token: 'invitation', code: '123456' });
+  expect(api.verifyStudentClaim).toHaveBeenCalledWith({ token: '0123456789abcdef0123456789abcdef', code: '123456' });
   act(() => {
     result.current.updateClaimPrefill('full_name', 'Ada Student');
   });
@@ -169,4 +169,22 @@ it.each([true, false])('LinkedIn URL save releases its loading state (success=%s
   });
   expect(setActionLoading.mock.calls).toEqual([[true], [false]]);
   if (!success) expect(setSectionError).toHaveBeenLastCalledWith('Save failed');
+});
+
+it('shows LinkedIn previews before extraction completes and records acceptance', async () => {
+  let finish!: (value: any) => void;
+  jest.mocked(api.uploadLinkedIn).mockImplementation((_session, _files, options) => {
+    options?.onProgress?.({ job_id: 'accepted-job', status: 'queued' });
+    return new Promise(resolve => { finish = resolve; });
+  });
+  jest.mocked(api.listLinkedInHistory).mockResolvedValue({ images: [] } as any);
+  const screenshot = { id: 'new', label: 'New image', uri: 'file:///new.png' };
+  const services = { linkedin: { pickScreenshots: jest.fn().mockResolvedValue([screenshot]) } } as any;
+  const { result } = renderHook(() => useLinkedinProfile({ session, services, profile, section: 'overview', setActionLoading: jest.fn(), setSectionError: jest.fn() }));
+  let pending!: Promise<void>;
+  await act(async () => { pending = result.current.uploadLinkedinImages(); await Promise.resolve(); });
+  expect(result.current.linkedinPreviews).toEqual([screenshot]);
+  expect(result.current.linkedinProgress).toEqual({stage:'queued',accepted:true});
+  await act(async () => { finish({}); await pending; });
+  expect(result.current.linkedinProgress?.stage).toBe('completed');
 });

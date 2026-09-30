@@ -27,6 +27,7 @@ import { OnboardingAction } from '../state/onboardingReducer';
 
 export type AppRouteProps = ReturnType<typeof useClaimFlow> &
   ReturnType<typeof useStudentSession> & {
+    notificationControl?: import("react").ReactNode;
     state: OnboardingState;
     dispatch: Dispatch<OnboardingAction>;
     navigate: (route: OnboardingRoute) => void;
@@ -40,9 +41,11 @@ export type AppRouteProps = ReturnType<typeof useClaimFlow> &
     setProfileAriaActive: Dispatch<SetStateAction<boolean>>;
     closeBotScreen: () => void;
     botNotificationRefreshKey: number;
+    queryNavigation?: import('../features/queries/StudentQueriesPanel').QueryNavigation;
   };
 
 export function AppRoutes({
+  notificationControl,
   state,
   dispatch,
   navigate,
@@ -81,8 +84,10 @@ export function AppRoutes({
   setProfileAriaActive,
   closeBotScreen,
   botNotificationRefreshKey,
+  queryNavigation,
 }: Pick<
   AppRouteProps,
+  | 'notificationControl'
   | 'state'
   | 'dispatch'
   | 'navigate'
@@ -121,6 +126,7 @@ export function AppRoutes({
   | 'setProfileAriaActive'
   | 'closeBotScreen'
   | 'botNotificationRefreshKey'
+  | 'queryNavigation'
 >) {
   switch (state.route) {
     case 'Welcome':
@@ -281,6 +287,7 @@ export function AppRoutes({
     case 'Profile':
       return (
         <ProfileScreen
+          notificationControl={notificationControl}
           profile={profile}
           loading={profileLoading}
           error={profileError}
@@ -290,11 +297,13 @@ export function AppRoutes({
           onProfileChanged={handleProfileChanged}
           onLogout={logout}
           onAriaSectionActiveChange={setProfileAriaActive}
+          queryNavigation={queryNavigation}
         />
       );
     case 'BotScreen':
       return (
         <BotScreen
+          notificationControl={notificationControl}
           session={state.authSession}
           onBack={closeBotScreen}
           refreshKey={botNotificationRefreshKey}

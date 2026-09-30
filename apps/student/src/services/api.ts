@@ -3,35 +3,47 @@ import { AgentJob, newRequestId, waitForAgentJob } from './agentJobs';
 import { GithubJob, waitForGithubJob } from './githubJobs';
 import { resolveApiBaseUrl } from './apiBaseUrl';
 import { AuthSession, AuthUser, BasicInfo, LinkedInScreenshot, SelectedCvFile } from '../models/onboarding';
-import { clearSavedTokens, getTokenGeneration, getSavedRefreshToken, saveAccessToken, saveRefreshToken } from './tokenStorage';
+import { clearSavedTokens, getSavedTokens, getTokenGeneration, getSavedRefreshToken, saveAccessToken, saveRefreshToken } from './tokenStorage';
 import { parseGraduationYear } from '../utils/validation';
 
-declare const process: { env?: Record<string, string | undefined> } | undefined;
+declare const process: { env: Record<string, string | undefined> };
 
-const envApiBaseUrl = typeof process !== 'undefined' ? process.env?.EXPO_PUBLIC_API_BASE_URL?.trim() : undefined;
-
-if (!envApiBaseUrl) {
-  console.warn(
-    '[api] Warning: EXPO_PUBLIC_API_BASE_URL environment variable is not defined. Please set it in your .env file.',
-  );
-}
-
+// Expo inlines this variable; the unified build derives it from root .env.
+const envApiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+if (!envApiBaseUrl) throw new Error('Set KORMIC_API_ORIGIN_LOCAL and KORMIC_API_ORIGIN_PUBLIC in the frontend .env and rebuild.');
 const browserHostname = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location?.hostname : undefined;
-const localBrowserApi = browserHostname && ['localhost', '127.0.0.1', '[::1]'].includes(browserHostname)
-  ? `http://${browserHostname}:8000/api`
-  : undefined;
-
-// Never silently route a development build to the production API. Unified
-// builds and direct Expo development both provide EXPO_PUBLIC_API_BASE_URL;
-// loopback web development has a safe local default.
-const configuredApiBaseUrl = envApiBaseUrl || localBrowserApi || 'http://127.0.0.1:8000/api';
-export const API_BASE_URL = resolveApiBaseUrl(configuredApiBaseUrl, browserHostname);
+export const API_BASE_URL = resolveApiBaseUrl(envApiBaseUrl, browserHostname, process.env.EXPO_PUBLIC_LOCAL_API_BASE_URL);
 
 interface ApiErrorBody {
   detail?: string;
   message?: string;
   error?: string;
   [key: string]: unknown;
+}
+
+class ApiRequestError extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
+export const isSessionRejected = (error: unknown) => error instanceof ApiRequestError && error.status === 401;
+
+const sessionExpiredListeners = new Set<() => void>();
+export function subscribeSessionExpired(listener: () => void) {
+  sessionExpiredListeners.add(listener);
+  return () => { sessionExpiredListeners.delete(listener); };
+}
+
+async function rejectSession(): Promise<never> {
+  await clearSavedTokens();
+  sessionExpiredListeners.forEach(listener => listener());
+  throw new ApiRequestError('Your session expired. Please sign in again.', 401);
+}
+
+async function handleRefreshFailure(error: unknown): Promise<never> {
+  if (isSessionRejected(error)) {
+    return rejectSession();
+  }
+  // Offline, timeouts and server failures do not revoke a valid login.
+  throw new Error('Could not reconnect to your session. Please retry when connected.');
 }
 
 export interface RegisterResponse {
@@ -398,7 +410,7 @@ async function requestJson<T>(path: string, init: RequestInit, fallbackError: st
   const data = await parseJson<T & ApiErrorBody>(response);
 
   if (!response.ok) {
-    throw new Error(getApiError(data, fallbackError));
+    throw new ApiRequestError(getApiError(data, fallbackError), response.status);
   }
 
   return (data ?? {}) as T;
@@ -437,19 +449,23 @@ async function performRefresh(refreshToken?: string) {
 
 let webRefreshPromise: ReturnType<typeof performRefresh> | undefined;
 export function refreshAccessToken(refreshToken?: string) {
-  if (Platform.OS !== 'web') return performRefresh(refreshToken);
   if (!webRefreshPromise) {
     const generation = getTokenGeneration();
-    webRefreshPromise = performRefresh().then((result) => {
+    webRefreshPromise = (async () => {
+      // Native screens can retain older session objects after token rotation.
+      const current = Platform.OS === 'web' ? undefined : (await getSavedRefreshToken()) || refreshToken;
+      const result = await performRefresh(current);
       if (generation !== getTokenGeneration()) throw new Error('Session changed');
+      await saveAccessToken(result.access);
+      if (result.refresh) await saveRefreshToken(result.refresh);
       return result;
-    }).finally(() => { webRefreshPromise = undefined; });
+    })().finally(() => { webRefreshPromise = undefined; });
   }
   return webRefreshPromise;
 }
 
 export async function logoutSession(session?: AuthSession) {
-  const refresh = session?.refresh || (await getSavedRefreshToken());
+  const refresh = (await getSavedRefreshToken()) || session?.refresh;
   // Prevent an in-flight refresh from restoring a session after logout.
   await clearSavedTokens();
   if (Platform.OS !== 'web' && !refresh) return;
@@ -460,52 +476,65 @@ export async function logoutSession(session?: AuthSession) {
   }, 'Unable to sign out');
 }
 
+// Every protected API request uses the latest stored credentials, including
+// requests started by screens holding a session from before token rotation.
+export async function fetchWithSession(
+  session: AuthSession,
+  url: string,
+  initForAccessToken: (accessToken: string) => RequestInit,
+): Promise<Response> {
+  const generation = getTokenGeneration();
+  const ensureCurrentSession = () => {
+    if (generation !== getTokenGeneration()) throw new Error('Session changed. Please sign in again.');
+  };
+  const saved = await getSavedTokens();
+  ensureCurrentSession();
+  let access = saved?.access || session.access;
+  let refresh = saved?.refresh || session.refresh;
+  if (!access) return rejectSession();
+  let response = await fetch(url, initForAccessToken(access));
+  ensureCurrentSession();
+  if (response.status === 401) {
+    // A delayed 401 may arrive after another request already rotated tokens.
+    const latest = await getSavedTokens();
+    ensureCurrentSession();
+    if (latest?.access && latest.access !== access) {
+      access = latest.access;
+      refresh = latest.refresh || refresh;
+      response = await fetch(url, initForAccessToken(access));
+      ensureCurrentSession();
+    }
+    if (response.status === 401) {
+      if (Platform.OS !== 'web' && !refresh) return rejectSession();
+      try {
+        const refreshed = await refreshAccessToken(refresh);
+        ensureCurrentSession();
+        access = refreshed.access;
+        refresh = refreshed.refresh || refresh;
+      } catch (error) {
+        ensureCurrentSession();
+        return handleRefreshFailure(error);
+      }
+      response = await fetch(url, initForAccessToken(access));
+      ensureCurrentSession();
+      if (response.status === 401) return rejectSession();
+    }
+  }
+  session.access = access;
+  session.refresh = refresh;
+  return response;
+}
+
 async function requestWithSession<T>(
   session: AuthSession,
   path: string,
   initForAccessToken: (accessToken: string) => RequestInit,
   fallbackError: string,
 ): Promise<T> {
-  if (!session.access) {
-    throw new Error('Missing auth token. Please sign in again.');
-  }
-
-  const firstResponse = await fetch(`${API_BASE_URL}${path}`, initForAccessToken(session.access));
-  const firstData = await parseJson<T & ApiErrorBody>(firstResponse);
-
-  if (firstResponse.ok) {
-    return (firstData ?? {}) as T;
-  }
-
-  const refreshToken = session.refresh || (await getSavedRefreshToken());
-  if (firstResponse.status !== 401 || (Platform.OS !== 'web' && !refreshToken)) {
-    throw new Error(getApiError(firstData, fallbackError));
-  }
-
-  try {
-    const refreshed = await refreshAccessToken(refreshToken);
-    session.access = refreshed.access;
-    session.refresh = refreshed.refresh ?? refreshToken;
-    await saveAccessToken(refreshed.access);
-    if (session.refresh) {
-      await saveRefreshToken(session.refresh);
-    }
-  } catch {
-    await clearSavedTokens();
-    throw new Error('Your session expired. Please sign in again.');
-  }
-
-  const retryResponse = await fetch(`${API_BASE_URL}${path}`, initForAccessToken(session.access));
-  const retryData = await parseJson<T & ApiErrorBody>(retryResponse);
-
-  if (!retryResponse.ok) {
-    if (retryResponse.status === 401) {
-      await clearSavedTokens();
-    }
-    throw new Error(getApiError(retryData, fallbackError));
-  }
-
-  return (retryData ?? {}) as T;
+  const response = await fetchWithSession(session, `${API_BASE_URL}${path}`, initForAccessToken);
+  const data = await parseJson<T & ApiErrorBody>(response);
+  if (!response.ok) throw new ApiRequestError(getApiError(data, fallbackError), response.status);
+  return (data ?? {}) as T;
 }
 
 async function requestBlobWithSession(
@@ -514,44 +543,7 @@ async function requestBlobWithSession(
   initForAccessToken: (accessToken: string) => RequestInit,
   fallbackError: string,
 ) {
-  if (!session.access) {
-    throw new Error('Missing auth token. Please sign in again.');
-  }
-
-  const firstResponse = await fetch(`${API_BASE_URL}${path}`, initForAccessToken(session.access));
-  if (firstResponse.ok) {
-    return firstResponse.blob();
-  }
-
-  const firstData = await parseJson<ApiErrorBody>(firstResponse);
-  const refreshToken = session.refresh || (await getSavedRefreshToken());
-  if (firstResponse.status !== 401 || (Platform.OS !== 'web' && !refreshToken)) {
-    throw new Error(getApiError(firstData, fallbackError));
-  }
-
-  try {
-    const refreshed = await refreshAccessToken(refreshToken);
-    session.access = refreshed.access;
-    session.refresh = refreshed.refresh ?? refreshToken;
-    await saveAccessToken(refreshed.access);
-    if (session.refresh) {
-      await saveRefreshToken(session.refresh);
-    }
-  } catch {
-    await clearSavedTokens();
-    throw new Error('Your session expired. Please sign in again.');
-  }
-
-  const retryResponse = await fetch(`${API_BASE_URL}${path}`, initForAccessToken(session.access));
-  if (!retryResponse.ok) {
-    const retryData = await parseJson<ApiErrorBody>(retryResponse);
-    if (retryResponse.status === 401) {
-      await clearSavedTokens();
-    }
-    throw new Error(getApiError(retryData, fallbackError));
-  }
-
-  return retryResponse.blob();
+  return requestBlobUrlWithSession(session, `${API_BASE_URL}${path}`, initForAccessToken, fallbackError);
 }
 
 async function requestBlobUrlWithSession(
@@ -560,44 +552,12 @@ async function requestBlobUrlWithSession(
   initForAccessToken: (accessToken: string) => RequestInit,
   fallbackError: string,
 ) {
-  if (!session.access) {
-    throw new Error('Missing auth token. Please sign in again.');
+  const response = await fetchWithSession(session, url, initForAccessToken);
+  if (!response.ok) {
+    const data = await parseJson<ApiErrorBody>(response);
+    throw new ApiRequestError(getApiError(data, fallbackError), response.status);
   }
-
-  const firstResponse = await fetch(url, initForAccessToken(session.access));
-  if (firstResponse.ok) {
-    return firstResponse.blob();
-  }
-
-  const firstData = await parseJson<ApiErrorBody>(firstResponse);
-  const refreshToken = session.refresh || (await getSavedRefreshToken());
-  if (firstResponse.status !== 401 || (Platform.OS !== 'web' && !refreshToken)) {
-    throw new Error(getApiError(firstData, fallbackError));
-  }
-
-  try {
-    const refreshed = await refreshAccessToken(refreshToken);
-    session.access = refreshed.access;
-    session.refresh = refreshed.refresh ?? refreshToken;
-    await saveAccessToken(refreshed.access);
-    if (session.refresh) {
-      await saveRefreshToken(session.refresh);
-    }
-  } catch {
-    await clearSavedTokens();
-    throw new Error('Your session expired. Please sign in again.');
-  }
-
-  const retryResponse = await fetch(url, initForAccessToken(session.access));
-  if (!retryResponse.ok) {
-    const retryData = await parseJson<ApiErrorBody>(retryResponse);
-    if (retryResponse.status === 401) {
-      await clearSavedTokens();
-    }
-    throw new Error(getApiError(retryData, fallbackError));
-  }
-
-  return retryResponse.blob();
+  return response.blob();
 }
 
 function appendChatAttachment(formData: FormData, attachment: ChatAttachmentFile) {
@@ -849,7 +809,10 @@ export function createStudentProfile(session: AuthSession, basicInfo: BasicInfo)
   });
 }
 
-export function uploadResume(session: AuthSession, file: SelectedCvFile) {
+export type DocumentUploadOptions = { onProgress?: (job: AgentJob<Record<string, unknown>>) => void };
+
+export function uploadResume(session: AuthSession, file: SelectedCvFile, options?: DocumentUploadOptions) {
+  const requestId = newRequestId();
   const formData = new FormData();
   if (file.file) {
     formData.append('file', file.file, file.name);
@@ -868,11 +831,17 @@ export function uploadResume(session: AuthSession, file: SelectedCvFile) {
     '/profile/resume/',
     (accessToken) => ({
       method: 'POST',
-      headers: authHeaders(accessToken, ''),
+      headers: { ...authHeaders(accessToken, ''), Prefer: 'respond-async', 'Idempotency-Key': requestId },
       body: formData,
     }),
     'Unable to upload resume',
-  );
+  ).then(result => waitForDocumentJob(session, result, options));
+}
+
+function waitForDocumentJob(session: AuthSession, result: Record<string, unknown>, options?: DocumentUploadOptions) {
+  return waitForAgentJob<Record<string, unknown>>(result, id => requestWithSession<Record<string, unknown>>(
+    session, `/chat/jobs/${encodeURIComponent(id)}/`, token => ({method:'GET', headers:authHeaders(token)}),
+    'Unable to check document processing'), undefined, options?.onProgress);
 }
 
 export function getGithubConnectUrl(session: AuthSession) {
@@ -917,8 +886,9 @@ export function getGithubSyncJob(session: AuthSession, id: string) {
     (token) => ({ method: 'GET', headers: authHeaders(token) }), 'Unable to check GitHub extraction');
 }
 
-export async function analyzeGithub(session: AuthSession, options: { signal?: AbortSignal; onProgress?: (message: string) => void } = {}) {
+export async function analyzeGithub(session: AuthSession, options: { signal?: AbortSignal; onProgress?: (message: string) => void; onAccepted?: () => void } = {}) {
   const job = await startGithubSync(session);
+  options?.onAccepted?.();
   return waitForGithubJob<GithubAnalysisResponse>(job, (id) => getGithubSyncJob(session, id), options);
 }
 
@@ -960,7 +930,8 @@ export function disconnectGithub(session: AuthSession) {
   );
 }
 
-export function uploadLinkedIn(session: AuthSession, screenshots: LinkedInScreenshot[]) {
+export function uploadLinkedIn(session: AuthSession, screenshots: LinkedInScreenshot[], options?: DocumentUploadOptions) {
+  const requestId = newRequestId();
   const formData = new FormData();
   let imageCount = 0;
   screenshots.forEach((screenshot, index) => {
@@ -986,11 +957,11 @@ export function uploadLinkedIn(session: AuthSession, screenshots: LinkedInScreen
     '/profile/linkedin/',
     (accessToken) => ({
       method: 'POST',
-      headers: authHeaders(accessToken, ''),
+      headers: { ...authHeaders(accessToken, ''), Prefer: 'respond-async', 'Idempotency-Key': requestId },
       body: formData,
     }),
     'Unable to upload LinkedIn profile',
-  );
+  ).then(result => waitForDocumentJob(session, result, options));
 }
 
 export function updateProfileFields(
@@ -1010,7 +981,7 @@ export function updateProfileFields(
     .then(normalizeProfileResponse);
 }
 
-export function getStudentProfile(session: AuthSession) {
+function fetchStudentProfile(session: AuthSession) {
   if (!session.user?.student_id) {
     throw new Error('Missing student ID. Please sign in again.');
   }
@@ -1024,6 +995,16 @@ export function getStudentProfile(session: AuthSession) {
     }),
     'Unable to load student profile',
   ).then(normalizeProfileResponse);
+}
+
+const profileRequests = new Map<string, ReturnType<typeof fetchStudentProfile>>();
+export function getStudentProfile(session: AuthSession) {
+  const key = `${session.user?.student_id}:${session.access}`;
+  const pending = profileRequests.get(key);
+  if (pending) return pending;
+  const request = fetchStudentProfile(session).finally(() => profileRequests.delete(key));
+  profileRequests.set(key, request);
+  return request;
 }
 
 export function listStudentResumes(session: AuthSession) {
@@ -1188,7 +1169,18 @@ export function chatWithAria(
 
 export function readAgentJob(session: AuthSession, id: string) {
   return requestWithSession<AriaChatResponse>(session, `/chat/jobs/${encodeURIComponent(id)}/`,
-    token => ({ method: 'GET', headers: authHeaders(token) }), 'Unable to check chat progress');
+    token => ({ method: 'GET', headers: authHeaders(token) }), 'Unable to check chat progress').then(result => {
+      // The reply has arrived before shared research is written. Never block
+      // displaying it on cache maintenance; repeated acknowledgements are safe.
+      if ((result as AriaChatResponse & AgentJob<AriaChatResponse>).status === 'completed') {
+        setTimeout(() => {
+          void requestWithSession(session, `/chat/jobs/${encodeURIComponent(id)}/`,
+            token => ({ method: 'POST', headers: authHeaders(token) }), 'Unable to save researched information')
+            .catch(() => { /* Keep the delivered answer; pending evidence stays durable. */ });
+        }, 0);
+      }
+      return result;
+    });
 }
 
 export async function resumeAriaJob(session: AuthSession, signal?: AbortSignal) {
@@ -1283,4 +1275,9 @@ export function updateAgentName(session: AuthSession, agentName: string) {
     }),
     'Unable to update agent name',
   );
+}
+
+export function getAgentActivity(session: AuthSession) {
+  return requestWithSession<{status: string; label?: string; updated_at?: string}>(session, '/chat/activity/',
+    token => ({method: 'GET', headers: authHeaders(token)}), 'Unable to check agent activity');
 }

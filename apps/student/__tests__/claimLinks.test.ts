@@ -1,4 +1,17 @@
-import { getClaimTokenFromUrl } from '../src/utils/claimLinks';
+import { getClaimTokenFromUrl, normalizeClaimInput } from '../src/utils/claimLinks';
+
+describe('pasted email invitations', () => {
+  const token = 'aB_-'.repeat(8);
+  it('accepts the emailed code and extracts it from a pasted link', () => {
+    expect(normalizeClaimInput(` ${token}\n`)).toBe(token);
+    expect(normalizeClaimInput(`https://app.kormic.ai/claim?token=${token}`)).toBe(token);
+    expect(normalizeClaimInput(`kormicstudent://claim?token=${token}`)).toBe(token);
+  });
+  it('rejects the verification OTP and unrelated links at the invitation step', () => {
+    expect(normalizeClaimInput('123456')).toBe('');
+    expect(normalizeClaimInput(`https://evil.example/claim?token=${token}`)).toBe('');
+  });
+});
 
 describe('invitation deep links', () => {
   it.each([

@@ -18,6 +18,7 @@ export default function ConfirmModal({
       open={open}
       onClose={onClose}
       title={title}
+      disableClose={loading}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={loading}>

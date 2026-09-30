@@ -7,13 +7,17 @@ import * as storage from '../src/services/tokenStorage';
 import * as notifications from '../src/services/notifications';
 
 jest.mock('../src/services/api', () => ({
+  isSessionRejected: jest.fn((error) => error?.status === 401),
   getMe: jest.fn(),
   getStudentProfile: jest.fn(),
   refreshAccessToken: jest.fn(),
   createStudentProfile: jest.fn(),
   logoutSession: jest.fn(),
+  subscribeSessionExpired: jest.fn(() => jest.fn()),
 }));
 jest.mock('../src/services/tokenStorage', () => ({
+  getTokenGeneration: jest.fn(() => 0),
+  getSavedSessionUser: jest.fn(),
   getSavedTokens: jest.fn(),
   saveAccessToken: jest.fn(),
   saveTokens: jest.fn(),
@@ -93,9 +97,29 @@ it('restores a browser session using the refresh cookie when memory is empty', a
   expect(inputs.navigate).toHaveBeenCalledWith('Profile');
 });
 
+it('keeps the rotated refresh token in the restored native session', async () => {
+  jest.mocked(storage.getSavedTokens).mockResolvedValue({ access: 'expired', refresh: 'old-refresh' });
+  jest.mocked(api.getMe).mockRejectedValueOnce(Object.assign(new Error('Token expired'), { status: 401 })).mockResolvedValue(user);
+  jest.mocked(api.refreshAccessToken).mockResolvedValue({ access: 'fresh', refresh: 'rotated' });
+  const inputs = options();
+  const { result } = renderHook(() => useStudentSession(inputs));
+  await waitFor(() => expect(result.current.restoringSession).toBe(false));
+  expect(inputs.dispatch).toHaveBeenCalledWith({ type: 'SET_AUTH_SESSION', session: expect.objectContaining({ access: 'fresh', refresh: 'rotated' }) });
+});
+
+it('returns to a signed-out state when a protected request rejects the session', async () => {
+  const inputs = options();
+  const { result } = renderHook(() => useStudentSession(inputs));
+  await waitFor(() => expect(result.current.restoringSession).toBe(false));
+  expect(api.subscribeSessionExpired).toHaveBeenCalled();
+  act(() => { jest.mocked(api.subscribeSessionExpired).mock.calls[0]?.[0](); });
+  expect(inputs.dispatch).toHaveBeenCalledWith({ type: 'LOGOUT' });
+  expect(result.current.profile).toBeUndefined();
+});
+
 it('marks a browser session missing only after cookie restoration actually fails', async () => {
   Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' });
-  jest.mocked(api.refreshAccessToken).mockRejectedValue(new Error('No cookie session'));
+  jest.mocked(api.refreshAccessToken).mockRejectedValue(Object.assign(new Error('No cookie session'), { status: 401 }));
   const inputs = options();
   const { result } = renderHook(() => useStudentSession(inputs));
   await waitFor(() => expect(result.current.restoringSession).toBe(false));
@@ -125,4 +149,25 @@ it('clears local authentication even when server logout and push removal fail', 
   expect(storage.clearSavedTokens).toHaveBeenCalledTimes(1);
   expect(inputs.dispatch).toHaveBeenLastCalledWith({ type: 'LOGOUT' });
   expect(result.current.profile).toBeUndefined();
+});
+
+it('keeps the native session and shows a server error during an outage', async () => {
+  jest.mocked(storage.getSavedTokens).mockResolvedValue({ access: 'saved', refresh: 'refresh' });
+  jest.mocked(storage.getSavedSessionUser).mockResolvedValue(user);
+  jest.mocked(api.getMe).mockRejectedValue(new Error('Network unavailable'));
+  const inputs = options();
+  const { result } = renderHook(() => useStudentSession(inputs));
+  await waitFor(() => expect(result.current.restoringSession).toBe(false));
+  expect(storage.clearSavedTokens).not.toHaveBeenCalled();
+  expect(api.refreshAccessToken).not.toHaveBeenCalled();
+  expect(result.current.serverError).toContain('Server error');
+  expect(inputs.dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: 'SET_AUTH_SESSION' }));
+});
+it('does not redirect a browser to login when the server is unavailable', async () => {
+  Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' });
+  jest.mocked(api.refreshAccessToken).mockRejectedValue(new Error('Network unavailable'));
+  const { result } = renderHook(() => useStudentSession(options()));
+  await waitFor(() => expect(result.current.restoringSession).toBe(false));
+  expect(result.current.webSessionMissing).toBe(false);
+  expect(result.current.serverError).toContain('Server error');
 });

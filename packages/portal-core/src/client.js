@@ -7,7 +7,14 @@ import {
 } from "./tokenStorage.js";
 
 export function createPortalClient(portal) {
-  const BASE_URL = (import.meta.env?.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
+  const local = typeof window !== 'undefined' && ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
+  let BASE_URL = (local ? import.meta.env.VITE_LOCAL_API_BASE_URL : import.meta.env.VITE_API_BASE_URL)?.replace(/\/+$/, "");
+  if (local && BASE_URL) {
+    const url = new URL(BASE_URL);
+    if (['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) url.hostname = window.location.hostname;
+    BASE_URL = url.origin;
+  }
+  if (!BASE_URL) throw new Error("Set KORMIC_API_ORIGIN_LOCAL and KORMIC_API_ORIGIN_PUBLIC in the frontend .env and rebuild.");
 
   const client = axios.create({
     baseURL: `${BASE_URL}/api`,

@@ -21,12 +21,13 @@ beforeEach(() => {
   }));
 });
 
-it('adds GitHub Profile without removing the existing menu entries', () => {
+it('shows the current student sections without the duplicate GitHub entry', () => {
   const select = jest.fn();
   const screen = render(<ProfileMenu active="aria" agentName="Aria" onSelect={select} />);
-  for (const label of ['Chat with Aria', 'Profile Overview', 'Edit Profile', 'Resume update/view', 'GitHub', 'LinkedIn images', 'GitHub Profile']) {
+  for (const label of ['Chat with Aria', 'Queries', 'Profile Overview', 'Edit Profile', 'Resume', 'LinkedIn images', 'GitHub Profile']) {
     expect(screen.getByText(label)).toBeTruthy();
   }
+  expect(screen.queryByText('GitHub')).toBeNull();
   fireEvent.press(screen.getByText('GitHub Profile'));
   expect(select).toHaveBeenCalledWith('githubProfile');
 });

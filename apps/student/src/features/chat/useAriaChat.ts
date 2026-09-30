@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, ScrollView } from 'react-native';
 import {
   chatWithAria,
+  getAgentActivity,
   clearAriaChat,
   editAriaMessage,
   getAgentName,
@@ -40,6 +41,25 @@ export function useAriaChat({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activityLabel, setActivityLabel] = useState('Thinking…');
+  const sendingRef = useRef(false);
+  useEffect(() => {
+    if (!loading || !session) return;
+    let active = true;
+    const started = Date.now();
+    setActivityLabel('Thinking…');
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const activity = await getAgentActivity(session);
+        if (active && activity.status === 'working' && activity.label &&
+            Date.parse(activity.updated_at || '') >= started - 2000) setActivityLabel(activity.label);
+      } catch { /* Activity is optional; the response request reports failures. */ }
+      if (active) timer = setTimeout(poll, 1500);
+    };
+    void poll();
+    return () => { active = false; clearTimeout(timer); };
+  }, [loading, session?.user?.student_id]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [clearLoading, setClearLoading] = useState(false);
   const [clearConfirmVisible, setClearConfirmVisible] = useState(false);
@@ -177,7 +197,7 @@ export function useAriaChat({
         } catch (error) {
           if (!controller.signal.aborted) setError(error instanceof Error ? error.message : 'Unable to resume chat.');
         } finally {
-          if (!controller.signal.aborted) setLoading(false);
+          if (!controller.signal.aborted && !sendingRef.current) setLoading(false);
         }
       }
     };
@@ -260,6 +280,7 @@ export function useAriaChat({
       setDraft('');
       setSelectedAttachments([]);
 
+      sendingRef.current = true;
       const response = await chatWithAria(session, message, pendingAttachments);
       if (response.agent?.trim()) {
         applyAgentName(response.agent.trim());
@@ -289,6 +310,7 @@ export function useAriaChat({
     } catch (chatError) {
       setError(chatError instanceof Error ? chatError.message : `Unable to chat with ${agentName}`);
     } finally {
+      sendingRef.current = false;
       setLoading(false);
     }
   };
@@ -411,6 +433,7 @@ export function useAriaChat({
     draft,
     setDraft,
     loading,
+    activityLabel,
     historyLoading,
     clearLoading,
     clearConfirmVisible,

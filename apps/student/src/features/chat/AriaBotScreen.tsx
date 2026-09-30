@@ -28,6 +28,7 @@ export function AriaBotScreen(props: AriaChatProps) {
     draft,
     setDraft,
     loading,
+    activityLabel,
     historyLoading,
     clearLoading,
     clearConfirmVisible,
@@ -111,6 +112,7 @@ export function AriaBotScreen(props: AriaChatProps) {
                 agentName={agentName}
                 messages={messages}
                 loading={loading}
+                activityLabel={activityLabel}
                 historyLoading={historyLoading}
                 messagesScrollRef={messagesScrollRef}
                 shouldScrollMessagesToEndRef={shouldScrollMessagesToEndRef}

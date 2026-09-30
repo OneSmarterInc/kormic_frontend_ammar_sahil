@@ -1,3 +1,10 @@
+/** Pasted invitations use the same validation on web and native. */
+export function normalizeClaimInput(value: string, webOrigin?: string): string {
+  const input = value.trim();
+  if (/^[A-Za-z0-9_-]{32}$/.test(input)) return input;
+  return getClaimTokenFromUrl(input, webOrigin);
+}
+
 function queryTokens(query: string): string[] {
   return query.split('&').flatMap(pair => {
     const separator = pair.indexOf('=');

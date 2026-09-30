@@ -5,10 +5,9 @@ import {
 } from '@expo-google-fonts/fraunces';
 import { Inter_400Regular, Inter_600SemiBold, useFonts as useInter } from '@expo-google-fonts/inter';
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
-import { ActivityIndicator, BackHandler, Platform, StatusBar, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Platform, StatusBar, StyleSheet, View, Text, Pressable } from 'react-native';
 import { ProgressHeader } from './components/ProgressHeader';
 import { useStudentSession } from './features/auth/useStudentSession';
-import { FloatingBotLauncher } from './features/chat/FloatingBotLauncher';
 import { useClaimFlow } from './features/claim/useClaimFlow';
 import { StudentNotificationBell } from './features/notifications/StudentNotificationBell';
 import { useAgentNotifications } from './features/notifications/useAgentNotifications';
@@ -82,6 +81,11 @@ export default function App() {
     confirmClaimProfile,
     createClaimAccount,
   } = useClaimFlow(navigate, dispatch);
+  const [queryNavigation, setQueryNavigation] = useState<import('./features/queries/StudentQueriesPanel').QueryNavigation>();
+  const onOpenQueries = useCallback((id?: number, direction?: string) => {
+    setQueryNavigation({id, direction, key: Date.now()});
+    navigate('Profile');
+  }, [navigate]);
   const onOpenChat = useCallback(() => {
     setBotReturnRoute('Profile');
     navigate('BotScreen');
@@ -96,6 +100,8 @@ export default function App() {
     profileError,
     basicInfoApiError,
     setBasicInfoApiError,
+    serverError,
+    retryConnection,
     restoringSession,
     webSessionMissing,
     continueAfterAuth,
@@ -122,31 +128,12 @@ export default function App() {
   }, [restoringSession, webSessionMissing, claimLinkHandledRef, state.authSession?.access]);
 
   const handleBack = useCallback(() => {
-    if (state.route === 'BotScreen') {
-      if (isAuthRoute(botReturnRoute)) {
-        return false; // Exit app directly! Do not show Welcome/Login page!
-      }
-      closeBotScreen();
-      return true;
-    }
-
-    if (isAuthRoute(state.route)) {
-      return false; // Exit app directly!
-    }
-
-    const validHistory = (state.history ?? []).filter((r) => !isAuthRoute(r));
-
-    if (validHistory.length === 0 && (state.route === 'Profile' || state.route === 'AgentLive')) {
-      return false; // Exit app directly!
-    }
-
-    if (validHistory.length > 0) {
-      back();
-      return true;
-    }
-
-    return false;
-  }, [back, botReturnRoute, closeBotScreen, state.history, state.route]);
+    if (state.route === 'BotScreen' || (state.route === 'Profile' && profileAriaActive)) return false;
+    if (isAuthRoute(state.route)) return false;
+    if (state.route === 'Profile') return false; // Its section handler opens chat.
+    onOpenChat();
+    return true;
+  }, [onOpenChat, profileAriaActive, state.route]);
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', handleBack);
@@ -165,6 +152,7 @@ export default function App() {
 
   const content = (
     <AppRoutes
+      notificationControl={state.authSession?.user?.totp_enrolled ? <StudentNotificationBell session={state.authSession} onOpenChat={onOpenChat} onOpenQueries={onOpenQueries} /> : null}
       state={state}
       dispatch={dispatch}
       navigate={navigate}
@@ -203,30 +191,19 @@ export default function App() {
       setProfileAriaActive={setProfileAriaActive}
       closeBotScreen={closeBotScreen}
       botNotificationRefreshKey={botNotificationRefreshKey}
+      queryNavigation={queryNavigation}
     />
   );
-
-  const showNotificationBell =
-    Boolean(state.authSession?.access) &&
-    Boolean(state.authSession?.user?.totp_enrolled) &&
-    !isAuthRoute(state.route);
-
-  const showBotLauncher =
-    Boolean(state.authSession?.access) &&
-    !isAuthRoute(state.route) &&
-    !hidesBotLauncher(state.route) &&
-    state.route !== 'BotScreen' &&
-    !(state.route === 'Profile' && profileAriaActive);
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.ink} />
       <ProgressHeader route={state.route} onBack={goToWelcomeFromHeader} />
-      {content}
-      {showNotificationBell ? (
-        <StudentNotificationBell session={state.authSession} onOpenChat={onOpenChat} />
-      ) : null}
-      {showBotLauncher ? <FloatingBotLauncher onPress={openBotScreen} /> : null}
+      {serverError ? <View accessibilityRole="alert" style={{ padding: 16, backgroundColor: '#fff4db', gap: 8 }}>
+        <Text style={{ color: colors.text }}>{serverError}</Text>
+        <Pressable accessibilityRole="button" onPress={retryConnection} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: colors.coral }}>Retry connection</Text></Pressable>
+      </View> : null}
+      {serverError && !state.authSession ? null : content}
     </View>
   );
 }

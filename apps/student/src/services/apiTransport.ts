@@ -1,12 +1,12 @@
+import { resolveApiBaseUrl } from './apiBaseUrl';
 import { STUDENT_PROFILE_UPSERT_FIELDS } from '../generated/studentProfileApi';
 
-declare const process: { env?: Record<string, string | undefined> } | undefined;
+declare const process: { env: Record<string, string | undefined> };
 
 type FetchInput = Parameters<typeof fetch>[0];
 type FetchInit = Parameters<typeof fetch>[1];
 type FetchImplementation = (input: FetchInput, init?: FetchInit) => Promise<Response>;
 
-const DEFAULT_KORMIC_API_BASE_URL = 'http://127.0.0.1:8000/api';
 const STUDENT_PROFILE_FIELD_SET = new Set<string>(STUDENT_PROFILE_UPSERT_FIELDS);
 
 const API_ROUTE_PREFIXES = [
@@ -27,12 +27,9 @@ const API_ROUTE_PREFIXES = [
 ] as const;
 
 function configuredApiBaseUrl() {
-  const configured =
-    typeof process !== 'undefined' ? process.env?.EXPO_PUBLIC_API_BASE_URL?.trim() : undefined;
-  if (configured) return configured;
-  // Keep direct Expo/native development local rather than silently sending
-  // student chat and other API calls to production.
-  return DEFAULT_KORMIC_API_BASE_URL;
+  const configured = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+  if (!configured) throw new Error('Set KORMIC_API_ORIGIN_LOCAL and KORMIC_API_ORIGIN_PUBLIC in the frontend .env and rebuild.');
+  return resolveApiBaseUrl(configured, typeof window !== 'undefined' ? window.location?.hostname : undefined, process.env.EXPO_PUBLIC_LOCAL_API_BASE_URL);
 }
 
 function isAbsoluteUrl(value: string) {

@@ -1,3 +1,4 @@
+import client from '../../api/client';
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -27,6 +28,7 @@ export default function AgentPreviewPage() {
 
   const [messages, setMessages] = useState([]);
   const [lastMeta, setLastMeta] = useState(null);
+  const [sendError, setSendError] = useState(null);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [resuming, setResuming] = useState(false);
 
@@ -71,6 +73,22 @@ export default function AgentPreviewPage() {
     chatWithUniversityAgent(universityId, message)
   );
   const loading = sending || resuming;
+  const [activityLabel, setActivityLabel] = useState('Thinking…');
+  useEffect(() => {
+    if (!loading) return;
+    let active = true, timer;
+    const started = Date.now();
+    setActivityLabel('Thinking…');
+    const poll = async () => {
+      try {
+        const {data} = await client.get('/chat/activity/');
+        if (active && data.status === 'working' && data.label && Date.parse(data.updated_at) >= started - 2000) setActivityLabel(data.label);
+      } catch { /* Response errors are handled by the chat request. */ }
+      if (active) timer = setTimeout(poll, 1500);
+    };
+    void poll();
+    return () => {active=false; clearTimeout(timer);};
+  }, [loading, universityId]);
   const changeStates = latestChanges(messages);
 
   const { execute: clearHistory, loading: clearing } = useAction(() =>
@@ -90,8 +108,9 @@ export default function AgentPreviewPage() {
     }
   };
 
-  const handleSend = async (message) => {
-    setMessages((m) => [...m, { role: "user", content: message }]);
+  const handleSend = async (message, retry = false) => {
+    setSendError(null);
+    if (!retry) setMessages((m) => [...m, { role: "user", content: message }]);
 
     try {
       const res = await execute(message);
@@ -117,16 +136,7 @@ export default function AgentPreviewPage() {
         );
       }
     } catch (err) {
-      toast.error(err.message);
-
-      setMessages((m) => [
-        ...m,
-        {
-          role: "assistant",
-          content: `Agent chat failed: ${err.message}`,
-          tone: "warning",
-        },
-      ]);
+      setSendError({message: err.message || 'The agent could not finish this reply.', question: message});
     }
   };
 
@@ -140,14 +150,14 @@ export default function AgentPreviewPage() {
     >
       <PageHeader
         title="University Agent"
-        description="Ask about your university, interested students, eligibility, and knowledge base."
+        description="Your university assistant · students, admissions, and knowledge"
       />
 
       <Card
         className="
           mx-auto
           w-full
-          max-w-5xl
+          max-w-6xl
           flex-1
           overflow-hidden
           flex
@@ -157,7 +167,7 @@ export default function AgentPreviewPage() {
         <CardHeader
           icon={Bot}
           title={lastMeta?.agent_name || agentInfo?.agent_name || "Your agent"}
-          subtitle="Explore student profiles and review proposed updates to your university knowledge."
+          subtitle={loading ? activityLabel : "Ready to help · Works even when university staff are offline"}
           action={
             <Button
               type="button"
@@ -184,11 +194,16 @@ export default function AgentPreviewPage() {
             </div>
           ) : (
             <ChatThread
+              agentName={lastMeta?.agent_name || agentInfo?.agent_name || "University assistant"}
+              sendError={sendError?.message}
+              onRetry={() => handleSend(sendError.question, true)}
+              suggestions={["Show our admission requirements", "Which students are interested?", "Review our scholarship policies"]}
               compact
               heightClass="h-full"
               messages={messages}
               onSend={handleSend}
               loading={loading}
+              activityLabel={activityLabel}
               renderMessageExtras={message => <AgentMessageDetails meta={message.meta} universityId={universityId}
                 changes={changeStates} onSend={handleSend} loading={loading} />}
               placeholder="Ask about interested students, admissions, or university information..."

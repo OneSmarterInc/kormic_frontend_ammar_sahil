@@ -20,6 +20,7 @@ export function useGithubProfile({
   ProfileFeatureContext,
   'session' | 'section' | 'setSectionError' | 'setActionLoading' | 'onProfileChanged'
 >) {
+  const [githubAccepted, setGithubAccepted] = useState(false);
   const [githubAnalysis, setGithubAnalysis] = useState<GithubAnalysisResponse | undefined>();
 
   const [githubHistory, setGithubHistory] = useState<GithubHistoryResponse['analyses']>([]);
@@ -104,7 +105,8 @@ export function useGithubProfile({
       analysisController.current?.abort();
       const controller = new AbortController();
       analysisController.current = controller;
-      const result = await analyzeGithub(session, { signal: controller.signal, onProgress: setMessage });
+      setGithubAccepted(false);
+      const result = await analyzeGithub(session, { signal: controller.signal, onProgress: setMessage, onAccepted: () => setGithubAccepted(true) });
       if (controller.signal.aborted) return;
       setGithubAnalysis(result);
       await loadGithubHistory();
@@ -161,6 +163,7 @@ export function useGithubProfile({
   };
 
   return {
+    githubAccepted,
     githubAnalysis,
     githubHistory,
     githubLoading,

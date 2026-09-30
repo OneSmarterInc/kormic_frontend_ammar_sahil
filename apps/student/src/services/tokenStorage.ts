@@ -1,8 +1,11 @@
+import { AuthUser } from '../models/onboarding';
+import { clearStudentCache } from './studentCache';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 const ACCESS_TOKEN_KEY = 'kormic.access';
 const REFRESH_TOKEN_KEY = 'kormic.refresh';
+const USER_KEY = 'kormic.session-user';
 
 let webAccess: string | null = null;
 let generation = 0;
@@ -53,7 +56,8 @@ export async function saveRefreshToken(refreshToken: string) {
   await setItem(REFRESH_TOKEN_KEY, refreshToken);
 }
 
-export async function saveTokens(tokens: { access?: string; refresh?: string }) {
+export async function saveTokens(tokens: { access?: string; refresh?: string; user?: AuthUser }) {
+  if (tokens.user && Platform.OS !== 'web') await setItem(USER_KEY, JSON.stringify(tokens.user));
   if (tokens.access) {
     await saveAccessToken(tokens.access);
   }
@@ -80,5 +84,10 @@ export async function getSavedTokens(): Promise<SavedTokens | undefined> {
 
 export async function clearSavedTokens() {
   generation += 1;
-  await Promise.all([deleteItem(ACCESS_TOKEN_KEY), deleteItem(REFRESH_TOKEN_KEY)]);
+  await Promise.all([deleteItem(ACCESS_TOKEN_KEY), deleteItem(REFRESH_TOKEN_KEY), deleteItem(USER_KEY), clearStudentCache()]);
+}
+
+export async function getSavedSessionUser(): Promise<AuthUser | undefined> {
+  if (Platform.OS === 'web') return;
+  try { const data = await getItem(USER_KEY); return data ? JSON.parse(data) : undefined; } catch { return; }
 }

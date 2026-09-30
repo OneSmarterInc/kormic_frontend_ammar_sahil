@@ -4,12 +4,14 @@ import { ProfileSection } from '../types';
 
 export function sectionTitle(section: ProfileSection, agentName: string) {
   switch (section) {
+    case 'queries':
+      return 'Queries';
     case 'overview':
       return 'Complete profile';
     case 'edit':
       return 'Edit profile';
     case 'resumes':
-      return 'Resume history';
+      return 'Resume';
     case 'github':
       return 'GitHub';
     case 'githubProfile':
@@ -34,10 +36,10 @@ export function ProfileMenu({
 }) {
   const items: Array<{ key: ProfileSection; label: string }> = [
     { key: 'aria', label: `Chat with ${agentName}` },
+    { key: 'queries', label: 'Queries' },
     { key: 'overview', label: 'Profile Overview' },
     { key: 'edit', label: 'Edit Profile' },
-    { key: 'resumes', label: 'Resume update/view' },
-    { key: 'github', label: 'GitHub' },
+    { key: 'resumes', label: 'Resume' },
     { key: 'githubProfile', label: 'GitHub Profile' },
     { key: 'linkedin', label: 'LinkedIn images' },
   ];
