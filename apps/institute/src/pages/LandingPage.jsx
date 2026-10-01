@@ -58,14 +58,12 @@ export default function LandingPage() {
             all from a single dashboard built for your institute.
           </p>
           <div className="mt-6 flex items-center justify-center gap-3">
-            <Link to="/login">
-              <Button
+            <Button to="/login"
                 size="lg"
                 className="transition-all duration-300 hover:scale-105 hover:shadow-lg"
               >
                 Log in
               </Button>
-            </Link>
           </div>
         </div>
 

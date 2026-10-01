@@ -105,3 +105,10 @@ test('timeout aborts a hanging fetch',async()=>{
   const client=createAuthClient({origin:'https://backend.kormic.ai',timeoutMs:5,fetchImpl:async(_url,options)=>new Promise((resolve,reject)=>options.signal.addEventListener('abort',()=>reject(new Error('aborted'))))});
   await assert.rejects(()=>client.forgotPassword('a'),/timed out/);
 });
+
+
+test('department accounts enter only the university query workspace', () => {
+  const staff = {role: 'department', university_id: 'uni-24'};
+  assert.equal(roleHome(staff), '/university/#/university/uni-24/agent-queries?tab=departments');
+  assert.equal(safeDestination(staff, '/superuser/#/admin/dashboard', 'https://example.com'), roleHome(staff));
+});

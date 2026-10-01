@@ -51,9 +51,7 @@ export default function InstitutesListPage() {
         title="Institutes"
         description="Feeder institutes that upload student rosters for the claim flow — separate from Universities."
         action={
-          <Link to="/admin/institutes/new">
-            <Button icon={Plus}>Add institute</Button>
-          </Link>
+          <Button to="/admin/institutes/new" icon={Plus}>Add institute</Button>
         }
       />
 
@@ -61,7 +59,7 @@ export default function InstitutesListPage() {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
         <input
           type="text"
-          placeholder="Search by name..."
+          aria-label="Search institutes by name" placeholder="Search by name..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-xl border border-ink-200 bg-white py-2.5 pl-10 pr-4 text-sm transition-all duration-300 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
@@ -71,7 +69,7 @@ export default function InstitutesListPage() {
       {loading ? (
         <Spinner label="Loading institutes..." />
       ) : error ? (
-        <ErrorBanner error={error} onDismiss={refetch} />
+        <ErrorBanner error={error} onRetry={refetch} />
       ) : institutes.length === 0 ? (
         <Card>
           <EmptyState
@@ -126,13 +124,11 @@ export default function InstitutesListPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
-                        <Link to={`/admin/institutes/${inst.id}/upload-list`}>
-                          <Button variant="ghost" size="sm" icon={UploadCloud} title="Upload student list" />
-                        </Link>
+                        <Button to={`/admin/institutes/${inst.id}/upload-list`} variant="ghost" size="sm" icon={UploadCloud} title="Upload student list" />
                         <Button
                           variant="ghost"
                           size="sm"
-                          icon={Trash2}
+                          icon={Trash2} aria-label="Delete"
                           className="text-red-500 hover:bg-red-50 hover:text-red-600"
                           onClick={() => setDeleting(inst)}
                         />

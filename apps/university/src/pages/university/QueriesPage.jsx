@@ -1,3 +1,4 @@
+import { useAuth } from "../../context/AuthContext";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -32,7 +33,7 @@ const TABS = [
   { key: "archive", label: "Archive", fetcher: listArchivedQueries },
 ];
 
-export default function QueriesPage() {
+export default function EscalationQueue() {
   const { universityId } = useParams();
   const [tab, setTab] = useState("active");
   const [answering, setAnswering] = useState(null); // query object or null
@@ -49,10 +50,7 @@ export default function QueriesPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Escalated queries"
-        description="Questions an agent couldn't answer confidently, routed to an officer."
-      />
+      <p className="mb-4 text-sm text-ink-600">Questions routed to a department for a detailed answer.</p>
 
       <div className="mb-4 inline-flex rounded-lg bg-ink-100 p-1">
         {TABS.map((t) => (
@@ -72,7 +70,7 @@ export default function QueriesPage() {
       {loading ? (
         <Spinner label="Loading queries..." />
       ) : error ? (
-        <ErrorBanner error={error} onDismiss={refetch} />
+        <ErrorBanner error={error} onRetry={refetch} />
       ) : queries.length === 0 ? (
         <Card>
           <EmptyState
@@ -125,7 +123,19 @@ export default function QueriesPage() {
   );
 }
 
+export function DepartmentQueryItem({query, onChanged}) {
+  const [action, setAction] = useState(null);
+  const saved = () => {setAction(null);onChanged();};
+  return <>
+    <QueryCard query={query} onRespond={()=>setAction('answer')} onIgnore={()=>setAction('ignore')} onDelete={()=>setAction('delete')} />
+    <AnswerModal query={action==='answer'?query:null} onClose={()=>setAction(null)} onSaved={saved}/>
+    <IgnoreModal query={action==='ignore'?query:null} onClose={()=>setAction(null)} onSaved={saved}/>
+    <DeleteModal query={action==='delete'?query:null} onClose={()=>setAction(null)} onDeleted={saved}/>
+  </>;
+}
+
 function QueryCard({ query, onRespond, onIgnore, onDelete }) {
+  const {user} = useAuth();
   const resolved = query.display_status === "answered";
   const ignored = query.display_status === "ignored";
   return (
@@ -206,9 +216,9 @@ function QueryCard({ query, onRespond, onIgnore, onDelete }) {
             </Button>
           )}
 
-          <Button variant="danger" size="sm" icon={Trash2} onClick={onDelete}>
+          {user?.role !== "department" && <Button variant="danger" size="sm" icon={Trash2} onClick={onDelete}>
             Delete
-          </Button>
+          </Button>}
         </div>
       </div>
     </Card>
@@ -217,13 +227,14 @@ function QueryCard({ query, onRespond, onIgnore, onDelete }) {
 
 function AnswerModal({ query, onClose, onSaved }) {
   const [answer, setAnswer] = useState("");
-  const [answeredBy, setAnsweredBy] = useState("");
+  const { user } = useAuth();
+  const answeredBy = user?.name || user?.email || "University staff";
   const resolved = query?.display_status === "answered";
 
   useEffect(() => {
     if (query) {
       setAnswer(query.answer || "");
-      setAnsweredBy(query.answered_by || "");
+
     }
   }, [query]);
 
@@ -273,16 +284,10 @@ function AnswerModal({ query, onClose, onSaved }) {
               rows={4}
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
-              placeholder="Write a durable, verified answer..."
+              placeholder="Write a clear, helpful answer for the student…"
             />
           </Field>
-          <Field label="Answered by" required hint="Saved into the verified knowledge base">
-            <Input
-              value={answeredBy}
-              onChange={(e) => setAnsweredBy(e.target.value)}
-              placeholder="Dr. Sarah Chen"
-            />
-          </Field>
+          <Field label="Answered by"><p className="rounded-lg bg-ink-50 px-3 py-2 text-sm font-medium text-ink-800">{answeredBy}</p></Field>
         </form>
       )}
     </Modal>
@@ -291,12 +296,13 @@ function AnswerModal({ query, onClose, onSaved }) {
 
 function IgnoreModal({ query, onClose, onSaved }) {
   const [reason, setReason] = useState("");
-  const [ignoredBy, setIgnoredBy] = useState("");
+  const { user } = useAuth();
+  const ignoredBy = user?.name || user?.email || "University staff";
 
   useEffect(() => {
     if (query) {
       setReason("");
-      setIgnoredBy("");
+
     }
   }, [query]);
 
@@ -347,13 +353,7 @@ function IgnoreModal({ query, onClose, onSaved }) {
               placeholder="e.g. Duplicate of query #41"
             />
           </Field>
-          <Field label="Ignored by" hint="Optional">
-            <Input
-              value={ignoredBy}
-              onChange={(e) => setIgnoredBy(e.target.value)}
-              placeholder="Dr. Sarah Chen"
-            />
-          </Field>
+          <Field label="Ignored by"><p className="text-sm text-ink-800">{ignoredBy}</p></Field>
         </form>
       )}
     </Modal>

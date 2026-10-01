@@ -29,7 +29,7 @@ export default function KnowledgePage() {
       {loading ? (
         <Spinner label="Loading verified knowledge..." />
       ) : error ? (
-        <ErrorBanner error={error} onDismiss={refetch} />
+        <ErrorBanner error={error} onRetry={refetch} />
       ) : answers.length === 0 ? (
         <Card>
           <EmptyState

@@ -1,3 +1,6 @@
+import client from "../../api/client";
+import Modal from "../../components/common/Modal";
+import Button from "../../components/common/Button";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -29,6 +32,15 @@ export default function ProfileDetailPage() {
 
   const { data: agentInfo } = useAsync(getAgentName, [universityId]);
 
+  const [queryOpen, setQueryOpen] = useState(false);
+  const [question, setQuestion] = useState("");
+  const [queryBusy, setQueryBusy] = useState(false);
+  const [queryError, setQueryError] = useState(null);
+  async function raiseQuery() {
+    setQueryBusy(true);setQueryError(null);
+    try { await client.post("/agent-queries/", {student_id:studentId,question});setQueryOpen(false);setQuestion("");toast.success("Query sent to the student"); }
+    catch(error){setQueryError(error);}finally{setQueryBusy(false);}
+  }
   const notFound = error?.status === 404;
 
   return (
@@ -41,6 +53,10 @@ export default function ProfileDetailPage() {
         Back to profiles
       </Link>
 
+      <Modal open={queryOpen} onClose={()=>!queryBusy&&setQueryOpen(false)} title="Raise a query to this student" footer={<><Button variant="secondary" disabled={queryBusy} onClick={()=>setQueryOpen(false)}>Cancel</Button><Button disabled={!question.trim()} loading={queryBusy} onClick={raiseQuery}>Send query</Button></>}>
+        <p className="mb-4 text-sm text-ink-500">The student will be notified and can answer in their Queries screen.</p>
+        {queryError&&<ErrorBanner error={queryError}/>}<label className="block text-sm font-medium">Your question<textarea rows={5} maxLength={2000} value={question} onChange={e=>setQuestion(e.target.value)} className="mt-2 w-full rounded-xl border border-ink-200 p-3"/></label>
+      </Modal>
       {/* <PageHeader
         title={studentId}
         description="Officer view - profile detail and Q&A."
@@ -55,27 +71,27 @@ export default function ProfileDetailPage() {
           />
         </Card>
       ) : (
-        <div className="grid gap-6 lg:h-[calc(100vh-9rem)] lg:min-h-[420px] lg:grid-cols-[1.25fr_0.75fr]">
-          <Card className="lg:flex lg:h-full lg:flex-col">
+        <div className="grid gap-6 lg:items-start xl:grid-cols-[1.4fr_1fr]">
+          <Card className="min-w-0">
             {/* <CardHeader icon={UserRound} title="Profile" /> */}
 
-            <CardBody className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+            <CardBody className="p-5 sm:p-8">
               {loading ? (
                 <Spinner label="Loading profile..." />
               ) : error ? (
-                <ErrorBanner error={error} onDismiss={refetch} />
+                <ErrorBanner error={error} onRetry={refetch} />
               ) : (
-                <ProfileSummary profile={profile} />
+                <ProfileSummary profile={profile} onRaiseQuery={()=>setQueryOpen(true)} />
               )}
             </CardBody>
           </Card>
 
-          <PresenterChatCard
+          <div className="h-[650px] max-h-[85vh] min-w-0 lg:sticky lg:top-20"><PresenterChatCard
             key={studentId}
             universityId={universityId}
             studentId={studentId}
             agentName={agentInfo?.agent_name}
-          />
+          /></div>
         </div>
       )}
     </div>
@@ -169,7 +185,7 @@ function PresenterChatCard({ universityId, studentId, agentName }) {
           </div>
         ) : historyError && messages.length === 0 ? (
           <div className="flex h-full items-center justify-center p-6">
-            <ErrorBanner error={historyError} onDismiss={refetchHistory} />
+            <ErrorBanner error={historyError} onRetry={refetchHistory} />
           </div>
         ) : (
           <ChatThread

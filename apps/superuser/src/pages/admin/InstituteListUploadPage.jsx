@@ -103,7 +103,7 @@ export default function InstituteListUploadPage() {
   };
 
   if (loading) return <Spinner label="Loading institute..." />;
-  if (loadError) return <ErrorBanner error={loadError} onDismiss={refetch} />;
+  if (loadError) return <ErrorBanner error={loadError} onRetry={refetch} />;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-8">
@@ -246,9 +246,7 @@ function ResultSummary({ result, instituteId, onUploadAnother }) {
           <p className="text-sm text-ink-500">
             Every accepted row is saved as roster history. New/unclaimed students are not notified yet; open the roster to send invite emails.
           </p>
-          <Link to={`/admin/institutes/${instituteId}/lists/${result.list_id}`}>
-            <Button icon={Mail}>View roster & send invites</Button>
-          </Link>
+          <Button to={`/admin/institutes/${instituteId}/lists/${result.list_id}`} icon={Mail}>View roster & send invites</Button>
         </CardBody>
       </Card>
 

@@ -21,7 +21,7 @@ export default function ProfilesListPage() {
 
   const profiles = data?.profiles || [];
   const [search, setSearch] = useState("");
-  const [qualificationFilter, setQualificationFilter] = useState("qualified");
+  const [qualificationFilter, setQualificationFilter] = useState("all");
 
   const qualifiedCount = profiles.filter(
     (p) => p.qualification_status === "qualified" || p.qualified === true
@@ -32,7 +32,7 @@ export default function ProfilesListPage() {
 
   const filteredProfiles = profiles.filter((p) => {
     const matchesQualification =
-      qualificationFilter === "qualified"
+      qualificationFilter === "all" ? true : qualificationFilter === "unassessed" ? !["qualified", "not_qualified"].includes(p.qualification_status) && p.qualified !== true : qualificationFilter === "qualified"
         ? p.qualification_status === "qualified" || p.qualified === true
         : p.qualification_status === "not_qualified";
     if (!matchesQualification) return false;
@@ -50,7 +50,7 @@ export default function ProfilesListPage() {
   return (
     <div>
       <PageHeader
-        title="Interested Student"
+        title="Interested students"
         description="Students who have searched your university and expressed interest in your program."
       />
 
@@ -60,7 +60,7 @@ export default function ProfilesListPage() {
 
           <input
             type="text"
-            placeholder="Search by name, ID, major or institution..."
+            aria-label="Search students" placeholder="Search by name, ID, major or institution..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-xl border border-ink-200 bg-white py-2 pl-10 pr-4 text-sm transition-all duration-300 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
@@ -69,6 +69,7 @@ export default function ProfilesListPage() {
       </div>
 
       <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-ink-200 bg-white p-1.5 shadow-sm">
+        {[['all', 'All students'], ['unassessed', 'Awaiting assessment']].map(([value, label]) => <button key={value} onClick={() => setQualificationFilter(value)} aria-pressed={qualificationFilter === value} className={`rounded-lg px-4 py-2 text-sm font-semibold ${qualificationFilter === value ? 'bg-brand-600 text-white' : 'text-ink-600'}`}>{label}</button>)}
         <button
           type="button"
           onClick={() => setQualificationFilter("qualified")}
@@ -97,7 +98,7 @@ export default function ProfilesListPage() {
       {loading ? (
         <Spinner label="Loading profiles..." />
       ) : error ? (
-        <ErrorBanner error={error} onDismiss={refetch} />
+        <ErrorBanner error={error} onRetry={refetch} />
       ) : profiles.length === 0 ? (
         <Card>
           <EmptyState

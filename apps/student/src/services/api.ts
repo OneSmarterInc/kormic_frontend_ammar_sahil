@@ -1183,10 +1183,11 @@ export function readAgentJob(session: AuthSession, id: string) {
     });
 }
 
-export async function resumeAriaJob(session: AuthSession, signal?: AbortSignal) {
+export async function resumeAriaJob(session: AuthSession, signal?: AbortSignal, onActive?: () => void) {
   const job = await requestWithSession<AriaChatResponse & AgentJob<AriaChatResponse>>(session, '/chat/jobs/active/',
     token => ({ method: 'GET', headers: authHeaders(token) }), 'Unable to check chat progress');
-  if (!job.job_id) return;
+  if (!job.job_id || signal?.aborted) return;
+  onActive?.();
   return waitForAgentJob(job, id => readAgentJob(session, id), signal);
 }
 

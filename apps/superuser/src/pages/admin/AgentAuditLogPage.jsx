@@ -28,7 +28,19 @@ export default function AgentAuditLogPage() {
       if(id===generation.current){setData(result);setError("");}
     }catch(e){if(id===generation.current)setError(e.message||"Unable to load conversations.");}
   },[page,term]);
-  useEffect(()=>{if(tab!=="conversations" || selected)return;setData(null);load();const timer=setInterval(load,15000);return()=>{++generation.current;clearInterval(timer);};},[load,tab,selected]);
+  useEffect(() => {
+    if (tab !== 'conversations' || selected) return;
+    let active = true, busy = false;
+    const refresh = async () => {
+      if (!active || busy || document.hidden) return;
+      busy = true;
+      try { await load(); } finally { busy = false; }
+    };
+    setData(null); refresh();
+    const timer = setInterval(refresh, 15000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => { active = false; ++generation.current; clearInterval(timer); document.removeEventListener('visibilitychange', refresh); };
+  }, [load, tab, selected]);
   return <div className="mx-auto max-w-6xl space-y-6 pb-12"><div className="flex gap-2 border-b border-ink-200 pb-3">{["conversations","runtime"].map(t=><button key={t} onClick={()=>setTab(t)} className={`rounded-xl px-4 py-2 text-sm font-semibold ${tab===t?"bg-brand-600 text-white":"bg-white text-ink-600"}`}>{t==="conversations"?"Agent conversations":"Runtime events"}</button>)}</div>
     {tab==="runtime"?<AgentRuntimeLogPage initialRunId={selectedRun}/>:<>
     <header><p className="text-xs font-semibold uppercase tracking-widest text-brand-600">Telemetry</p><h1 className="mt-2 text-3xl font-semibold text-ink-900">{selected?"Conversation":"Agent conversations"}</h1><p className="mt-2 text-sm text-ink-500">Each student–university pair has one conversation, with timestamped requests, replies and human answers.</p></header>

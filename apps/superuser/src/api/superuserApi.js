@@ -3,8 +3,10 @@ import client from "./client.js";
 /* ---------- Students — /api/superuser/students/ ---------- */
 
 /** GET /api/superuser/students/?search= */
-export const listStudents = (search) =>
-  client.get("/superuser/students/", { params: search ? { search } : {} }).then((r) => r.data);
+export const getDashboard = () => client.get("/superuser/dashboard/").then(r => r.data);
+
+export const listStudents = (search, page) =>
+  client.get("/superuser/students/", { params: { ...(search ? { search } : {}), ...(page ? { page } : {}) } }).then((r) => r.data);
 
 /** POST /api/superuser/students/ */
 export const createStudent = (payload) =>
@@ -21,8 +23,8 @@ export const deleteStudent = (studentId) =>
 /* ---------- Universities — /api/superuser/universities/ ---------- */
 
 /** GET /api/superuser/universities/?search= */
-export const listUniversities = (search) =>
-  client.get("/superuser/universities/", { params: search ? { search } : {} }).then((r) => r.data);
+export const listUniversities = (search, page) =>
+  client.get("/superuser/universities/", { params: { ...(search ? { search } : {}), ...(page ? { page } : {}) } }).then((r) => r.data);
 
 /** POST /api/superuser/universities/ */
 export const createUniversity = (payload) =>
@@ -68,10 +70,10 @@ export const listRosterStudents = ({
 /* ---------- Users (cross-role) — /api/superuser/users/ ---------- */
 
 /** GET /api/superuser/users/?role=&search= */
-export const listUsers = ({ role, search } = {}) =>
+export const listUsers = ({ role, search, page } = {}) =>
   client
     .get("/superuser/users/", {
-      params: { ...(role ? { role } : {}), ...(search ? { search } : {}) },
+      params: { ...(role ? { role } : {}), ...(search ? { search } : {}), ...(page ? { page } : {}) },
     })
     .then((r) => r.data);
 
@@ -199,11 +201,13 @@ export const downloadInstituteListFile = (url) =>
 /* ---------- Audit log — /api/superuser/audit-log/ ---------- */
 
 /** GET /api/superuser/audit-log/?user_id=&action=&limit= */
-export const listAuditLog = ({ userId, action, limit } = {}) =>
+export const listAuditLog = ({ userId, action, limit, email, before_id } = {}) =>
   client
     .get("/superuser/audit-log/", {
       params: {
         ...(userId ? { user_id: userId } : {}),
+        ...(email ? { email } : {}),
+        ...(before_id ? { before_id } : {}),
         ...(action ? { action } : {}),
         ...(limit ? { limit } : {}),
       },

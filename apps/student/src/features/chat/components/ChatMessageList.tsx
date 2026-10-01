@@ -43,12 +43,21 @@ export function ChatMessageList({
   return (
     <ScrollView
       ref={messagesScrollRef}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
       style={styles.messages}
       contentContainerStyle={styles.messageContent}
+      onLayout={() => {
+        if (shouldScrollMessagesToEndRef.current) scrollMessagesToEnd(false);
+      }}
+      onScrollBeginDrag={() => { shouldScrollMessagesToEndRef.current = false; }}
+      onScroll={({ nativeEvent: { contentOffset, contentSize, layoutMeasurement } }) => {
+        shouldScrollMessagesToEndRef.current = contentSize.height - layoutMeasurement.height - contentOffset.y < 64;
+      }}
+      scrollEventThrottle={32}
       onContentSizeChange={() => {
         if (shouldScrollMessagesToEndRef.current) {
           scrollMessagesToEnd(!historyLoading);
-          shouldScrollMessagesToEndRef.current = false;
         }
       }}
     >
@@ -56,7 +65,7 @@ export function ChatMessageList({
         <View style={styles.messageRow}>
           <View accessibilityLiveRegion="polite" style={[styles.bubble, styles.ariaBubble, styles.loadingBubble]}>
             <ActivityIndicator color={colors.coral} size="small" />
-            <Text style={styles.loadingText}>Loading {agentName} history...</Text>
+            <Text style={styles.loadingText}>Loading chat history…</Text>
           </View>
         </View>
       ) : null}
@@ -183,10 +192,12 @@ export function ChatMessageList({
 const styles = StyleSheet.create({
   messages: {
     flex: 1,
+    minHeight: 0,
   },
   messageContent: {
-    gap: 16,
-    padding: 16,
+    gap: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 24,
   },
   messageRow: {
     alignItems: 'flex-start',
@@ -197,21 +208,25 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   bubble: {
-    borderRadius: 14,
+    borderRadius: 20,
     borderWidth: 1,
-    gap: 6,
+    gap: 10,
     paddingHorizontal: 13,
     paddingVertical: 11,
   },
   ariaBubble: {
     backgroundColor: '#ffffff',
-    borderColor: '#e7e9e2',
-    maxWidth: '92%',
+    borderColor: '#e1e7e2',
+    borderTopLeftRadius: 5,
+    maxWidth: '94%',
+    flexShrink: 1,
   },
   userBubble: {
-    backgroundColor: 'rgba(56,90,70,0.18)',
-    borderColor: 'rgba(56,90,70,0.32)',
-    maxWidth: '92%',
+    backgroundColor: '#d9eddf',
+    borderColor: '#cce2d2',
+    maxWidth: '88%',
+    borderTopRightRadius: 5,
+    flexShrink: 1,
   },
   loadingBubble: {
     alignItems: 'center',
@@ -221,7 +236,7 @@ const styles = StyleSheet.create({
     color: '#697267',
     fontFamily: fonts.bodyMedium,
     fontSize: 11,
-    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   botResponse: {
     display: 'flex',
@@ -259,7 +274,10 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     flexDirection: 'row',
     gap: 5,
-    marginTop: 4,
+    marginTop: 0,
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
   },
   copyButtonTextActive: {
     color: colors.coral,

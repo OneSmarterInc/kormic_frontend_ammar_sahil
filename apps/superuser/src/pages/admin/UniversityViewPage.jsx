@@ -101,7 +101,7 @@ export default function UniversityViewPage() {
     return (
       <ErrorBanner
         error={error}
-        onDismiss={refetch}
+        onRetry={refetch}
       />
     );
 

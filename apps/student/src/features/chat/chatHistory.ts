@@ -1,3 +1,4 @@
+import { cacheChat, cacheGeneration, readCachedChat, onStudentCacheClear } from '../../services/studentCache';
 import { AuthSession } from '../../models/onboarding';
 import { AriaHistoryMessage } from '../../services/api';
 import { ChatMessage, ChatThread, ThreadGroup } from './types';
@@ -19,6 +20,16 @@ export const getWelcomeMessage = (agentName: string): ChatMessage => ({
 });
 
 export const ariaMessageCache = new Map<string, ChatMessage[]>();
+onStudentCacheClear(() => ariaMessageCache.clear());
+
+export async function hydrateAriaMessages(session: AuthSession) {
+  const generation = cacheGeneration();
+  const saved = await readCachedChat(session);
+  if (generation === cacheGeneration() && saved && !ariaMessageCache.has(getAriaCacheKey(session))) {
+    ariaMessageCache.set(getAriaCacheKey(session), saved);
+  }
+  return getCachedAriaMessages(session);
+}
 
 export function normalizeAriaHistory(messages: AriaHistoryMessage[]): ChatMessage[] {
   return messages
@@ -66,12 +77,14 @@ export function getCachedAriaMessages(session: AuthSession | undefined) {
   return ariaMessageCache.get(getAriaCacheKey(session)) ?? [];
 }
 
-export function cacheAriaMessages(session: AuthSession | undefined, messages: ChatMessage[]) {
+export function cacheAriaMessages(session: AuthSession | undefined, messages: ChatMessage[], expectedGeneration = cacheGeneration()) {
+  if (expectedGeneration !== cacheGeneration()) return;
   if (!session) {
     return;
   }
 
   ariaMessageCache.set(getAriaCacheKey(session), stripWelcomeMessage(messages));
+  void cacheChat(session, stripWelcomeMessage(messages), expectedGeneration);
 }
 
 export function stripWelcomeMessage(messages: ChatMessage[]) {

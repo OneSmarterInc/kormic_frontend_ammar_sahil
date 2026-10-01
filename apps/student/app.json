@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Kormic Student",
+    "name": "Kormic",
     "slug": "kormic-student",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -37,7 +37,8 @@
             "DEFAULT"
           ]
         }
-      ]
+      ],
+      "icon": "./assets/kormic-logo.png"
     },
     "plugins": [
       "expo-font",
@@ -52,6 +53,7 @@
     },
     "experiments": {
       "baseUrl": "/student"
-    }
+    },
+    "icon": "./assets/kormic-logo.png"
   }
 }

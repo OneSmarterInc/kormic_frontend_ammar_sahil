@@ -63,7 +63,7 @@ export default function SettingsPage() {
   };
 
   if (loading) return <Spinner label="Loading settings..." />;
-  if (error) return <ErrorBanner error={error} onDismiss={refetch} />;
+  if (error) return <ErrorBanner error={error} onRetry={refetch} />;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">

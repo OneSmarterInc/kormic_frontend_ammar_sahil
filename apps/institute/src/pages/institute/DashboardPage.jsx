@@ -27,7 +27,7 @@ export default function DashboardPage() {
   );
 
   if (loading) return <Spinner label="Loading dashboard..." />;
-  if (error) return <ErrorBanner error={error} onDismiss={refetch} />;
+  if (error) return <ErrorBanner error={error} onRetry={refetch} />;
 
   const lists = data || [];
   const totalRows = lists.reduce((sum, l) => sum + (l.row_count || 0), 0);
@@ -100,15 +100,13 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-            <Link to="/institute/upload">
-              <Button
+            <Button to="/institute/upload"
                 variant="black"
                 icon={UploadCloud}
                 style={{ backgroundColor: "#000000", color: "#ffffff" }}
               >
                 Upload a list
               </Button>
-            </Link>
           </div>
         </div>
       </Card>
@@ -157,9 +155,7 @@ export default function DashboardPage() {
               title="No lists uploaded yet"
               description="Upload your first student roster to start inviting students."
               action={
-                <Link to="/institute/upload">
-                  <Button icon={UploadCloud}>Upload a list</Button>
-                </Link>
+                <Button to="/institute/upload" icon={UploadCloud}>Upload a list</Button>
               }
             />
           ) : (

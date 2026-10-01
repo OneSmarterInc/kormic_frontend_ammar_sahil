@@ -206,26 +206,26 @@ export function ProfileScreen({
   };
 
   return (
-    <ScreenShell>
-      <View style={styles.topBar}>
+    <ScreenShell scroll={section !== 'aria' || menuOpen} edgeToEdge={section === 'aria' && !menuOpen}>
+      <View style={[styles.topBar, section === 'aria' && !menuOpen && styles.chatTopBar]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Open profile menu"
           onPress={() => setMenuOpen((value) => !value)}
-          style={styles.menuButton}
+          style={[styles.menuButton, section === 'aria' && styles.chatHeaderAligned]}
         >
           <MaterialIcons name="menu" size={24} color={colors.text} />
         </Pressable>
 
         {!menuOpen ? (
           <>
-            <Text style={styles.topBarTitle} numberOfLines={1}>
-              {section === 'overview' ? 'Complete profile' : sectionTitle(section, agentName)}
+            <Text style={[styles.topBarTitle, section === 'aria' && styles.chatHeaderAligned]} numberOfLines={1}>
+              {section === 'overview' ? 'My profile' : sectionTitle(section, agentName)}
             </Text>
 
             {notificationControl}
             {section === 'aria' ? (
-              <View style={styles.topBarActions}>
+              <View style={[styles.topBarActions, section === 'aria' && styles.chatHeaderAligned]}>
                 {/* More button */}
                 <Pressable
                   accessibilityRole="button"
@@ -428,6 +428,7 @@ export function ProfileScreen({
 
           {section === 'overview' ? (
             <ProfileOverview
+              onEdit={() => selectSection('edit')}
               onGithubConnect={() => selectSection('github')}
               profile={profile}
               skills={skills}
@@ -443,6 +444,8 @@ export function ProfileScreen({
 }
 
 const styles = StyleSheet.create({
+  chatTopBar: { paddingHorizontal: 12, paddingVertical: 10, marginBottom: 0, backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#e4e9e5', zIndex: 10 },
+  chatHeaderAligned: { marginTop: 0 },
   topBar: {
     alignItems: 'center',
     flexDirection: 'row',

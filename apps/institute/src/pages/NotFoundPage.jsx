@@ -16,9 +16,7 @@ export default function NotFoundPage() {
       <p className="max-w-sm text-sm text-ink-500">
         The page you're looking for doesn't exist or may have moved.
       </p>
-      <Link to={homeHref}>
-        <Button>Back to {authenticated ? "dashboard" : "home"}</Button>
-      </Link>
+      <Button to={homeHref}>Back to {authenticated ? "dashboard" : "home"}</Button>
     </div>
   );
 }

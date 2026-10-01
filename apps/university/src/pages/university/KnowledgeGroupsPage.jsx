@@ -1,3 +1,4 @@
+import DepartmentUsers from "../../components/university/DepartmentUsers";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Split, Save, List } from "lucide-react";
@@ -32,16 +33,16 @@ export default function KnowledgeGroupsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Knowledge Groups"
-        description="Route escalated questions to the right office. Assign facts and queries to a group below, then set who gets contacted for each one."
+        title="Departments & query access"
+        description="Set the right contact for each department and choose who can answer its student queries."
       />
 
       {loading ? (
         <Spinner label="Loading knowledge groups..." />
       ) : error ? (
-        <ErrorBanner error={error} onDismiss={refetch} />
+        <ErrorBanner error={error} onRetry={refetch} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-5 xl:grid-cols-2">
           {groups.map((group) => (
             <GroupCard
               key={group.slug}
@@ -53,6 +54,7 @@ export default function KnowledgeGroupsPage() {
         </div>
       )}
 
+      {!loading && !error && <DepartmentUsers groups={groups} />}
       <GroupKnowledgeModal
         slug={viewingGroup?.slug}
         label={viewingGroup?.label}
@@ -101,9 +103,9 @@ function GroupCard({ group, onUpdated, onViewList }) {
         subtitle={`${group.escalation_count} escalation${group.escalation_count === 1 ? "" : "s"} routed here`}
         action={
           <div className="flex items-center gap-2">
-            <Badge tone={knowledgeGroupTone(group.slug)}>{group.slug}</Badge>
+
             <Button type="button" size="sm" variant="secondary" icon={List} onClick={onViewList}>
-              View list
+              View queries & knowledge
             </Button>
           </div>
         }
@@ -130,7 +132,7 @@ function GroupCard({ group, onUpdated, onViewList }) {
             />
           </Field>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 pt-4">
             <Button type="submit" size="sm" icon={Save} loading={loading} disabled={!dirty}>
               Save
             </Button>

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import client from "../src/api/client.js";
 import {
+  listAuditLog, listStudents, listUniversities, listUsers, getDashboard,
   removeUserTotp,
   resetUserPassword,
   revokeUserSessions,
@@ -56,4 +57,25 @@ test("revokeUserSessions targets the encoded destructive endpoint", async () => 
   } finally {
     restore();
   }
+});
+
+
+test('list adapters forward pagination, email and audit cursor to the server', async () => {
+  const calls = [];
+  const original = client.get;
+  client.get = async (url, options) => {calls.push([url, options?.params]); return {data:{}};};
+  try {
+    await listAuditLog({email:'older@example.test', before_id:42, limit:25});
+    await listStudents('student', 2);
+    await listUniversities('college', 3);
+    await listUsers({role:'student', search:'person', page:4});
+    await getDashboard();
+    assert.deepEqual(calls, [
+      ['/superuser/audit-log/', {email:'older@example.test', before_id:42, limit:25}],
+      ['/superuser/students/', {search:'student', page:2}],
+      ['/superuser/universities/', {search:'college', page:3}],
+      ['/superuser/users/', {role:'student', search:'person', page:4}],
+      ['/superuser/dashboard/', undefined],
+    ]);
+  } finally {client.get = original;}
 });

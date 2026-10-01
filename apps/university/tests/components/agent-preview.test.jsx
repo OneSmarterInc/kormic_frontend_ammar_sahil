@@ -4,6 +4,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { vi, test, expect } from 'vitest';
 import AgentPreviewPage from '../../src/pages/university/AgentPreviewPage';
 import { chatWithUniversityAgent } from '../../src/api/universityApi';
+vi.mock('../../src/api/client', () => ({default: {get: vi.fn(), post: vi.fn()}}));
 vi.mock('../../src/api/agentJobs', () => ({ resumeAgentJob: vi.fn().mockResolvedValue(null) }));
 
 vi.mock('../../src/api/universityApi', () => ({

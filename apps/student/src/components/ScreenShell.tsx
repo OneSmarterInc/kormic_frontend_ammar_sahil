@@ -6,22 +6,23 @@ interface ScreenShellProps extends PropsWithChildren {
   header?: React.ReactNode;
   footer?: React.ReactNode;
   scroll?: boolean;
+  edgeToEdge?: boolean;
 }
 
 const WEB_FRAME_MAX_WIDTH = 520;
 
-export function ScreenShell({ children, header, footer, scroll = true }: ScreenShellProps) {
+export function ScreenShell({ children, header, footer, scroll = true, edgeToEdge = false }: ScreenShellProps) {
   const body = scroll ? (
     <ScrollView
       style={styles.body}
-      contentContainerStyle={[styles.scrollContent, header ? styles.contentWithHeader : styles.contentWithoutHeader]}
+      contentContainerStyle={[styles.scrollContent, header ? styles.contentWithHeader : styles.contentWithoutHeader, edgeToEdge && styles.edgeContent]}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
       {children}
     </ScrollView>
   ) : (
-    <View style={[styles.staticContent, header ? styles.contentWithHeader : styles.contentWithoutHeader]}>{children}</View>
+    <View style={[styles.staticContent, header ? styles.contentWithHeader : styles.contentWithoutHeader, edgeToEdge && styles.edgeContent]}>{children}</View>
   );
 
   return (
@@ -41,6 +42,7 @@ const SIDE_PADDING = Platform.select({
 });
 
 const styles = StyleSheet.create({
+  edgeContent: { paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0, minHeight: 0 },
   root: {
     flex: 1,
     backgroundColor: colors.ink,
@@ -48,6 +50,7 @@ const styles = StyleSheet.create({
   },
   frame: {
     flex: 1,
+    minHeight: 0,
     width: '100%',
     maxWidth: Platform.OS === 'web' ? WEB_FRAME_MAX_WIDTH : undefined,
   },
@@ -69,6 +72,7 @@ const styles = StyleSheet.create({
   },
   staticContent: {
     flex: 1,
+    minHeight: 0,
     width: '100%',
     paddingHorizontal: SIDE_PADDING,
     paddingBottom: 24,

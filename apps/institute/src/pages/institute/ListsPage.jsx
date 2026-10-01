@@ -43,16 +43,14 @@ export default function ListsPage() {
         title="Uploaded lists"
         description="Every student roster you've uploaded, and how many rows have claimed so far."
         action={
-          <Link to="/institute/upload">
-            <Button icon={UploadCloud}>Upload a list</Button>
-          </Link>
+          <Button to="/institute/upload" icon={UploadCloud}>Upload a list</Button>
         }
       />
 
       {loading ? (
         <Spinner label="Loading lists..." />
       ) : error ? (
-        <ErrorBanner error={error} onDismiss={refetch} />
+        <ErrorBanner error={error} onRetry={refetch} />
       ) : lists.length === 0 ? (
         <Card>
           <EmptyState
@@ -60,9 +58,7 @@ export default function ListsPage() {
             title="No lists uploaded yet"
             description="Upload your first student roster to start inviting students."
             action={
-              <Link to="/institute/upload">
-                <Button icon={UploadCloud}>Upload a list</Button>
-              </Link>
+              <Button to="/institute/upload" icon={UploadCloud}>Upload a list</Button>
             }
           />
         </Card>
@@ -117,11 +113,9 @@ export default function ListsPage() {
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-xs text-ink-400">{formatDate(l.created_at)}</td>
                     <td className="px-4 py-3 text-right">
-                      <Link to={`/institute/lists/${l.list_id}`}>
-                        <Button variant="ghost" size="sm">
+                      <Button to={`/institute/lists/${l.list_id}`} variant="ghost" size="sm">
                           View roster
                         </Button>
-                      </Link>
                     </td>
                   </tr>
                 ))}

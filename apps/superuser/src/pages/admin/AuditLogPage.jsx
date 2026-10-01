@@ -6,7 +6,6 @@ import {
   ShieldOff,
   Wifi,
   X,
-  Filter,
 } from "lucide-react";
 
 import PageHeader from "../../components/layout/PageHeader";
@@ -14,12 +13,12 @@ import Card from "../../components/common/Card";
 import Spinner from "../../components/common/Spinner";
 import ErrorBanner from "../../components/common/ErrorBanner";
 import EmptyState from "../../components/common/EmptyState";
-import Badge from "../../components/common/Badge";
 import { Field, Input, Select } from "../../components/common/Input";
 import { listAuditLog } from "../../api/superuserApi";
 import { useAsync } from "../../hooks/useAsync";
 
 const ACTIONS = [
+  ...["registered", "login_succeeded", "login_failed", "logged_out", "password_reset_requested"].map(key => ({key, label: key.replaceAll("_", " "), tone: "neutral", icon: History})),
   {
     key: "totp_removed",
     label: "2FA Removed",
@@ -57,6 +56,8 @@ export default function AuditLogPage() {
   const action = searchParams.get("action") || "";
   const limit = searchParams.get("limit") || "100";
 
+  const [cursors, setCursors] = useState([null]);
+  const beforeId = cursors[cursors.length - 1];
   const [emailInput, setEmailInput] = useState(email);
 
   useEffect(() => {
@@ -74,6 +75,7 @@ export default function AuditLogPage() {
       if (trimmed) next.set("email", trimmed);
       else next.delete("email");
 
+      setCursors([null]);
       setSearchParams(next);
     }, 300);
 
@@ -86,6 +88,7 @@ export default function AuditLogPage() {
     if (value) next.set(key, value);
     else next.delete(key);
 
+    setCursors([null]);
     setSearchParams(next);
   };
 
@@ -98,22 +101,12 @@ export default function AuditLogPage() {
     () =>
       listAuditLog({
         action: action || undefined,
-        limit,
+        limit, email: email || undefined, before_id: beforeId || undefined,
       }),
-    [action, limit]
+    [action, limit, email, beforeId]
   );
 
-  // The backend only filters by numeric user_id, which we don't expose in the
-  // UI — filter the fetched page by actor/target email instead.
-  const allEntries = data?.entries || [];
-  const needle = email.trim().toLowerCase();
-  const entries = needle
-    ? allEntries.filter(
-        (e) =>
-          (e.actor_email || "").toLowerCase().includes(needle) ||
-          (e.target_email || "").toLowerCase().includes(needle)
-      )
-    : allEntries;
+  const entries = data?.entries || [];
   const hasFilters = Boolean(email || action);
 
   return (
@@ -121,7 +114,7 @@ export default function AuditLogPage() {
 
       <PageHeader
         title="Audit log"
-        description="Read-only trail of TOTP removals, password resets, and session revocations across every account."
+        description="Read-only history of account access, authentication and security actions."
       />
 
       {/* ========================= */}
@@ -138,7 +131,7 @@ export default function AuditLogPage() {
 
             <Field
               label="Email"
-              hint="Matches actor or target, within the loaded limit"
+              hint="Searches actor or target across all audit entries"
             >
               <Input
                 value={emailInput}
@@ -169,7 +162,7 @@ export default function AuditLogPage() {
               </Select>
             </Field>
 
-            <Field label="Limit">
+            <Field label="Entries per page">
               <Select
                 value={limit}
                 onChange={(e) =>
@@ -192,7 +185,7 @@ export default function AuditLogPage() {
             {hasFilters && (
               <button
                 type="button"
-                onClick={() => setSearchParams({})}
+                onClick={() => { setCursors([null]); setSearchParams({}); }}
                 className="flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-ink-600 hover:bg-slate-50"
               >
                 <X className="h-4 w-4" />
@@ -200,12 +193,7 @@ export default function AuditLogPage() {
               </button>
             )}
 
-            <button
-              className="flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-brand-700"
-            >
-              <Filter className="h-4 w-4" />
-              Apply Filters
-            </button>
+
 
           </div>
 
@@ -216,7 +204,7 @@ export default function AuditLogPage() {
             {loading ? (
         <Spinner label="Loading audit log..." />
       ) : error ? (
-        <ErrorBanner error={error} onDismiss={refetch} />
+        <ErrorBanner error={error} onRetry={refetch} />
       ) : entries.length === 0 ? (
         <Card className="rounded-2xl">
           <EmptyState
@@ -346,6 +334,11 @@ export default function AuditLogPage() {
         </Card>
       )}
 
+      <nav aria-label="Audit pages" className="flex items-center justify-between gap-3 text-sm">
+        <button disabled={loading || cursors.length === 1} onClick={() => setCursors(values => values.slice(0, -1))} className="rounded-lg border bg-white px-3 py-2 disabled:opacity-40">Previous</button>
+        <span>Page {cursors.length}</span>
+        <button disabled={loading || !data?.has_more} onClick={() => setCursors(values => [...values, data.next_cursor])} className="rounded-lg border bg-white px-3 py-2 disabled:opacity-40">Next</button>
+      </nav>
       <p className="mt-4 text-xs text-ink-400">
         Emails are point-in-time snapshots — entries stay readable even after an account is deleted.{" "}
         <Link to="/admin/users" className="text-brand-600 hover:text-brand-700">
@@ -392,36 +385,6 @@ function ActionBadge({ label, tone, Icon }) {
 
 /* ========================================================= */
 /* FOOTER */
-/* ========================================================= */
-
-function AuditFooter() {
-  return (
-    <Card className="rounded-2xl border border-slate-200 shadow-sm">
-      <div className="flex flex-col gap-3 px-6 py-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-50">
-            <History className="h-4 w-4 text-brand-600" />
-          </div>
-
-          <p className="text-sm text-ink-500">
-            Emails are point-in-time snapshots. Entries remain readable even
-            after an account has been deleted.
-          </p>
-        </div>
-
-        <Link
-          to="/admin/users"
-          className="text-sm font-semibold text-brand-600 transition hover:text-brand-700"
-        >
-          Back to users →
-        </Link>
-      </div>
-    </Card>
-  );
-}
-
-/* ========================================================= */
-/* DATE FORMATTER */
 /* ========================================================= */
 
 function formatDateTime(iso) {

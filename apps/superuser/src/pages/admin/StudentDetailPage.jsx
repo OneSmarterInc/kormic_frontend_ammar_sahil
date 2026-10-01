@@ -66,7 +66,7 @@ export default function StudentDetailPage() {
   };
 
   if (loading) return <Spinner label="Loading student..." />;
-  if (error) return <ErrorBanner error={error} onDismiss={refetch} />;
+  if (error) return <ErrorBanner error={error} onRetry={refetch} />;
 
   const profile = normalizeStructuredValue(student.profile) || {};
   const onboarding = student.onboarding || {};

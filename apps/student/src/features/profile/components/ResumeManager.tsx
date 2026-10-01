@@ -5,7 +5,7 @@ import { PrimaryButton } from '../../../components/PrimaryButton';
 import { SectionLabel } from '../../../components/SectionLabel';
 import { ResumeRecord } from '../../../services/api';
 import { colors, fonts } from '../../../theme/tokens';
-import { ExtractedData } from '../../linkedin/ExtractedData';
+import { ExtractedGroup } from '../../linkedin/ExtractedData';
 import { formatDate } from '../profileValues';
 
 export function ResumeManager({
@@ -126,12 +126,27 @@ export function ResumeManager({
               )}
             </Pressable>
           </View>
-          <SectionLabel>Extracted data</SectionLabel>
-          <ExtractedData data={Object.fromEntries(Object.entries(resume.extracted_data || {}).filter(([key]) => !['agent_trace', 'schema_version', 'parser_engine', 'parser_status', 'document_sha256'].includes(key)))} />
+          <ResumeDetails data={resume.extracted_data || {}} />
         </View>
       ))}
     </View>
   );
+}
+
+function ResumeDetails({data}: {data: Record<string, unknown>}) {
+ const groups = [
+  {title:'Profile', keys:['name','email','phone','location','summary','about']},
+  {title:'Education', keys:['education']},
+  {title:'Experience', keys:['experience','work_experience']},
+  {title:'Skills', keys:['skills','technical_skills']},
+  {title:'Projects', keys:['projects']},
+  {title:'Certifications & achievements', keys:['certifications','achievements','awards']},
+ ];
+ const hidden = new Set(['agent_trace','schema_version','parser_engine','parser_status','document_sha256','evidence','source_files','warnings']);
+ const used = new Set(groups.flatMap(g=>g.keys));
+ const present = (value: unknown) => value != null && value !== '' && (!Array.isArray(value) || value.length > 0);
+ const other = Object.entries(data).filter(([key,value])=>!hidden.has(key)&&!used.has(key)&&present(value));
+ return <View style={{gap:16}}>{groups.map(g=>{const entries=g.keys.filter(k=>present(data[k])).map(k=>[k,data[k]] as [string,unknown]);return entries.length?<ExtractedGroup key={g.title} title={g.title} entries={entries}/>:null;})}{other.length?<ExtractedGroup title="Additional details" entries={other}/>:null}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -144,13 +159,13 @@ const styles = StyleSheet.create({
   resumeIntroCard: {
     backgroundColor: 'rgba(56,90,70,0.10)',
     borderColor: 'rgba(56,90,70,0.22)',
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
     gap: 8,
     padding: 16,
   },
   resumeIntroTitle: {
-    color: colors.offWhite,
+    color: colors.text,
     fontFamily: fonts.heading,
     fontSize: 22,
     lineHeight: 27,
@@ -165,7 +180,7 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   form: {
-    gap: 10,
+    gap: 20,
   },
   actionRow: {
     flexDirection: 'row',
@@ -176,7 +191,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#ffffff',
     borderColor: 'rgba(214, 6, 6, 0.14)',
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
     minWidth: 56,
     paddingHorizontal: 12,
@@ -200,7 +215,7 @@ const styles = StyleSheet.create({
   resumeCard: {
     backgroundColor: '#ffffff',
     borderColor: '#e7e9e2',
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
     gap: 14,
     padding: 15,
@@ -214,7 +229,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(56,90,70,0.15)',
     borderColor: 'rgba(56,90,70,0.34)',
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
     height: 46,
     justifyContent: 'center',
@@ -234,7 +249,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.heading,
     fontSize: 17,
     lineHeight: 23,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   emptyText: {
     color: colors.textSoft,

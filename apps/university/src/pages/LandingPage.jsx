@@ -94,8 +94,7 @@ export default function LandingPage() {
           </p>
           <div className="mt-6 flex items-center justify-center gap-3">
             {/* University registration is superuser-only — not offered from this frontend.
-            <Link to="/register">
-              <Button
+            <Button to="/register"
                  size="lg"
                  className="
                       transition-all
@@ -104,10 +103,8 @@ export default function LandingPage() {
                       hover:shadow-lg
                   "
              >Register your university</Button>
-            </Link>
             */}
-            <Link to="/login">
-              <Button
+            <Button to="/login"
                    size="lg"
                    className="
                        transition-all
@@ -118,7 +115,6 @@ export default function LandingPage() {
                >
                 Log in
               </Button>
-            </Link>
           </div>
         </div>
 

@@ -1,3 +1,4 @@
+import Pagination from "../../components/common/Pagination";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -14,18 +15,19 @@ import { deleteStudent, listStudents } from "../../api/superuserApi";
 import { useAction, useAsync } from "../../hooks/useAsync";
 
 export default function StudentsListPage() {
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [deleting, setDeleting] = useState(null); // student object or null
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    const t = setTimeout(() => { setDebouncedSearch(search.trim()); setPage(1); }, 300);
     return () => clearTimeout(t);
   }, [search]);
 
   const { data, loading, error, refetch } = useAsync(
-    () => listStudents(debouncedSearch),
-    [debouncedSearch]
+    () => listStudents(debouncedSearch, page),
+    [debouncedSearch, page]
   );
 
   const students = data?.students || [];
@@ -36,9 +38,7 @@ export default function StudentsListPage() {
         title="Students"
         description="Every student account on the platform — search, review, and manage access."
         action={
-          <Link to="/admin/students/new">
-            <Button icon={Plus}>Add student</Button>
-          </Link>
+          <Button to="/admin/students/new" icon={Plus}>Add student</Button>
         }
       />
 
@@ -46,7 +46,7 @@ export default function StudentsListPage() {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
         <input
           type="text"
-          placeholder="Search by email..."
+          aria-label="Search by email" placeholder="Search by email..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-xl border border-ink-200 bg-white py-2.5 pl-10 pr-4 text-sm transition-all duration-300 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
@@ -56,7 +56,7 @@ export default function StudentsListPage() {
       {loading ? (
         <Spinner label="Loading students..." />
       ) : error ? (
-        <ErrorBanner error={error} onDismiss={refetch} />
+        <ErrorBanner error={error} onRetry={refetch} />
       ) : students.length === 0 ? (
         <Card>
           <EmptyState
@@ -111,13 +111,11 @@ export default function StudentsListPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Link to={`/admin/students/${s.student_id}`}>
-                          <Button variant="ghost" size="sm" icon={Eye} title="View student" />
-                        </Link>
+                        <Button to={`/admin/students/${s.student_id}`} variant="ghost" size="sm" icon={Eye} aria-label="View details" title="View student" />
                         <Button
                           variant="ghost"
                           size="sm"
-                          icon={Trash2}
+                          icon={Trash2} aria-label="Delete"
                           onClick={() => setDeleting(s)}
                           className="text-red-500 hover:bg-red-50 hover:text-red-600"
                         />
@@ -130,6 +128,8 @@ export default function StudentsListPage() {
           </div>
         </Card>
       )}
+
+      <Pagination pagination={data?.pagination} loading={loading} onPage={setPage} />
 
       <DeleteStudentModal student={deleting} onClose={() => setDeleting(null)} onDeleted={refetch} />
     </div>

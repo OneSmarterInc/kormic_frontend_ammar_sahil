@@ -1,4 +1,6 @@
 import React from 'react';
+import { ScrollView } from 'react-native';
+import { ProfileScreen } from '../src/features/profile/ProfileScreen';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { AriaBotScreen } from '../src/features/chat/AriaBotScreen';
 import { ProfileOverview } from '../src/features/profile/components/ProfileOverview';
@@ -60,7 +62,7 @@ it('loads history and sends a message through the extracted chat controller and 
     await Promise.resolve();
   });
   fireEvent.changeText(screen.getByLabelText('Message Aria'), 'What should I improve?');
-  fireEvent.press(screen.getByText('Send'));
+  fireEvent.press(screen.getByLabelText('Send message'));
   await waitFor(() => expect(screen.getByText('Build a research portfolio.')).toBeTruthy());
   expect(api.chatWithAria).toHaveBeenCalledWith(session, 'What should I improve?', []);
   expect(screen.getByLabelText('Message Aria').props.value).toBe('');
@@ -74,9 +76,27 @@ it('surfaces chat request failure and allows another send', async () => {
     await Promise.resolve();
   });
   fireEvent.changeText(screen.getByLabelText('Message Aria'), 'Help');
-  fireEvent.press(screen.getByText('Send'));
+  fireEvent.press(screen.getByLabelText('Send message'));
   await waitFor(() => expect(screen.getByText('Try again later')).toBeTruthy());
   fireEvent.changeText(screen.getByLabelText('Message Aria'), 'Retry');
-  fireEvent.press(screen.getByText('Send'));
+  fireEvent.press(screen.getByLabelText('Send message'));
   await waitFor(() => expect(api.chatWithAria).toHaveBeenCalledTimes(2));
+});
+
+
+it('keeps the chat header and composer outside the conversation scroll view', async () => {
+  const screen = render(<ProfileScreen />);
+  await act(async () => { await Promise.resolve(); });
+  const verticalScrolls = screen.UNSAFE_getAllByType(ScrollView).filter(node => !node.props.horizontal);
+  expect(verticalScrolls).toHaveLength(1);
+  for (const label of ['Open profile menu', 'Message Aria']) {
+    let node = screen.getByLabelText(label).parent;
+    while (node) {
+      expect(node.type).not.toBe(ScrollView);
+      node = node.parent;
+    }
+  }
+  fireEvent.press(screen.getByLabelText('Open profile menu'));
+  fireEvent.press(screen.getByText('Profile Overview'));
+  expect(screen.UNSAFE_getAllByType(ScrollView).some(node => !node.props.horizontal)).toBe(true);
 });

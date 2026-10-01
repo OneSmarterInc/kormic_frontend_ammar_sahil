@@ -152,7 +152,7 @@ export default function SettingsProfilePage() {
     };
 
     if (loading) return <Spinner label="Loading profile..." />;
-    if (loadError) return <ErrorBanner error={loadError} onDismiss={refetch} />;
+    if (loadError) return <ErrorBanner error={loadError} onRetry={refetch} />;
 
     return (
         <div className="space-y-4">

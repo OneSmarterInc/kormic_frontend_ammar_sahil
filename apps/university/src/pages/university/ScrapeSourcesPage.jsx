@@ -794,7 +794,7 @@ export default function ScrapeSourcesPage() {
           {loading ? (
             <Spinner label="Loading saved URLs..." />
           ) : error ? (
-            <ErrorBanner error={error} onDismiss={refetch} />
+            <ErrorBanner error={error} onRetry={refetch} />
           ) : urls.length === 0 ? (
             <EmptyState
               icon={Globe}

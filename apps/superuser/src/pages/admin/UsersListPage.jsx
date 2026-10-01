@@ -1,3 +1,4 @@
+import Pagination from "../../components/common/Pagination";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -31,6 +32,8 @@ export default function UsersListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const role = searchParams.get("role") || "";
 
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage(1); }, [role]);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [creating, setCreating] = useState(false);
@@ -38,13 +41,13 @@ export default function UsersListPage() {
   const [togglingId, setTogglingId] = useState(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    const t = setTimeout(() => { setDebouncedSearch(search.trim()); setPage(1); }, 300);
     return () => clearTimeout(t);
   }, [search]);
 
   const { data, loading, error, refetch, setData } = useAsync(
-    () => listUsers({ role: role || undefined, search: debouncedSearch }),
-    [role, debouncedSearch]
+    () => listUsers({ role: role || undefined, search: debouncedSearch, page }),
+    [role, debouncedSearch, page]
   );
 
   // Your own account is managed from Settings, not alongside other users.
@@ -116,7 +119,7 @@ export default function UsersListPage() {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
         <input
           type="text"
-          placeholder="Search by email..."
+          aria-label="Search by email" placeholder="Search by email..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-xl border border-ink-200 bg-white py-2.5 pl-10 pr-4 text-sm transition-all duration-300 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
@@ -126,7 +129,7 @@ export default function UsersListPage() {
       {loading ? (
         <Spinner label="Loading users..." />
       ) : error ? (
-        <ErrorBanner error={error} onDismiss={refetch} />
+        <ErrorBanner error={error} onRetry={refetch} />
       ) : users.length === 0 ? (
         <Card>
           <EmptyState icon={UsersRound} title="No users match this view" />
@@ -202,13 +205,11 @@ export default function UsersListPage() {
                           >
                             {u.is_active ? "Deactivate" : "Activate"}
                           </Button>
-                          <Link to={`/admin/users/${u.user_id}`}>
-                            <Button variant="ghost" size="sm" icon={Settings2} title="Manage account" />
-                          </Link>
+                          <Button to={`/admin/users/${u.user_id}`} variant="ghost" size="sm" icon={Settings2} title="Manage account" />
                           <Button
                             variant="ghost"
                             size="sm"
-                            icon={Trash2}
+                            icon={Trash2} aria-label="Delete"
                             onClick={() => setDeleting(u)}
                             className="text-red-500 hover:bg-red-50 hover:text-red-600"
                           />
@@ -222,6 +223,8 @@ export default function UsersListPage() {
           </div>
         </Card>
       )}
+
+      <Pagination pagination={data?.pagination} loading={loading} onPage={setPage} />
 
       <CreateSuperuserModal open={creating} onClose={() => setCreating(false)} onCreated={refetch} />
 

@@ -66,13 +66,14 @@ export function AriaBotScreen(props: AriaChatProps) {
   return (
     <>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
         style={styles.chatShell}
       >
         <View style={styles.container}>
           {!sidebarOpen ? (
             <View style={styles.chatActionsWrap}>
+              <View style={styles.sessionLabel}><View style={styles.statusDot} /><Text style={styles.sessionText}>Your personal adviser</Text></View>
               <Pressable
                 accessibilityRole="button"
                 disabled={clearLoading || loading || historyLoading}
@@ -128,6 +129,7 @@ export function AriaBotScreen(props: AriaChatProps) {
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
               <ChatComposer
+                historyLoading={historyLoading}
                 agentName={agentName}
                 draft={draft}
                 setDraft={setDraft}
@@ -166,34 +168,42 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
     borderColor: '#e7e9e2',
-    borderRadius: 8,
-    borderWidth: 1,
+    borderRadius: 0,
+    borderWidth: 0,
+    minHeight: 0,
     overflow: 'hidden',
   },
   container: {
     flex: 1,
-    backgroundColor: '#f0f1eb',
+    backgroundColor: '#f2f5f2',
     flexDirection: 'column',
     gap: 0,
-    maxHeight: 720,
+    minHeight: 0,
   },
   chatActionsWrap: {
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+    paddingLeft: 16,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f2ef',
     width: '100%',
   },
+  sessionLabel: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#547663' },
+  sessionText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: '#6a766f' },
   clearChatButton: {
     alignItems: 'center',
     backgroundColor: '#ffffff',
     borderColor: '#e7e9e2',
     borderRadius: 8,
-    borderWidth: 1,
-    height: 34,
+    borderWidth: 0,
+    height: 44,
     justifyContent: 'center',
-    minHeight: 34,
-    width: 34,
-    margin: 8,
+    minHeight: 44,
+    width: 44,
+    margin: 2,
   },
   errorText: {
     color: colors.error,

@@ -57,7 +57,11 @@ export async function saveRefreshToken(refreshToken: string) {
 }
 
 export async function saveTokens(tokens: { access?: string; refresh?: string; user?: AuthUser }) {
-  if (tokens.user && Platform.OS !== 'web') await setItem(USER_KEY, JSON.stringify(tokens.user));
+  if (tokens.user && Platform.OS !== 'web') {
+    const previous = await getSavedSessionUser();
+    if (previous && previous.student_id !== tokens.user.student_id) await clearStudentCache();
+    await setItem(USER_KEY, JSON.stringify(tokens.user));
+  }
   if (tokens.access) {
     await saveAccessToken(tokens.access);
   }

@@ -130,7 +130,7 @@ export default function UserDetailPage() {
   };
 
   if (loading) return <Spinner label="Loading user..." />;
-  if (error) return <ErrorBanner error={error} onDismiss={refetch} />;
+  if (error) return <ErrorBanner error={error} onRetry={refetch} />;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">

@@ -1,0 +1,20 @@
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import { vi, test, expect } from 'vitest';
+import TopBar from '../../src/components/layout/TopBar';
+const {logout} = vi.hoisted(()=>({logout:vi.fn().mockResolvedValue()}));
+vi.mock('../../src/context/AuthContext',()=>({useAuth:()=>({user:{name:'Officer'},logout})}));
+vi.mock('../../src/api/client',()=>({default:{}}));
+vi.mock('@kormic/portal-core/components/notifications/NotificationBell.jsx',()=>({default:()=>null}));
+test('logout waits for confirmation and cancellation keeps the session',async()=>{
+ render(<MemoryRouter><TopBar/></MemoryRouter>);
+ const user=userEvent.setup();
+ await user.click(screen.getByRole('button',{name:'Log out'}));
+ expect(logout).not.toHaveBeenCalled();
+ await user.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Cancel'}));
+ expect(logout).not.toHaveBeenCalled();
+ await user.click(screen.getByRole('button',{name:'Log out'}));
+ await user.click(within(screen.getByRole('dialog')).getByRole('button',{name:'Log out'}));
+ expect(logout).toHaveBeenCalledTimes(1);
+});

@@ -30,7 +30,7 @@ export default function QuestionLogPage() {
       {loading ? (
         <Spinner label="Loading question log..." />
       ) : error ? (
-        <ErrorBanner error={error} onDismiss={refetch} />
+        <ErrorBanner error={error} onRetry={refetch} />
       ) : questions.length === 0 ? (
         <Card>
           <EmptyState icon={History} title="No questions logged yet" />

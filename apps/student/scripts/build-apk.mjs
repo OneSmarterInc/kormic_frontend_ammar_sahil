@@ -2,6 +2,7 @@ import { existsSync, readdirSync, mkdirSync, copyFileSync, writeFileSync } from 
 import { resolve, delimiter } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { syncBranding } from './sync-branding.mjs';
 import { backendOrigin } from '../../../scripts/backend-config.mjs';
 
 const app = fileURLToPath(new URL('..', import.meta.url));
@@ -18,11 +19,12 @@ const env = { ...process.env, JAVA_HOME: java, ANDROID_HOME: sdk,
   EXPO_PUBLIC_API_BASE_URL: origin + '/api',
   PATH: [resolve(java, 'bin'), resolve(process.execPath, '..'), process.env.PATH].join(delimiter) };
 writeFileSync(resolve(app, 'android/local.properties'), `sdk.dir=${sdk.replaceAll('\\', '/')}\n`);
+await syncBranding();
 const result = spawnSync('cmd.exe', ['/d', '/c', 'gradlew.bat', ':app:assembleRelease', '--no-daemon', '--max-workers=2', '-PreactNativeArchitectures=arm64-v8a,armeabi-v7a', `-PkormicCmakeStaging=${process.env.KORMIC_CMAKE_STAGING || resolve(app, '../../../.runtime/student-cxx')}`], { cwd: resolve(app, 'android'), env, stdio: 'inherit' });
 if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status || 1);
 const output = resolve(app, 'builds');
 mkdirSync(output, { recursive: true });
 copyFileSync(resolve(app, 'android/app/build/outputs/apk/release/app-release.apk'), resolve(output, 'student-app.apk'));
-writeFileSync(resolve(output, 'build-info.json'), JSON.stringify({ app: 'Student Mobile App', variant: 'release-preview', backend: origin, builtAt: new Date().toISOString(), architectures: ['arm64-v8a', 'armeabi-v7a'] }, null, 2));
+writeFileSync(resolve(output, 'build-info.json'), JSON.stringify({ app: 'Kormic', variant: 'release-preview', backend: origin, builtAt: new Date().toISOString(), architectures: ['arm64-v8a', 'armeabi-v7a'] }, null, 2));
 console.log(`APK: ${resolve(output, 'student-app.apk')}`);

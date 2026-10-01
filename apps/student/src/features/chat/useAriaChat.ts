@@ -1,5 +1,6 @@
+import { cacheGeneration } from '../../services/studentCache';
 import * as Clipboard from 'expo-clipboard';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Platform, ScrollView } from 'react-native';
 import {
   chatWithAria,
@@ -16,6 +17,7 @@ import {
   cacheAriaMessages,
   DEFAULT_AGENT_NAME,
   getCachedAriaMessages,
+  hydrateAriaMessages,
   getWelcomeMessage,
   groupThreadsByDate,
   normalizeAriaHistory,
@@ -33,6 +35,7 @@ export function useAriaChat({
 }: AriaChatProps) {
   const cachedMessages = getCachedAriaMessages(session);
   const [agentName, setAgentName] = useState(DEFAULT_AGENT_NAME);
+  const agentNameRef = useRef(DEFAULT_AGENT_NAME);
   const [messages, setMessages] = useState<ChatMessage[]>(
     cachedMessages.length > 0 ? cachedMessages : [getWelcomeMessage(DEFAULT_AGENT_NAME)],
   );
@@ -43,6 +46,7 @@ export function useAriaChat({
   const [loading, setLoading] = useState(false);
   const [activityLabel, setActivityLabel] = useState('Thinking…');
   const sendingRef = useRef(false);
+  const lifecycle = useRef(0);
   useEffect(() => {
     if (!loading || !session) return;
     let active = true;
@@ -60,7 +64,7 @@ export function useAriaChat({
     void poll();
     return () => { active = false; clearTimeout(timer); };
   }, [loading, session?.user?.student_id]);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(cachedMessages.length === 0);
   const [clearLoading, setClearLoading] = useState(false);
   const [clearConfirmVisible, setClearConfirmVisible] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -87,9 +91,10 @@ export function useAriaChat({
       messagesScrollRef.current?.scrollToEnd({ animated });
     });
   };
-  useEffect(() => {
+  useLayoutEffect(() => {
     shouldScrollMessagesToEndRef.current = true;
-  }, [messages.length, loading, historyLoading]);
+    scrollMessagesToEnd(false);
+  }, [messages, loading, historyLoading]);
   useEffect(() => {
     if (!session) {
       return;
@@ -105,11 +110,15 @@ export function useAriaChat({
 
     console.log('[Aria] Pending escalation detected. Starting auto-refresh.');
 
+    let active = true;
+    const generation = cacheGeneration();
     const interval = setInterval(async () => {
+      if (sendingRef.current) return;
       try {
         console.log('[Aria] Checking for university response...');
 
         const history = await getAriaHistory(session);
+        if (!active || generation !== cacheGeneration() || sendingRef.current) return;
         const nextHistory = normalizeAriaHistory(history.messages ?? []);
 
         setHistoryMessages(nextHistory);
@@ -132,10 +141,12 @@ export function useAriaChat({
 
     return () => {
       console.log('[Aria] Stopping auto-refresh.');
+      active = false;
       clearInterval(interval);
     };
   }, [session, messages, agentName]);
   const applyAgentName = (nextAgentName: string) => {
+    agentNameRef.current = nextAgentName;
     setAgentName(nextAgentName);
     setNameDraft(nextAgentName);
     onAgentNameChange?.(nextAgentName);
@@ -144,7 +155,7 @@ export function useAriaChat({
       current.length === 1 && current[0]?.id === 'welcome' ? [getWelcomeMessage(nextAgentName)] : current,
     );
   };
-  const loadAgentName = async () => {
+  const loadAgentName = async (isCurrent = () => true) => {
     if (!session) {
       applyAgentName(DEFAULT_AGENT_NAME);
       return DEFAULT_AGENT_NAME;
@@ -154,66 +165,87 @@ export function useAriaChat({
       const response = await getAgentName(session);
       const nextAgentName =
         response.agent_name?.trim() || response.agent?.trim() || response.name?.trim() || DEFAULT_AGENT_NAME;
-      applyAgentName(nextAgentName);
+      if (isCurrent()) applyAgentName(nextAgentName);
       return nextAgentName;
     } catch {
-      applyAgentName(DEFAULT_AGENT_NAME);
+      if (isCurrent()) applyAgentName(DEFAULT_AGENT_NAME);
       return DEFAULT_AGENT_NAME;
     }
   };
   const loadHistory = async (nextAgentName = agentName, syncActiveChat = false) => {
     if (!session) return;
 
+    const generation = cacheGeneration();
+    const epoch = lifecycle.current;
+    const isCurrent = () => generation === cacheGeneration() && epoch === lifecycle.current;
     try {
       setHistoryLoading(true);
       setError('');
 
       const history = await getAriaHistory(session);
+      if (!isCurrent()) return;
       const historyMessages = normalizeAriaHistory(history.messages ?? []);
 
       setHistoryMessages(historyMessages);
-      cacheAriaMessages(session, historyMessages);
+      cacheAriaMessages(session, historyMessages, generation);
       setSelectedThreadId(undefined);
 
       if (syncActiveChat) {
-        setMessages(historyMessages.length > 0 ? historyMessages : [getWelcomeMessage(nextAgentName)]);
+        setMessages(historyMessages.length > 0 ? historyMessages : [getWelcomeMessage(agentNameRef.current)]);
       }
     } catch (historyError) {
+      if (!isCurrent()) return;
       setError(historyError instanceof Error ? historyError.message : 'Unable to load agent chat history');
     } finally {
-      setHistoryLoading(false);
+      if (isCurrent()) setHistoryLoading(false);
     }
   };
   useEffect(() => {
     const controller = new AbortController();
+    const epoch = ++lifecycle.current;
+    const generation = cacheGeneration();
+    const isCurrent = () => !controller.signal.aborted && epoch === lifecycle.current && generation === cacheGeneration();
+    const cached = getCachedAriaMessages(session);
+    setMessages(cached.length ? cached : []);
+    setHistoryMessages(cached);
+    setLoading(false);
+    setHistoryLoading(true);
     const loadAgent = async () => {
-      const nextAgentName = await loadAgentName();
-      await loadHistory(nextAgentName, true);
-      if (session && !controller.signal.aborted) {
-        setLoading(true);
-        try {
-          const result = await resumeAriaJob(session, controller.signal);
-          if (result && !controller.signal.aborted) await loadHistory(nextAgentName, true);
-        } catch (error) {
-          if (!controller.signal.aborted) setError(error instanceof Error ? error.message : 'Unable to resume chat.');
-        } finally {
-          if (!controller.signal.aborted && !sendingRef.current) setLoading(false);
-        }
+      if (!session) { setHistoryLoading(false); return; }
+      const nameRequest = loadAgentName(isCurrent);
+      const saved = await hydrateAriaMessages(session);
+      if (!isCurrent()) return;
+      if (saved.length) { setMessages(saved); setHistoryMessages(saved); }
+      // Name lookup and server history run independently; neither blocks disk hydration.
+      const historyRequest = loadHistory(agentName, true);
+      try {
+        const result = await resumeAriaJob(session, controller.signal, () => {
+          if (isCurrent()) setLoading(true);
+        });
+        await historyRequest;
+        await nameRequest;
+        if (result && isCurrent()) await loadHistory(agentName, true);
+      } catch (error) {
+        if (isCurrent()) setError(error instanceof Error ? error.message : 'Unable to check chat progress.');
+      } finally {
+        if (isCurrent() && !sendingRef.current) setLoading(false);
       }
     };
-
-    loadAgent();
-    return () => controller.abort();
-  }, [session?.access, session?.user?.student_id, refreshKey]);
+    void loadAgent();
+    return () => { controller.abort(); lifecycle.current += 1; };
+  }, [session?.user?.student_id, refreshKey]);
   const clearChat = async () => {
     if (!session || clearLoading) {
       return;
     }
 
+    const generation = cacheGeneration();
+    const epoch = lifecycle.current;
     try {
       setClearLoading(true);
       setError('');
       await clearAriaChat(session);
+      if (generation !== cacheGeneration() || epoch !== lifecycle.current) return;
 
       const welcomeMessage = getWelcomeMessage(agentName);
       setMessages([welcomeMessage]);
@@ -248,7 +280,7 @@ export function useAriaChat({
     const message = draft.trim();
     const pendingAttachments = selectedAttachments;
 
-    if ((!message && selectedAttachments.length === 0) || loading) {
+    if ((!message && selectedAttachments.length === 0) || loading || historyLoading) {
       return;
     }
 
@@ -257,6 +289,9 @@ export function useAriaChat({
       return;
     }
 
+    const generation = cacheGeneration();
+    const epoch = lifecycle.current;
+    const isCurrent = () => generation === cacheGeneration() && epoch === lifecycle.current;
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -282,6 +317,7 @@ export function useAriaChat({
 
       sendingRef.current = true;
       const response = await chatWithAria(session, message, pendingAttachments);
+      if (!isCurrent()) return;
       if (response.agent?.trim()) {
         applyAgentName(response.agent.trim());
       }
@@ -308,10 +344,11 @@ export function useAriaChat({
 
       await loadHistory(agentName, true);
     } catch (chatError) {
+      if (!isCurrent()) return;
       setError(chatError instanceof Error ? chatError.message : `Unable to chat with ${agentName}`);
     } finally {
       sendingRef.current = false;
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   };
   const copyResponse = async (message: ChatMessage) => {

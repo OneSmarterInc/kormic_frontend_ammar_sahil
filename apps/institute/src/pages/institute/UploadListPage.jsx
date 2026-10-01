@@ -216,9 +216,7 @@ function ResultSummary({ result, onUploadAnother }) {
           <p className="text-sm text-ink-500">
             Every accepted row is saved as roster history. New/unclaimed students are not notified yet; open the roster to send invite emails.
           </p>
-          <Link to={`/institute/lists/${result.list_id}`}>
-            <Button icon={Mail}>View roster & send invites</Button>
-          </Link>
+          <Button to={`/institute/lists/${result.list_id}`} icon={Mail}>View roster & send invites</Button>
         </CardBody>
       </Card>
 

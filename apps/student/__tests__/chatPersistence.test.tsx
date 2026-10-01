@@ -1,0 +1,53 @@
+import { act, renderHook, waitFor } from '@testing-library/react-native';
+import { useAriaChat } from '../src/features/chat/useAriaChat';
+import { ariaMessageCache } from '../src/features/chat/chatHistory';
+import * as api from '../src/services/api';
+import * as cache from '../src/services/studentCache';
+import { AuthSession } from '../src/models/onboarding';
+jest.mock('../src/services/api', () => ({getAriaHistory: jest.fn(), getAgentName: jest.fn(), resumeAriaJob: jest.fn(), getAgentActivity: jest.fn()}));
+jest.mock('../src/services/studentCache', () => ({cacheGeneration: () => 0, readCachedChat: jest.fn(), cacheChat: jest.fn(), onStudentCacheClear: jest.fn()}));
+jest.mock('../src/features/chat/useChatAttachments', () => ({useChatAttachments: () => ({selectedAttachments: []})}));
+jest.mock('../src/features/chat/useChatPdfExport', () => ({useChatPdfExport: () => ({})}));
+const session = {access: 'token', user: {student_id: 'one'}} as AuthSession;
+beforeEach(() => {
+ jest.clearAllMocks(); ariaMessageCache.clear();
+ jest.mocked(api.getAgentName).mockResolvedValue({agent_name: 'Cove'});
+ jest.mocked(api.resumeAriaJob).mockResolvedValue(undefined);
+});
+it('shows disk history before server refresh without reporting thinking', async () => {
+ jest.mocked(cache.readCachedChat).mockResolvedValue([{id:'1', serverId:1, role:'aria', text:'Saved reply'}]);
+ let finish!: (data: any) => void;
+ jest.mocked(api.getAriaHistory).mockImplementation(() => new Promise(resolve => {finish=resolve;}));
+ const {result} = renderHook(() => useAriaChat({session}));
+ await waitFor(() => expect(result.current.messages[0]?.text).toBe('Saved reply'));
+ expect(result.current.loading).toBe(false);
+ expect(result.current.historyLoading).toBe(true);
+ const scrollToEnd = jest.fn();
+ result.current.messagesScrollRef.current = { scrollToEnd } as any;
+ await act(async () => finish({messages:[{id:2,sender:'aria',content:'Fresh reply'}]}));
+ await waitFor(() => expect(result.current.messages[0]?.text).toBe('Fresh reply'));
+ await waitFor(() => expect(scrollToEnd).toHaveBeenCalledWith({animated: false}));
+ expect(result.current.loading).toBe(false);
+});
+it('retains disk history when the server is unavailable', async () => {
+ jest.mocked(cache.readCachedChat).mockResolvedValue([{id:'1', serverId:1,role:'aria',text:'Saved reply'}]);
+ jest.mocked(api.getAriaHistory).mockRejectedValue(new Error('Server error'));
+ const {result} = renderHook(() => useAriaChat({session}));
+ await waitFor(() => expect(result.current.historyLoading).toBe(false));
+ expect(result.current.messages[0]?.text).toBe('Saved reply');
+ expect(result.current.loading).toBe(false);
+ expect(result.current.error).toBe('Server error');
+});
+it('shows thinking only after a running job is confirmed', async () => {
+ jest.mocked(cache.readCachedChat).mockResolvedValue([]);
+ jest.mocked(api.getAriaHistory).mockResolvedValue({messages:[]} as any);
+ jest.mocked(api.getAgentActivity).mockResolvedValue({status:'idle'} as any);
+ let activate!: () => void;
+ jest.mocked(api.resumeAriaJob).mockImplementation((_s,_signal,onActive) => { activate=onActive!; return new Promise(() => {}); });
+ const {result, unmount} = renderHook(() => useAriaChat({session}));
+ await waitFor(() => expect(api.resumeAriaJob).toHaveBeenCalled());
+ expect(result.current.loading).toBe(false);
+ act(() => activate());
+ expect(result.current.loading).toBe(true);
+ unmount();
+});

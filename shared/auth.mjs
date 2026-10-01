@@ -24,6 +24,7 @@ export function apiOrigin(value) {
 }
 
 export function roleHome(user) {
+  if (user?.role === "department" && /^[A-Za-z0-9_-]{1,128}$/.test(String(user.university_id ?? ""))) return `/university/#/university/${user.university_id}/agent-queries?tab=departments`;
   if (!isPortal(user?.role)) throw new AuthError('This account has no supported portal.');
   switch (user.role) {
     case 'student': return '/student/';
@@ -123,7 +124,7 @@ export function createAuthClient({ origin, fetchImpl = globalThis.fetch, timeout
     // and returns the same user representation as /auth/me. Avoid a second
     // auth request during the browser redirect boundary.
     const user = session.user ?? await request('/auth/me/', { access: session.access });
-    if (user?.role !== portal) {
+    if (user?.role !== portal && !(portal === "university" && user?.role === "department")) {
       try { await webPost('/auth/web/logout/', portal); } catch { /* Still deny access. */ }
       throw new AuthError('This account is not authorized for the selected portal.', 403);
     }

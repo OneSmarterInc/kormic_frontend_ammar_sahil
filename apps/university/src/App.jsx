@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -12,22 +13,22 @@ import TotpEnrollPage from "./pages/auth/TotpEnrollPage";
 // import UniversityRegisterPage from "./pages/auth/UniversityRegisterPage";
 
 import UniversityLayout from "./layouts/UniversityLayout";
-import DashboardPage from "./pages/university/DashboardPage";
-import SettingsProfilePage from "./pages/university/SettingsProfilePage";
-import ScrapeSourcesPage from "./pages/university/ScrapeSourcesPage";
-import KnowledgeBasePage from "./pages/university/KnowledgeBasePage";
-import KnowledgeGroupsPage from "./pages/university/KnowledgeGroupsPage";
-import AgentPreviewPage from "./pages/university/AgentPreviewPage";
-import ProfilesListPage from "./pages/university/ProfilesListPage";
-import ProfileDetailPage from "./pages/university/ProfileDetailPage";
-import AgentQueriesPage from "./pages/university/AgentQueriesPage";
-import QueriesPage from "./pages/university/QueriesPage";
-import KnowledgePage from "./pages/university/KnowledgePage";
-import QuestionLogPage from "./pages/university/QuestionLogPage";
+const DashboardPage = lazy(() => import("./pages/university/DashboardPage"));
+const SettingsProfilePage = lazy(() => import("./pages/university/SettingsProfilePage"));
+const ScrapeSourcesPage = lazy(() => import("./pages/university/ScrapeSourcesPage"));
+const KnowledgeBasePage = lazy(() => import("./pages/university/KnowledgeBasePage"));
+const KnowledgeGroupsPage = lazy(() => import("./pages/university/KnowledgeGroupsPage"));
+const AgentPreviewPage = lazy(() => import("./pages/university/AgentPreviewPage"));
+const ProfilesListPage = lazy(() => import("./pages/university/ProfilesListPage"));
+const ProfileDetailPage = lazy(() => import("./pages/university/ProfileDetailPage"));
+const AgentQueriesPage = lazy(() => import("./pages/university/AgentQueriesPage"));
+
+const KnowledgePage = lazy(() => import("./pages/university/KnowledgePage"));
+const QuestionLogPage = lazy(() => import("./pages/university/QuestionLogPage"));
 
 function UniversityIndexRedirect() {
   const { user } = useAuth();
-  return <Navigate to={`/university/${user.university_id}/dashboard`} replace />;
+  return <Navigate to={`/university/${user.university_id}/${user.role === "department" ? "agent-queries?tab=departments" : "dashboard"}`} replace />;
 }
 
 function App() {
@@ -67,7 +68,7 @@ function App() {
                     <Route path="settings/agent-preview" element={<AgentPreviewPage />} />
                     <Route path="profiles" element={<ProfilesListPage />} />
                     <Route path="profiles/:studentId" element={<ProfileDetailPage />} />
-                    <Route path="queries" element={<QueriesPage />} />
+                    <Route path="queries" element={<Navigate to="../agent-queries?tab=departments" replace />} />
                     <Route path="agent-queries" element={<AgentQueriesPage />} />
                     <Route path="knowledge" element={<KnowledgePage />} />
                     <Route path="questions" element={<QuestionLogPage />} />

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCw, Globe, Clock, BookOpen } from 'lucide-react';
 import client from '../../api/client';
 import PageHeader from '../../components/layout/PageHeader';
@@ -9,28 +9,40 @@ export default function UpdateInformationPage() {
   const [page, setPage] = useState(1);
   const [data, setData] = useState({ results: [], count: 0, total_pages: 1 });
   const [loading, setLoading] = useState(true);
+  const [policyLoaded, setPolicyLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [updating, setUpdating] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const processing = useRef(false);
+  processing.current = data.results.some(row => row.processing);
   const load = useCallback(async () => {
     const response = await client.get('/superuser/update-information/universities/', { params: { page } });
     return response.data;
   }, [page]);
   useEffect(() => {
     let active = true;
-    Promise.all([client.get('/superuser/update-information/'), load()])
-      .then(([policy, list]) => { if (active) { setDays(policy.data.refresh_days); setSavedDays(policy.data.refresh_days); setData(list); } })
-      .catch(() => { if (active) setError('Unable to load university research settings.'); })
-      .finally(() => { if (active) setLoading(false); });
+    client.get('/superuser/update-information/')
+      .then(({data: policy}) => { if (active) { setDays(policy.refresh_days); setSavedDays(policy.refresh_days); setPolicyLoaded(true); } })
+      .catch(() => { if (active) setError('Unable to load university research settings.'); });
     return () => { active = false; };
-  }, [load]);
+  }, []);
   useEffect(() => {
-    if (!data.results.some(row => row.processing)) return;
-    let active = true;
-    const timer = setTimeout(() => { load().then(next => { if (active) setData(next); }).catch(() => { if (active) setError('Could not refresh processing status. Reload to retry.'); }); }, 5000);
-    return () => { active = false; clearTimeout(timer); };
-  }, [data, load]);
+    let active = true, busy = false;
+    const fetchList = async (initial = false) => {
+      if (busy || (!initial && document.hidden)) return;
+      busy = true;
+      if (initial) setLoading(true);
+      try { const list = await load(); if (active) setData(list); }
+      catch { if (active) setError('Unable to load university research.'); }
+      finally { busy = false; if (active && initial) setLoading(false); }
+    };
+    fetchList(true);
+    const visible = () => { if (!document.hidden) fetchList(); };
+    const timer = setInterval(() => { if (processing.current) fetchList(); }, 5000);
+    document.addEventListener('visibilitychange', visible);
+    return () => { active = false; clearInterval(timer); document.removeEventListener('visibilitychange', visible); };
+  }, [load]);
   const save = async event => {
     event.preventDefault(); setSaving(true); setError(''); setNotice('');
     try {
@@ -50,7 +62,7 @@ export default function UpdateInformationPage() {
     finally { setUpdating(''); }
   };
   return <div className="mx-auto max-w-6xl space-y-6">
-    <PageHeader title="Update information" description="Manage the freshness of university information collected from official websites." />
+    <PageHeader title="University research" description="Manage the freshness of university information collected from official websites." />
     {error && <div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{error}</div>}
     {notice && <div role="status" className="rounded-xl bg-green-50 p-4 text-sm text-green-800">{notice}</div>}
     <form onSubmit={save} className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
@@ -58,7 +70,7 @@ export default function UpdateInformationPage() {
       <p className="mb-5 text-sm text-ink-600">Records older than this interval are marked as potentially outdated. Current policy: {savedDays} days. Use the controls below to refresh official information in the background.</p>
       <div className="flex flex-wrap items-end gap-4">
         <label className="space-y-2 text-sm font-medium">Refresh age in days<input type="number" min="1" max="365" required value={days} onChange={e => setDays(e.target.value)} className="block w-40 rounded-lg border border-ink-200 px-3 py-2" /></label>
-        <button disabled={saving || loading} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save policy'}</button>
+        <button disabled={saving || loading || !policyLoaded} className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save policy'}</button>
       </div>
     </form>
     <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-sm">
@@ -72,7 +84,7 @@ export default function UpdateInformationPage() {
         </div>
         <button onClick={() => void refresh(row)} disabled={!!updating || row.processing} className="flex items-center gap-2 rounded-lg border border-ink-200 px-4 py-2 text-sm font-medium disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${row.processing ? 'animate-spin' : ''}`} />{row.processing ? 'Processing' : 'Update information'}</button>
       </article>)}</div>}
-      <div className="flex items-center justify-between border-t border-ink-100 p-4 text-sm"><button disabled={page <= 1} onClick={() => setPage(p => p-1)} className="disabled:opacity-40">Previous</button><span>Page {page} of {data.total_pages}</span><button disabled={page >= data.total_pages} onClick={() => setPage(p => p+1)} className="disabled:opacity-40">Next</button></div>
+      <div className="flex items-center justify-between border-t border-ink-100 p-4 text-sm"><button disabled={loading || page <= 1} onClick={() => setPage(p => p-1)} className="disabled:opacity-40">Previous</button><span>Page {page} of {data.total_pages}</span><button disabled={loading || page >= data.total_pages} onClick={() => setPage(p => p+1)} className="disabled:opacity-40">Next</button></div>
     </section>
   </div>;
 }

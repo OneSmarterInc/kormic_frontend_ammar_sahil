@@ -1,25 +1,11 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { NavLink, Outlet, useLocation, Navigate } from "react-router-dom";
 import clsx from "clsx";
-import {
-  BookOpenCheck,
-  Bot,
-  Compass,
-  Globe,
-  History,
-  LayoutDashboard,
-  MessagesSquare,
-  Sparkles,
-  Split,
-  Users,
-  HelpCircle,
-} from "lucide-react";
-
-import TopBar from "../components/layout/TopBar";
-import Badge from "../components/common/Badge";
+import { Building2, ClipboardList, ChevronLeft, GraduationCap, History, Landmark, LayoutDashboard, Settings, ShieldCheck, BookOpenCheck, Bot, Compass, Globe, MessagesSquare, Split, Users, Sparkles, TrendingUp, UsersRound, RefreshCw } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { getProfile } from "../api/universityAdminApi";
 import { useAsync } from "../hooks/useAsync";
-import { setupPercent } from "../lib/university";
+import TopBar from "../components/layout/TopBar";
 
 const NAV_GROUPS = [
   {
@@ -72,11 +58,7 @@ const NAV_GROUPS = [
         label: "Queries",
         icon: Bot,
       },
-      {
-        to: "queries",
-        label: "Escalated Queries",
-        icon: MessagesSquare,
-      },
+
 
       {
         to: "knowledge",
@@ -95,390 +77,75 @@ const NAV_GROUPS = [
 
 export default function UniversityLayout() {
   const { user } = useAuth();
-
-  const activeUniversityId = user.university_id;
-
-  const { data: profile } = useAsync(
-    getProfile,
-    [activeUniversityId]
-  );
-
-  return (
-    <div className="min-h-screen bg-ink-50">
-
-      {/* Header */}
-
-      <TopBar universityName={profile?.name} withSidebar />
-
-      {/* Sidebar */}
-
-      <aside
-        className="
-          fixed
-          left-0
-          top-0
-          z-40
-          hidden
-          h-screen
-          w-64
-          border-r
-          border-white/10
-          bg-[#08142F]
-          text-white
-          lg:flex
-          lg:flex-col
-        "
-      >
-
-        {/* Logo */}
-
-        <div
-          className="
-            flex
-            h-[72px]
-            items-center
-            justify-between
-            border-b
-            border-white/10
-            px-6
-          "
-        >
-          <div className="flex items-center gap-3">
-
-            <div
-              className="
-
-
-                flex
-                h-10
-                w-10
-                items-center
-                justify-center
-                rounded-xl
-                bg-brand-600
-              "
-            >
-              <Sparkles className="h-6 w-6 text-white" />
-            </div>
-
-            <span
-                className="
-                    text-[22px]
-                    font-semibold
-                    tracking-tight
-                    text-white
-                "
-            >
-                Kormic
-            </span>
-
-          </div>
-
-          
-        </div>
-
-        {/* Navigation */}
-
-        <div className="flex-1 overflow-y-auto px-5 py-6">
-
-          {NAV_GROUPS.map((group) => (
-
-            <div
-              key={group.label}
-              className="mb-8"
-            >
-
-              <p
-                className="
-                  mb-3
-                  px-2
-                  text-xs
-                  font-semibold
-                  tracking-[0.12em]
-                  text-white/50
-                "
-              >
-                {group.label}
-              </p>
-
-              <div className="space-y-1">
-
-                {group.items.map((item) => (
-
-                  <NavItem
-                    key={item.to}
-                    item={item}
-                    activeUniversityId={activeUniversityId}
-                  />
-
-                ))}
-
-              </div>
-
-            </div>
-
-          ))}
-
-        </div>
-
-        {/* Bottom */}
-
-        <div
-          className="
-            border-t
-            border-white/10
-            px-5
-            py-6
-            space-y-1
-          "
-        >
-
-          <BottomItem
-            icon={HelpCircle}
-            label="Help & Support"
-            disabled
-          />
-
-        </div>
-
-      </aside>
-
-      {/* Main */}
-
-      <main
-        className="
-          ml-0
-          pt-12
-          lg:ml-64
-          min-h-screen
-        "
-      >
-
-        <div
-          className="
-            
-            w-full
-            px-3
-            pt-3
-            pb-4
-          "
-
-        >
-
-          <MobileUniversityBar
-            activeUniversityId={activeUniversityId}
-            user={user}
-            profile={profile}
-          />
-
-          <Outlet />
-
-        </div>
-
-      </main>
-
-    </div>
-  );
-}
-
-function NavItem({ item, activeUniversityId }) {
-  return (
-    <NavLink
-      to={`/university/${activeUniversityId}/${item.to}`}
-      className={({ isActive }) =>
-        clsx(
-          "group flex items-center gap-4 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300",
-          isActive
-            ? "bg-brand-600 text-white shadow-lg"
-            : "text-white/75 hover:bg-white/10 hover:text-white"
-        )
-      }
-    >
-      <item.icon
-        className="
-          h-5
-          w-5
-          shrink-0
-          transition-transform
-          duration-300
-          group-hover:scale-110
-        "
-      />
-
-      <span>{item.label}</span>
-    </NavLink>
-  );
-}
-function BottomItem({ icon: Icon, label, to, disabled }) {
-  const content = (
-    <>
-      <Icon
-        className="
-          h-5
-          w-5
-          transition-transform
-          duration-300
-          group-hover:scale-110
-        "
-      />
-
-      {label}
-    </>
-  );
-
-  if (disabled) {
-    return (
-      <div
-        title="Coming soon"
-        className="
-          group
-          flex
-          w-full
-          cursor-not-allowed
-          items-center
-          gap-4
-          rounded-xl
-          px-4
-          py-3
-          text-sm
-          font-medium
-          text-white/30
-        "
-      >
-        {content}
-      </div>
-    );
+  const location = useLocation();
+  if (user.role === "department") {
+    if (!location.pathname.endsWith("/agent-queries")) return <Navigate to={`/university/${user.university_id}/agent-queries?tab=departments`} replace />;
+    return <><TopBar organizationName={user.university_name} /><main className="p-4 sm:p-8"><Suspense fallback={<p>Loading queries…</p>}><Outlet /></Suspense></main></>;
   }
-
-  return (
-    <NavLink
-      to={to}
-      className="
-        group
-        flex
-        w-full
-        items-center
-        gap-4
-        rounded-xl
-        px-4
-        py-3
-        text-sm
-        font-medium
-        text-white/75
-        transition-all
-        duration-300
-        hover:bg-white/10
-        hover:text-white
-      "
-    >
-      {content}
-    </NavLink>
-  );
+  return <UniversityAdminLayout />;
 }
-function SignedInAs({ user, profile, activeUniversityId }) {
-  const percent = setupPercent(profile);
-  return (
-    <div
-     className="
-     rounded-2xl
-     border
-     border-ink-200
-     bg-white
-     p-7
-     shadow-sm
 
-     transition-all
-     duration-300
-
-     hover:shadow-lg
-     "
-     >
-      <p className="text-xs font-medium text-ink-400">Signed in as</p>
-      <p className="mt-0.5 truncate text-sm font-semibold text-ink-900">{user.name}</p>
-      {user.email && (
-        <p className="truncate text-xs text-ink-500">{user.email}</p>
-      )}
-      <p className="mt-1 truncate text-xs text-ink-500">{profile?.name || activeUniversityId}</p>
-      {profile?.agent_name && (
-        <p className="mt-1.5 flex items-center gap-1 truncate text-xs text-brand-600">
-          <Sparkles className="h-3 w-3 shrink-0" />
-          Agent: {profile.agent_name}
-        </p>
-      )}
-      {profile && (
-        <NavLink
-          to={`/university/${activeUniversityId}/dashboard`}
-          className="
-          mt-4
-          flex
-          items-center
-          justify-between
-          gap-2
-          rounded-xl
-          bg-ink-50
-          px-3
-          py-2
-          text-xs
-
-          transition-all
-          duration-300
-
-          hover:bg-brand-50
-          hover:shadow-sm
-          "
-        >
-          <span className="text-ink-500">Setup progress</span>
-          <Badge tone={percent === 100 ? "success" : "brand"}>{percent}%</Badge>
-        </NavLink>
-      )}
+function UniversityAdminLayout() {
+  const { user } = useAuth();
+  const profileState = useAsync(getProfile, [user.university_id]);
+  const groups = NAV_GROUPS.map(group => ({...group, items: group.items.map(item => ({...item, to: `/university/${user.university_id}/${item.to}`}))}));
+  const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
+  const [collapsed, setCollapsed] = useState(() => { try { return localStorage.getItem('kormic.university.sidebar.collapsed') === 'true'; } catch { return false; } });
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const sidebar = useRef(null);
+  const toggle = useRef(null);
+  const location = useLocation();
+  const open = desktop ? !collapsed : mobileOpen;
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 1024px)');
+    const change = () => { setDesktop(media.matches); setMobileOpen(false); };
+    media.addEventListener('change', change);
+    return () => media.removeEventListener('change', change);
+  }, []);
+  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
+  useEffect(() => { try { localStorage.setItem('kormic.university.sidebar.collapsed', String(collapsed)); } catch {} }, [collapsed]);
+  useEffect(() => {
+    if (desktop || !mobileOpen) return;
+    const previous = document.activeElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    sidebar.current.querySelector('button').focus();
+    const onKey = event => {
+      if (event.key === 'Escape') { event.preventDefault(); setMobileOpen(false); }
+      if (event.key === 'Tab') {
+        const items = sidebar.current.querySelectorAll('a[href], button');
+        const first = items[0], last = items[items.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => { document.body.style.overflow = overflow; document.removeEventListener('keydown', onKey); previous?.focus(); };
+  }, [desktop, mobileOpen]);
+  const toggleSidebar = () => desktop ? setCollapsed(value => !value) : setMobileOpen(value => !value);
+  const closeSidebar = () => { desktop ? setCollapsed(true) : setMobileOpen(false); toggle.current?.focus(); };
+  return <div className="min-h-screen bg-ink-50">
+    <div inert={!desktop && mobileOpen ? true : undefined}>
+      <TopBar sidebarOpen={open} desktop={desktop} onToggleSidebar={toggleSidebar} toggleRef={toggle} organizationName={profileState.data?.name} />
+      <main className={clsx('min-w-0 transition-[margin] duration-200 motion-reduce:transition-none', desktop && open && 'ml-72')}>
+        <div className="mx-auto max-w-[1650px] px-4 py-6 sm:px-6 lg:px-8">
+          <Suspense fallback={<div role="status" className="rounded-xl border border-ink-200 bg-white p-8 text-ink-600">Loading pageâ€¦</div>}><Outlet context={profileState} /></Suspense>
+        </div>
+      </main>
     </div>
-  );
-}
-
-function MobileUniversityBar({
-  activeUniversityId,
-  user,
-  profile,
-}) {
-  const allItems = NAV_GROUPS.flatMap((g) => g.items);
-
-  return (
-    <div className="mb-6 lg:hidden">
-
-      <SignedInAs
-        user={user}
-        profile={profile}
-        activeUniversityId={activeUniversityId}
-      />
-
-      <div
-        className="
-          mt-4
-          flex
-          gap-2
-          overflow-x-auto
-          pb-2
-        "
-      >
-        {allItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={`/university/${activeUniversityId}/${item.to}`}
-            className={({ isActive }) =>
-              clsx(
-                "flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-medium transition-all",
-                isActive
-                  ? "border-brand-600 bg-brand-600 text-white"
-                  : "border-ink-200 bg-white text-ink-600"
-              )
-            }
-          >
-            <item.icon className="h-4 w-4" />
-
-            {item.label}
-          </NavLink>
-        ))}
+    {!desktop && open && <button tabIndex={-1} aria-label="Close navigation backdrop" onClick={closeSidebar} className="fixed inset-0 z-40 bg-ink-900/50" />}
+    <aside ref={sidebar} id="university-navigation" aria-label="University navigation" role={desktop ? undefined : 'dialog'} aria-modal={!desktop && open ? true : undefined} aria-hidden={!open} inert={!open ? true : undefined}
+      className={clsx('fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-white/10 bg-[#08142F] text-white transition-transform duration-200 motion-reduce:transition-none', !open && '-translate-x-full')}>
+      <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-5">
+        <span className="flex items-center gap-3 text-xl font-semibold"><ShieldCheck className="h-8 w-8" />Kormic</span>
+        <button onClick={closeSidebar} aria-label="Close navigation" className="rounded-lg p-2 text-white/80 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white"><ChevronLeft size={20} /></button>
       </div>
-    </div>
-  );
+      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-5">
+        {groups.map(group => <div key={group.label}><p className="mb-2 px-3 text-xs font-semibold tracking-wider text-slate-300">{group.label}</p>{group.items.map(item => <NavItem key={item.to} item={item} />)}</div>)}
+      </nav>
+    </aside>
+  </div>;
+}
+function NavItem({item}) {
+  return <NavLink to={item.to} className={({isActive}) => clsx('flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-white', isActive ? 'bg-brand-600 text-white' : 'text-slate-200 hover:bg-white/10')}><item.icon className="h-5 w-5 shrink-0" /><span>{item.label}</span></NavLink>;
 }

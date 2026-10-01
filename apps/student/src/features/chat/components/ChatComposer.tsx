@@ -12,6 +12,7 @@ export function ChatComposer({
   draft,
   setDraft,
   loading,
+  historyLoading,
   clearLoading,
   clearConfirmVisible,
   editingName,
@@ -38,6 +39,7 @@ export function ChatComposer({
   | 'draft'
   | 'setDraft'
   | 'loading'
+  | 'historyLoading'
   | 'clearLoading'
   | 'clearConfirmVisible'
   | 'editingName'
@@ -59,9 +61,10 @@ export function ChatComposer({
   | 'cancelEditingName'
   | 'saveAgentName'
 >) {
+  const sendDisabled = loading || historyLoading || (!draft.trim() && selectedAttachments.length === 0);
   return (
     <View style={styles.composer}>
-      {!draft.trim() ? (
+      {!draft.trim() && !loading ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -151,19 +154,21 @@ export function ChatComposer({
         />
         <Pressable
           accessibilityRole="button"
-          disabled={loading || (!draft.trim() && selectedAttachments.length === 0)}
+          accessibilityLabel="Send message"
+          accessibilityState={{ disabled: sendDisabled }}
+          disabled={sendDisabled}
           onPress={sendMessage}
-          style={styles.sendButton}
+          style={[styles.sendButton, sendDisabled && styles.disabledButton]}
         >
           {loading ? (
             <ActivityIndicator color="#ffffff" size="small" />
           ) : (
-            <Text style={styles.sendText}>Send</Text>
+            <MaterialIcons name="arrow-upward" size={22} color="#ffffff" />
           )}
         </Pressable>
       </View>
       <Text style={styles.composerHint}>
-        {agentName} uses your profile, resume, GitHub, and LinkedIn context.
+        Personalized guidance with {agentName}
       </Text>
     </View>
   );
@@ -171,12 +176,14 @@ export function ChatComposer({
 
 const styles = StyleSheet.create({
   composer: {
-    backgroundColor: '#f0f1eb',
+    backgroundColor: '#ffffff',
     borderTopColor: '#e7e9e2',
     borderTopWidth: 1,
     flexShrink: 0,
     gap: 10,
-    padding: 14,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 10,
   },
   suggestionScroller: {
     maxHeight: 44,
@@ -199,18 +206,18 @@ const styles = StyleSheet.create({
   suggestionText: {
     color: colors.offWhite,
     fontFamily: fonts.bodyMedium,
-    fontSize: 13,
+    fontSize: 12,
     lineHeight: 18,
   },
   composerBox: {
     alignItems: 'flex-end',
-    backgroundColor: colors.panelInk,
+    backgroundColor: '#f6f8f5',
     borderColor: '#e7e9e2',
-    borderRadius: 18,
+    borderRadius: 26,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 10,
-    padding: 8,
+    gap: 4,
+    padding: 6,
   },
   input: {
     backgroundColor: 'transparent',
@@ -230,9 +237,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.coral,
     borderRadius: 999,
     justifyContent: 'center',
-    minHeight: 42,
-    minWidth: 68,
-    paddingHorizontal: 14,
+    minHeight: 44,
+    minWidth: 44,
   },
   disabledButton: {
     opacity: 0.55,
@@ -255,9 +261,9 @@ const styles = StyleSheet.create({
     borderColor: '#e7e9e2',
     borderRadius: 999,
     borderWidth: 1,
-    height: 48,
+    height: 44,
     justifyContent: 'center',
-    width: 48,
+    width: 44,
   },
   selectedAttachmentList: {
     gap: 8,

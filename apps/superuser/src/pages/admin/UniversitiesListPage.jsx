@@ -1,3 +1,4 @@
+import Pagination from "../../components/common/Pagination";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -15,18 +16,19 @@ import { useAction, useAsync } from "../../hooks/useAsync";
 
 export default function UniversitiesListPage() {
   const navigate = useNavigate();
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [deleting, setDeleting] = useState(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    const t = setTimeout(() => { setDebouncedSearch(search.trim()); setPage(1); }, 300);
     return () => clearTimeout(t);
   }, [search]);
 
   const { data, loading, error, refetch } = useAsync(
-    () => listUniversities(debouncedSearch),
-    [debouncedSearch]
+    () => listUniversities(debouncedSearch, page),
+    [debouncedSearch, page]
   );
 
   const universities = data?.universities || [];
@@ -52,9 +54,7 @@ export default function UniversitiesListPage() {
         title="Universities"
         description="Every institution registered on the platform — create, edit, or remove."
         action={
-          <Link to="/admin/universities/new">
-            <Button icon={Plus}>Add university</Button>
-          </Link>
+          <Button to="/admin/universities/new" icon={Plus}>Add university</Button>
         }
       />
 
@@ -62,7 +62,7 @@ export default function UniversitiesListPage() {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
         <input
           type="text"
-          placeholder="Search by name..."
+          aria-label="Search by name" placeholder="Search by name..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full rounded-xl border border-ink-200 bg-white py-2.5 pl-10 pr-4 text-sm transition-all duration-300 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
@@ -72,7 +72,7 @@ export default function UniversitiesListPage() {
       {loading ? (
         <Spinner label="Loading universities..." />
       ) : error ? (
-        <ErrorBanner error={error} onDismiss={refetch} />
+        <ErrorBanner error={error} onRetry={refetch} />
       ) : universities.length === 0 ? (
         <Card>
           <EmptyState
@@ -127,7 +127,7 @@ export default function UniversitiesListPage() {
                     </td>
                     <td className="px-4 py-3">
                       <Badge tone={u.setup_status?.setup_complete ? "success" : "warning"}>
-                        {u.setup_status?.completion_percentage ?? 0}%
+                        Setup: {u.setup_status?.completion_percentage ?? 0}%
                       </Badge>
                     </td>
                     <td className="px-4 py-3">
@@ -142,7 +142,7 @@ export default function UniversitiesListPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          icon={Trash2}
+                          icon={Trash2} aria-label="Delete"
                           className="text-red-500 hover:bg-red-50 hover:text-red-600"
                           onClick={() => setDeleting(u)}
                         />
@@ -155,6 +155,8 @@ export default function UniversitiesListPage() {
           </div>
         </Card>
       )}
+
+      <Pagination pagination={data?.pagination} loading={loading} onPage={setPage} />
 
       <ConfirmModal
         open={!!deleting}

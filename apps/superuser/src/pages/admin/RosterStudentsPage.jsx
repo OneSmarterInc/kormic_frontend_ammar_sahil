@@ -129,7 +129,7 @@ export default function RosterStudentsPage() {
       {loading ? (
         <Spinner label="Loading roster students..." />
       ) : error ? (
-        <ErrorBanner error={error} onDismiss={refetch} />
+        <ErrorBanner error={error} onRetry={refetch} />
       ) : rows.length === 0 ? (
         <Card>
           <EmptyState icon={UsersRound} title="No roster students match this view" />

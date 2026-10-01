@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useOutletContext } from "react-router-dom";
 import {
   BookOpenCheck,
   CalendarDays,
@@ -56,14 +56,14 @@ export default function DashboardPage() {
     loading,
     error,
     refetch,
-  } = useAsync(getProfile, [universityId]);
+  } = useOutletContext();
 
-  const { data: sectionsData } = useAsync(getKnowledgeSections, [universityId]);
-  const { data: queriesData } = useAsync(
+  const { data: sectionsData, error: sectionsError, loading: sectionsLoading } = useAsync(getKnowledgeSections, [universityId]);
+  const { data: queriesData, error: queriesError, loading: queriesLoading } = useAsync(
     (signal) => listActiveQueries(universityId, signal),
     [universityId]
   );
-  const { data: profilesData } = useAsync(
+  const { data: profilesData, error: profilesError, loading: profilesLoading } = useAsync(
     (signal) => listUniversityProfiles(universityId, signal),
     [universityId]
   );
@@ -86,7 +86,7 @@ export default function DashboardPage() {
     },
     {
       title: "Knowledge Facts",
-      value: String(knowledgeFactCount),
+      value: sectionsError ? "Unavailable" : sectionsLoading ? "Loading…" : String(knowledgeFactCount),
       subtitle: "View knowledge base",
       color: "green",
       icon: BookOpenCheck,
@@ -94,7 +94,7 @@ export default function DashboardPage() {
     },
     {
       title: "Pending Tasks",
-      value: String(pendingCount),
+      value: queriesError ? "Unavailable" : queriesLoading ? "Loading…" : String(pendingCount),
       subtitle: "View tasks",
       color: "orange",
       icon: CircleDashed,
@@ -102,7 +102,7 @@ export default function DashboardPage() {
     },
     {
       title: "Student Profiles",
-      value: String(profileCount),
+      value: profilesError ? "Unavailable" : profilesLoading ? "Loading…" : String(profileCount),
       subtitle: "View all",
       color: "purple",
       icon: Users,
@@ -138,11 +138,11 @@ export default function DashboardPage() {
       {loading ? (
         <Spinner label="Loading dashboard..." />
       ) : error ? (
-        <ErrorBanner error={error} onDismiss={refetch} />
+        <ErrorBanner error={error} onRetry={refetch} />
       ) : !profile ? (
         <ErrorBanner
           error="We couldn't load your profile. Please refresh the page."
-          onDismiss={refetch}
+          onRetry={refetch}
         />
       ) : (
         <>

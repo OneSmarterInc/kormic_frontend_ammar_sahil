@@ -103,7 +103,7 @@ export default function EscalationMetricsPage() {
       {loading ? (
         <Spinner label="Loading escalation metrics..." />
       ) : error ? (
-        <ErrorBanner error={error} onDismiss={refetch} />
+        <ErrorBanner error={error} onRetry={refetch} />
       ) : weekRows.length === 0 ? (
         <Card>
           <EmptyState

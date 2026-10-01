@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node tests/check-built-styles.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "npm run test:unit && npm run test:components",
-    "test:unit": "node --preserve-symlinks --test tests/*.test.js",
+    "test:unit": "node --preserve-symlinks --import ./tests/node-env.mjs --test tests/*.test.js",
     "test:components": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run build && playwright test",

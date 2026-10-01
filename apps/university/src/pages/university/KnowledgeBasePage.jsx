@@ -212,7 +212,7 @@ export default function KnowledgeBasePage() {
           {loading ? (
             <Spinner label="Loading knowledge base..." />
           ) : error ? (
-            <ErrorBanner error={error} onDismiss={refetch} />
+            <ErrorBanner error={error} onRetry={refetch} />
           ) : facts.length === 0 ? (
             <EmptyState
               icon={BrainCircuit}

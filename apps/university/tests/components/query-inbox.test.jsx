@@ -1,0 +1,20 @@
+import {render, screen, within, waitFor} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import {MemoryRouter} from 'react-router-dom';
+import {vi, test, expect} from 'vitest';
+import AgentQueriesPage from '../../src/pages/university/AgentQueriesPage';
+const {get}=vi.hoisted(()=>({get:vi.fn()}));
+vi.mock('../../src/api/client',()=>({default:{get}}));
+vi.mock('../../src/pages/university/QueriesPage',()=>({DepartmentQueryItem:({query})=><article>{query.question}</article>}));
+test('student inbox includes department queries and has only two direction tabs',async()=>{
+ get.mockImplementation((path,{params})=>Promise.resolve({data:{results:params.direction==='student_to_university'?[{id:7,record_type:'department',question:'Scholarship eligibility?'}]:[],pagination:{total:params.direction==='student_to_university'?1:0,has_next:false}}}));
+ render(<MemoryRouter initialEntries={['/?tab=departments']}><AgentQueriesPage/></MemoryRouter>);
+ expect(await screen.findByText('Scholarship eligibility?')).toBeInTheDocument();
+ const tabs=within(screen.getByRole('tablist',{name:'Query direction'}));
+ expect(tabs.getAllByRole('tab')).toHaveLength(2);
+ expect(screen.queryByRole('tab',{name:'Department queries'})).not.toBeInTheDocument();
+ expect(screen.queryByText('No unanswered queries')).not.toBeInTheDocument();
+ await userEvent.click(tabs.getByRole('tab',{name:'Raised by you'}));
+ await waitFor(()=>expect(screen.queryByText('Scholarship eligibility?')).not.toBeInTheDocument());
+ expect(get).toHaveBeenLastCalledWith('/agent-queries/',expect.objectContaining({params:expect.objectContaining({direction:'university_to_student',include_department_queries:true})}));
+});

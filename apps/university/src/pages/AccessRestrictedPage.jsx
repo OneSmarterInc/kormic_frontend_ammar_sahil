@@ -9,6 +9,7 @@ export default function AccessRestrictedPage() {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
+    if (!window.confirm("Log out of Kormic?")) return;
     await logout();
     navigate("/");
   };

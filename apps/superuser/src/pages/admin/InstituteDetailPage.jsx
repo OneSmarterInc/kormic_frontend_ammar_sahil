@@ -80,7 +80,7 @@ export default function InstituteDetailPage() {
   };
 
   if (loading) return <Spinner label="Loading institute..." />;
-  if (loadError) return <ErrorBanner error={loadError} onDismiss={refetch} />;
+  if (loadError) return <ErrorBanner error={loadError} onRetry={refetch} />;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-8">
@@ -196,11 +196,9 @@ export default function InstituteDetailPage() {
                         {formatDate(l.created_at)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <Link to={`/admin/institutes/${instituteId}/lists/${l.list_id}`}>
-                          <Button variant="ghost" size="sm">
+                        <Button to={`/admin/institutes/${instituteId}/lists/${l.list_id}`} variant="ghost" size="sm">
                             View roster
                           </Button>
-                        </Link>
                       </td>
                     </tr>
                   ))}

@@ -19,7 +19,7 @@ export default function UnifiedPortalEntry() {
     return <Spinner className="min-h-screen" label="Opening Kormic Login..." />;
   }
 
-  if (user?.role !== PORTAL) {
+  if (![PORTAL, "department"].includes(user?.role)) {
     return (
       <div className="mx-auto max-w-lg p-8" role="alert">
         This account cannot use the university workspace.
@@ -33,5 +33,5 @@ export default function UnifiedPortalEntry() {
     return <div className="mx-auto max-w-lg p-8" role="alert">No valid university is assigned to this account.</div>;
   }
 
-  return <Navigate to={`/university/${universityId}/dashboard`} replace />;
+  return <Navigate to={`/university/${universityId}/${user.role === "department" ? "agent-queries?tab=departments" : "dashboard"}`} replace />;
 }

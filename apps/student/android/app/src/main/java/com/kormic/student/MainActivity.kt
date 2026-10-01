@@ -2,6 +2,12 @@ package com.kormic.student
 
 import android.os.Build
 import android.os.Bundle
+import android.graphics.Color
+import android.view.View
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
@@ -17,6 +23,29 @@ class MainActivity : ReactActivity() {
     // This is required for expo-splash-screen.
     setTheme(R.style.AppTheme);
     super.onCreate(null)
+    configureWindowInsets()
+  }
+
+  private fun configureWindowInsets() {
+    WindowCompat.setDecorFitsSystemWindows(window, false)
+    WindowCompat.getInsetsController(window, window.decorView).apply {
+      systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+      isAppearanceLightStatusBars = true
+      show(WindowInsetsCompat.Type.statusBars())
+    }
+    // Paint behind the transparent status bar, including Android 15+ edge-to-edge.
+    val content = findViewById<View>(android.R.id.content)
+    content.setBackgroundColor(Color.parseColor("#D9EADF"))
+    ViewCompat.setOnApplyWindowInsetsListener(content) { view, insets ->
+      val safe = insets.getInsets(
+        WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+      )
+      val keyboard = insets.getInsets(WindowInsetsCompat.Type.ime())
+      // One inset owner: the React surface fits above the keyboard and below the status bar.
+      view.setPadding(safe.left, safe.top, safe.right, maxOf(safe.bottom, keyboard.bottom))
+      WindowInsetsCompat.CONSUMED
+    }
+    ViewCompat.requestApplyInsets(content)
   }
 
   /**

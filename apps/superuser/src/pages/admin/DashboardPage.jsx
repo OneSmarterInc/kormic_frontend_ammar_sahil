@@ -3,7 +3,6 @@ import {
   ArrowRight,
   Building2,
   GraduationCap,
-  Sparkles,
   UsersRound,
 } from "lucide-react";
 import Card, { CardBody, CardHeader } from "../../components/common/Card";
@@ -11,7 +10,7 @@ import Badge from "../../components/common/Badge";
 import Spinner from "../../components/common/Spinner";
 import ErrorBanner from "../../components/common/ErrorBanner";
 import EmptyState from "../../components/common/EmptyState";
-import { listStudents, listUniversities, listUsers } from "../../api/superuserApi";
+import { getDashboard } from "../../api/superuserApi";
 import { useAsync } from "../../hooks/useAsync";
 import { useAuth } from "../../context/AuthContext";
 
@@ -19,27 +18,20 @@ export default function DashboardPage() {
   const { user } = useAuth();
 
   const { data, loading, error, refetch } = useAsync(
-    () =>
-      Promise.all([listStudents(), listUniversities(), listUsers()]).then(
-        ([studentsRes, universitiesRes, usersRes]) => ({
-          students: studentsRes.students || [],
-          universities: universitiesRes.universities || [],
-          users: usersRes.users || [],
-        })
-      ),
+    () => getDashboard(),
     []
   );
 
   if (loading) return <Spinner label="Loading dashboard..." />;
-  if (error) return <ErrorBanner error={error} onDismiss={refetch} />;
+  if (error) return <ErrorBanner error={error} onRetry={refetch} />;
 
-  const { students, universities, users } = data;
-  const inactiveCount = users.filter((u) => !u.is_active).length;
+  const { students, universities, counts } = data;
+  const inactiveCount = counts.inactive_users;
 
   const stats = [
     {
       title: "Students",
-      value: students.length,
+      value: counts.students,
       subtitle: "View all students",
       color: "blue",
       icon: GraduationCap,
@@ -47,7 +39,7 @@ export default function DashboardPage() {
     },
     {
       title: "Universities",
-      value: universities.length,
+      value: counts.universities,
       subtitle: "View all universities",
       color: "green",
       icon: Building2,
@@ -55,7 +47,7 @@ export default function DashboardPage() {
     },
     {
       title: "Total Users",
-      value: users.length,
+      value: counts.users,
       subtitle: `${inactiveCount} deactivated`,
       color: "purple",
       icon: UsersRound,
@@ -76,51 +68,9 @@ export default function DashboardPage() {
 const recentUniversities = [...universities].slice(0, 3);
 
 return (
-  <div className="mx-auto max-w-[1650px] px-6 pt-3 pb-6 space-y-5">
+  <div className="mx-auto max-w-[1650px] pb-6 space-y-5">
 
-    {/* HERO */}
-
-    <Card className="overflow-hidden rounded-2xl">
-
-      <div className="bg-gradient-to-r from-brand-600 via-brand-700 to-brand-800 px-8 py-4 text-white">
-
-        <div className="flex items-center justify-between">
-
-          <div className="flex items-center gap-5">
-
-            {/* LOGO */}
-
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 backdrop-blur">
-
-              {/* Replace with your logo */}
-
-              <Sparkles className="h-8 w-8" />
-
-            </div>
-
-            <div>
-
-              <p className="text-xs uppercase tracking-[0.3em] text-white/70">
-                SUPERUSER CONSOLE
-              </p>
-
-              <h1 className="mt-1 text-4xl font-bold">
-                Welcome back, {user.name}
-              </h1>
-
-              <p className="mt-1 text-sm text-white/80">
-                Full oversight of every student, university and admin account.
-              </p>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </Card>
+    <header><p className="text-sm font-medium text-brand-700">Superuser console</p><h1 className="mt-1 text-2xl font-semibold text-ink-900">Welcome back, {user.name}</h1><p className="mt-2 text-sm text-ink-600">Manage students, institutions and account access.</p></header>
 
       {/* Stats */}
             {/* ========================= */}
@@ -201,7 +151,7 @@ return (
           <CardHeader
             icon={GraduationCap}
             title="Recently Joined Students"
-            subtitle={`${students.length} students in total`}
+            subtitle={`${counts.students} students in total`}
             action={
               <Link
                 to="/admin/students"
@@ -267,7 +217,7 @@ return (
           <CardHeader
             icon={Building2}
             title="Universities"
-            subtitle={`${universities.length} universities`}
+            subtitle={`${counts.universities} universities`}
             action={
               <Link
                 to="/admin/universities"
@@ -317,7 +267,7 @@ return (
                         : "warning"
                     }
                   >
-                    {u.setup_status?.completion_percentage ?? 0}%
+                    Setup: {u.setup_status?.completion_percentage ?? 0}%
                   </Badge>
 
                 </Link>

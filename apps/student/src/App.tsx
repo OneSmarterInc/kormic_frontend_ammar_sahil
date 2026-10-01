@@ -197,7 +197,7 @@ export default function App() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.ink} />
+      {Platform.OS !== 'android' ? <StatusBar barStyle="dark-content" backgroundColor={colors.ink} /> : null}
       <ProgressHeader route={state.route} onBack={goToWelcomeFromHeader} />
       {serverError ? <View accessibilityRole="alert" style={{ padding: 16, backgroundColor: '#fff4db', gap: 8 }}>
         <Text style={{ color: colors.text }}>{serverError}</Text>

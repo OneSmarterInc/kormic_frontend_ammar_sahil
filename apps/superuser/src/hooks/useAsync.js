@@ -29,6 +29,7 @@ export function useAsync(fn, deps, { enabled = true } = {}) {
 
   useEffect(() => {
     run();
+    return () => { ++requestId.current; };
   }, [run]);
 
   return { data, error, loading, refetch: run, setData };

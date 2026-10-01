@@ -205,7 +205,7 @@ export default function ListStudentsPage() {
           {loading && !rosterData ? (
             <Spinner label="Loading roster..." />
           ) : error ? (
-            <ErrorBanner error={error} onDismiss={refetch} />
+            <ErrorBanner error={error} onRetry={refetch} />
           ) : students.length === 0 ? (
             <EmptyState icon={Users} title="No rows on this list" />
           ) : (

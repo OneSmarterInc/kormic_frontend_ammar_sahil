@@ -65,7 +65,7 @@ const STAT_FIELDS = [
   [["financials.budget", "budget"], "Budget"],
 ];
 
-export default function ProfileSummary({ profile }) {
+export default function ProfileSummary({ profile, onRaiseQuery }) {
   const studentId = profile?.student_id || profile?.profile_id;
 
   const { url: imageUrl, loading: imageLoading } = useBlobUrl(
@@ -111,9 +111,9 @@ export default function ProfileSummary({ profile }) {
   const researchText = pick(profile, "research.research");
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-ink-100">
+    <div className="space-y-8 animate-fade-in">
+      <div className="flex flex-wrap items-center gap-4 border-b border-ink-200 pb-6">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-ink-100">
           {imageLoading ? (
             <Spinner />
           ) : imageUrl ? (
@@ -124,12 +124,14 @@ export default function ProfileSummary({ profile }) {
         </div>
 
         <div>
-          <p className="text-base font-semibold text-ink-900">{name}</p>
+          <p className="text-2xl font-semibold tracking-tight text-ink-900">{name}</p>
           {email && <p className="text-xs text-ink-500">{email}</p>}
         </div>
+        {onRaiseQuery && <button onClick={onRaiseQuery} className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 sm:ml-auto">Raise query</button>}
       </div>
 
-      <dl className="grid grid-cols-2 gap-3 text-sm">
+      <h2 className="text-base font-semibold text-ink-900">Education & qualifications</h2>
+      <dl className="grid grid-cols-1 gap-x-8 gap-y-5 text-sm sm:grid-cols-2">
         {STAT_FIELDS.map(([paths, label]) => {
           const value = pick(profile, ...paths);
 
@@ -155,20 +157,20 @@ export default function ProfileSummary({ profile }) {
 
       {workSummary && (
         <div>
-          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-ink-400">
+          <p className="mb-1 text-sm font-semibold text-ink-800">
             Work experience
           </p>
-          <p className="text-sm text-ink-700">{previewText(workSummary, 220)}</p>
+          <p className="text-sm text-ink-700">{workSummary}</p>
         </div>
       )}
 
       {skills.length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-400">
+          <p className="mb-1.5 text-sm font-semibold text-ink-800">
             Skills
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {skills.slice(0, 20).map((skill, i) => (
+            {skills.map((skill, i) => (
               <Badge key={`${skill}-${i}`} tone="brand">
                 {skill}
               </Badge>
@@ -179,7 +181,7 @@ export default function ProfileSummary({ profile }) {
 
       {projects.length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-400">
+          <p className="mb-1.5 text-sm font-semibold text-ink-800">
             Projects
           </p>
 
@@ -215,7 +217,7 @@ export default function ProfileSummary({ profile }) {
 
       {researchText && researchText.toLowerCase() !== "none stated" && (
         <div>
-          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-ink-400">
+          <p className="mb-1 text-sm font-semibold text-ink-800">
             Research
           </p>
           <p className="text-sm text-ink-700">
@@ -226,7 +228,7 @@ export default function ProfileSummary({ profile }) {
 
       {targetDisciplines.length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-400">
+          <p className="mb-1.5 text-sm font-semibold text-ink-800">
             Target disciplines
           </p>
 
@@ -240,7 +242,7 @@ export default function ProfileSummary({ profile }) {
 
       {gaps.length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-400">
+          <p className="mb-1.5 text-sm font-semibold text-ink-800">
             Gaps
           </p>
 
@@ -256,7 +258,7 @@ export default function ProfileSummary({ profile }) {
 
       {Object.keys(assessments).length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-400">
+          <p className="mb-1.5 text-sm font-semibold text-ink-800">
             Fit assessments
           </p>
 
@@ -289,7 +291,7 @@ export default function ProfileSummary({ profile }) {
 
       {/* {aiSummaryLines.length > 0 && (
         <div>
-          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-ink-400">
+          <p className="mb-1 text-sm font-semibold text-ink-800">
             AI summary
           </p>
 

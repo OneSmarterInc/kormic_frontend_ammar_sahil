@@ -190,7 +190,7 @@ export default function AgentPreviewPage() {
             </div>
           ) : historyError && messages.length === 0 ? (
             <div className="flex h-full items-center justify-center p-6">
-              <ErrorBanner error={historyError} onDismiss={refetchHistory} />
+              <ErrorBanner error={historyError} onRetry={refetchHistory} />
             </div>
           ) : (
             <ChatThread

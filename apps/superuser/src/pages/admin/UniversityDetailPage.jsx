@@ -134,7 +134,7 @@ export default function UniversityDetailPage() {
     setForm((f) => ({ ...f, scrape_urls: f.scrape_urls.filter((_, idx) => idx !== i) }));
 
   if (loading) return <Spinner label="Loading university..." />;
-  if (loadError) return <ErrorBanner error={loadError} onDismiss={refetch} />;
+  if (loadError) return <ErrorBanner error={loadError} onRetry={refetch} />;
 
   return (
     <div className="mx-auto w-full max-w-[1700px] space-y-6 px-8 pb-8">

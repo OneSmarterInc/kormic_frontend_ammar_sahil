@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
@@ -15,10 +16,10 @@ import TotpEnrollPage from "./pages/auth/TotpEnrollPage";
 
 import InstituteLayout from "./layouts/InstituteLayout";
 
-import DashboardPage from "./pages/institute/DashboardPage";
-import UploadListPage from "./pages/institute/UploadListPage";
-import ListsPage from "./pages/institute/ListsPage";
-import ListStudentsPage from "./pages/institute/ListStudentsPage";
+const DashboardPage = lazy(() => import("./pages/institute/DashboardPage"));
+const UploadListPage = lazy(() => import("./pages/institute/UploadListPage"));
+const ListsPage = lazy(() => import("./pages/institute/ListsPage"));
+const ListStudentsPage = lazy(() => import("./pages/institute/ListStudentsPage"));
 
 function App() {
   return (
