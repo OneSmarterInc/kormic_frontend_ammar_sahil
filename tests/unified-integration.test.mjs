@@ -113,7 +113,10 @@ test('portal-core Vite alias resolves shared dependencies from each app with one
   for (const role of ['university', 'institute', 'superuser']) {
     const config = await text(`apps/${role}/vite.config.js`);
     assert.ok(config.includes("'@kormic/portal-core'"));
-    assert.ok(config.includes("dedupe: ['react', 'react-dom', 'react-router-dom']"));
+    assert.ok(config.includes("new URL('../../packages/portal-core/src', import.meta.url)"));
+    for (const dependency of ['react', 'react-dom', 'react-router-dom', 'axios', 'clsx', 'lucide-react']) {
+      assert.ok(config.includes(`'${dependency}'`));
+    }
   }
 
   const setup = await text('scripts/setup.mjs');
@@ -122,11 +125,11 @@ test('portal-core Vite alias resolves shared dependencies from each app with one
   }
 });
 
-test('portal-core resolves through each portal node_modules with one React copy', async () => {
+test('portal-core resolves directly from the workspace in clean deployment checkouts', async () => {
   for (const role of ['university', 'institute', 'superuser']) {
     const config = await text(`apps/${role}/vite.config.js`);
-    assert.ok(config.includes("./node_modules/@kormic/portal-core/src"));
-    assert.ok(config.includes("dedupe: ['react', 'react-dom', 'react-router-dom']"));
+    assert.ok(config.includes("../../packages/portal-core/src"));
+    assert.ok(!config.includes("./node_modules/@kormic/portal-core/src"));
     assert.ok(config.includes("preserveSymlinks: true"));
   }
 
