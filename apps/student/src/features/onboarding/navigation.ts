@@ -1,5 +1,6 @@
 import { AuthSession, OnboardingRoute } from '../../models/onboarding';
 export function getFirstMissingOnboardingRoute(session: AuthSession): OnboardingRoute {
+  if (session.user?.face_verification_required) return 'FaceVerification';
   const onboarding = session.user?.onboarding;
 
   if (!onboarding || onboarding.setup_complete) {
@@ -77,6 +78,7 @@ export function isAuthRoute(route: OnboardingRoute) {
 
 export function hidesBotLauncher(route: OnboardingRoute) {
   return (
+    route === 'FaceVerification' ||
     route === 'CV' ||
     route === 'GitHub' ||
     route === 'AgentLive' ||

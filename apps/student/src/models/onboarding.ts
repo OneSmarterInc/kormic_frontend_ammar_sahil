@@ -10,6 +10,7 @@ export type OnboardingRoute =
   | 'ClaimPassword'
   | 'BasicInfo'
   | 'SecuritySetup'
+  | 'FaceVerification'
   | 'GitHub'
   | 'LinkedIn'
   | 'CV'
@@ -47,6 +48,8 @@ export interface AuthUser {
   student_id?: string | null;
   university_id?: string | null;
   totp_enrolled: boolean;
+  face_enrolled?: boolean;
+  face_verification_required?: boolean;
   onboarding?: AuthOnboarding;
 }
 

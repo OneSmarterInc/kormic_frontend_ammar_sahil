@@ -97,6 +97,11 @@ export function useStudentSession({
 
   const continueAfterAuth = useCallback(
     async (session: AuthSession) => {
+      if (session.user?.face_verification_required) {
+        dispatch({ type: 'SET_AUTH_SESSION', session });
+        navigate('FaceVerification');
+        return;
+      }
       let nextSession = session;
       const onboarding = nextSession.user?.onboarding;
       setBasicInfoApiError('');
@@ -367,6 +372,10 @@ export function useStudentSession({
         setServerError('');
         setWebSessionMissing(false);
         dispatch({ type: 'SET_AUTH_SESSION', session });
+        if (user.face_verification_required) {
+          navigate('FaceVerification');
+          return;
+        }
         registerForPushNotifications(session).catch((error) => {
           console.log('[notifications] register failed:', error);
         });

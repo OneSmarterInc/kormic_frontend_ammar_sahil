@@ -741,7 +741,7 @@ export function verifyTotpEnrollment(accessToken: string, code: string) {
     {
       method: 'POST',
       headers: authHeaders(accessToken),
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ code, ...(Platform.OS === 'web' ? { portal: 'student' } : {}) }),
     },
     'Unable to verify the TOTP code',
   );
@@ -1281,4 +1281,33 @@ export function updateAgentName(session: AuthSession, agentName: string) {
 export function getAgentActivity(session: AuthSession) {
   return requestWithSession<{status: string; label?: string; updated_at?: string}>(session, '/chat/activity/',
     token => ({method: 'GET', headers: authHeaders(token)}), 'Unable to check agent activity');
+}
+
+export interface FaceChallenge {
+  id: string;
+  action: 'center' | 'left' | 'right';
+  step: number;
+  total_steps: number;
+  mode?: 'enroll' | 'verify';
+}
+async function requestFaceJson<T>(path: string, init: RequestInit, message: string): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 45_000);
+  try {
+    return await requestJson<T>(path, { ...init, signal: controller.signal }, message);
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('The face scan timed out. Please restart the scan and try again.');
+    throw error;
+  } finally { clearTimeout(timer); }
+}
+export function startFaceVerification(session: AuthSession) {
+  return requestFaceJson<FaceChallenge>('/auth/face/start/', {
+    method: 'POST', headers: authHeaders(session.access || ''), body: JSON.stringify({ consent: true }),
+  }, 'Unable to start face verification');
+}
+export function submitFaceCapture(session: AuthSession, challenge: FaceChallenge, image: string) {
+  return requestFaceJson<FaceChallenge | { passed: true; access: string; refresh?: string; user: AuthUser }>(
+    `/auth/face/${challenge.id}/step/`, {
+      method: 'POST', credentials: Platform.OS === 'web' ? 'include' : undefined, headers: authHeaders(session.access || ''), body: JSON.stringify({ step: challenge.step, image }),
+    }, 'Unable to verify your face');
 }

@@ -1,9 +1,10 @@
 # Student Android preview APK
 
-The app uses the same backend as the public website. Set
-`KORMIC_API_ORIGIN_PUBLIC` in the frontend root `.env`; the APK build embeds
-that origin plus `/api`. Rebuild the APK after changing the URL. The backend
-computer and Tailscale Funnel must remain available for sign-in and AI features.
+The app uses the production backend at `https://backend.kormic.ai`. Set
+`KORMIC_API_ORIGIN_PUBLIC=https://backend.kormic.ai` in the frontend root
+`.env`; the APK build embeds that origin plus `/api`. Rebuild the APK after
+changing the URL. The backend host must be reachable over HTTPS for sign-in and
+AI features.
 
 ## Local Windows build
 

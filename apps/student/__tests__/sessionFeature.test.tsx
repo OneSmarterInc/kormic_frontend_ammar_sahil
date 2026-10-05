@@ -171,3 +171,17 @@ it('does not redirect a browser to login when the server is unavailable', async 
   expect(result.current.webSessionMissing).toBe(false);
   expect(result.current.serverError).toContain('Server error');
 });
+
+
+it('keeps face-pending sessions in memory and stops before profile setup or notifications', async () => {
+  const inputs = options();
+  const { result } = renderHook(() => useStudentSession(inputs));
+  await waitFor(() => expect(result.current.restoringSession).toBe(false));
+  const session = { access: 'face-pending', mustEnrollTotp: false, user: { ...user, face_verification_required: true } };
+  await act(async () => { await result.current.continueAfterAuth(session); });
+  expect(inputs.navigate).toHaveBeenCalledWith('FaceVerification');
+  expect(storage.saveTokens).not.toHaveBeenCalled();
+  expect(api.createStudentProfile).not.toHaveBeenCalled();
+  expect(api.getStudentProfile).not.toHaveBeenCalled();
+  expect(notifications.registerForPushNotifications).not.toHaveBeenCalled();
+});

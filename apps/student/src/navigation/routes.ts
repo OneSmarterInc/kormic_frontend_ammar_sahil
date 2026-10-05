@@ -14,6 +14,7 @@ export const routeTitles: Record<OnboardingRoute, string> = {
   ClaimPassword: 'Create password',
   BasicInfo: 'Basic information',
   SecuritySetup: 'Security setup',
+  FaceVerification: 'Face verification',
   GitHub: 'GitHub',
   LinkedIn: 'LinkedIn',
   CV: 'CV',
@@ -95,6 +96,8 @@ export function canAdvanceFrom(route: OnboardingRoute, state: OnboardingState): 
       return false;
     case 'BasicInfo':
       return isBasicInfoComplete(state.basicInfo);
+    case 'FaceVerification':
+      return false;
     case 'SecuritySetup':
       return Boolean(state.authSession);
     case 'GitHub':

@@ -57,6 +57,7 @@ export async function saveRefreshToken(refreshToken: string) {
 }
 
 export async function saveTokens(tokens: { access?: string; refresh?: string; user?: AuthUser }) {
+  if (tokens.user?.face_verification_required) return; // Pending biometric sessions stay in memory only.
   if (tokens.user && Platform.OS !== 'web') {
     const previous = await getSavedSessionUser();
     if (previous && previous.student_id !== tokens.user.student_id) await clearStudentCache();

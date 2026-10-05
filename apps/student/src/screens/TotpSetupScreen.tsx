@@ -195,7 +195,7 @@ export default function TotpScreen({ authSession, basicInfo, onAuthenticated, on
       // the canonical minimal profile, but the profile endpoint is intentionally
       // blocked until TOTP succeeds. Persist the local Basic Info immediately
       // after successful enrollment so it cannot be stranded only in app state.
-      if (isEnrollment && isBasicInfoComplete(basicInfo)) {
+      if (isEnrollment && !completedSession.user?.face_verification_required && isBasicInfoComplete(basicInfo)) {
         await createStudentProfile(completedSession, basicInfo);
         completedSession = markBasicInfoComplete(markProfileExists(completedSession));
       }

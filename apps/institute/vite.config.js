@@ -10,10 +10,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@kormic/portal-core': fileURLToPath(
-        new URL('./node_modules/@kormic/portal-core/src', import.meta.url)
+        new URL('../../packages/portal-core/src', import.meta.url)
       ),
     },
-    dedupe: ['react', 'react-dom', 'react-router-dom'],
+    dedupe: ['react', 'react-dom', 'react-router-dom', 'lucide-react', 'axios', 'clsx'],
     preserveSymlinks: true,
   },
   server: {

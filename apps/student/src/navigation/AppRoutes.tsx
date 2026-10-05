@@ -1,3 +1,4 @@
+import FaceVerificationScreen from '../screens/FaceVerificationScreen';
 import { Dispatch, SetStateAction } from 'react';
 import { useStudentSession } from '../features/auth/useStudentSession';
 import { BotScreen } from '../features/chat/BotScreen';
@@ -128,6 +129,9 @@ export function AppRoutes({
   | 'botNotificationRefreshKey'
   | 'queryNavigation'
 >) {
+  if (state.authSession?.user?.face_verification_required && state.route !== 'SecuritySetup') {
+    return <FaceVerificationScreen session={state.authSession} onComplete={continueAfterAuth} onCancel={logout} />;
+  }
   switch (state.route) {
     case 'Welcome':
       return (
@@ -258,6 +262,8 @@ export function AppRoutes({
           onClearApiError={() => setBasicInfoApiError('')}
         />
       );
+    case 'FaceVerification':
+      return state.authSession ? <FaceVerificationScreen session={state.authSession} onComplete={continueAfterAuth} onCancel={logout} /> : null;
     case 'SecuritySetup':
       return (
         <TotpScreen

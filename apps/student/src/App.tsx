@@ -91,7 +91,7 @@ export default function App() {
     navigate('BotScreen');
   }, [navigate]);
   const { refreshKey: botNotificationRefreshKey, openNotificationChat } = useAgentNotifications(
-    state.authSession,
+    state.authSession?.user?.face_verification_required ? undefined : state.authSession,
     onOpenChat,
   );
   const {
@@ -152,7 +152,7 @@ export default function App() {
 
   const content = (
     <AppRoutes
-      notificationControl={state.authSession?.user?.totp_enrolled ? <StudentNotificationBell session={state.authSession} onOpenChat={onOpenChat} onOpenQueries={onOpenQueries} /> : null}
+      notificationControl={state.authSession?.user?.totp_enrolled && !state.authSession.user.face_verification_required ? <StudentNotificationBell session={state.authSession} onOpenChat={onOpenChat} onOpenQueries={onOpenQueries} /> : null}
       state={state}
       dispatch={dispatch}
       navigate={navigate}
