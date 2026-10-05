@@ -6,6 +6,10 @@
   "framework": null,
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://backend.kormic.ai/api/:path*"
+    },
+    {
       "source": "/login",
       "destination": "/index.html"
     },
