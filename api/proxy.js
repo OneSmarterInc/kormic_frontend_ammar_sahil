@@ -15,7 +15,12 @@ const HOP_BY_HOP_HEADERS = new Set([
 
 function upstreamUrl(request) {
   const incoming = new URL(request.url, 'https://frontend.invalid');
-  const path = String(request.query?.path || incoming.searchParams.get('path') || '')
+  const routePath = request.query?.path;
+  const path = String(
+    Array.isArray(routePath)
+      ? routePath.join('/')
+      : routePath || incoming.searchParams.get('path') || '',
+  )
     .replace(/^\/+/, '');
   incoming.searchParams.delete('path');
   const query = incoming.searchParams.toString();
