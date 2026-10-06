@@ -4,15 +4,6 @@
   "buildCommand": "npm test && npm run build",
   "outputDirectory": "dist",
   "framework": null,
-  "proxy": {
-    "entrypoint": "proxy.js",
-    "matcher": "/api/:path*"
-  },
-  "functions": {
-    "proxy.js": {
-      "maxDuration": 60
-    }
-  },
   "rewrites": [
     {
       "source": "/login",
