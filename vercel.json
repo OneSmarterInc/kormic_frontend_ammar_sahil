@@ -12,7 +12,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "/api/proxy?path=:path*"
+      "destination": "https://kormic.ai/api/:path*"
     },
     {
       "source": "/login",
@@ -84,4 +84,3 @@
     }
   ]
 }
-
