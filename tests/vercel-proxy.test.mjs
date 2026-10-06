@@ -4,11 +4,9 @@ import test from 'node:test';
 
 const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
 
-test('Vercel routes API paths to the explicit serverless proxy function', () => {
-  assert.deepEqual(config.rewrites[0], {
-    source: '/api/:path*',
-    destination: '/api/proxy?path=:path*',
-  });
+test('Vercel declares an API catch-all serverless proxy function', () => {
+  assert.equal(config.rewrites.some(({ source }) => source.startsWith('/api/')), false);
+  assert.deepEqual(config.functions['api/[...path].js'], { maxDuration: 60 });
   assert.deepEqual(config.functions['api/proxy.js'], { maxDuration: 60 });
 });
 
