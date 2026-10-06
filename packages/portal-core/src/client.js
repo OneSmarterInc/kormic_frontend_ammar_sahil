@@ -8,10 +8,7 @@ import {
 
 export function createPortalClient(portal) {
   const local = typeof window !== 'undefined' && ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
-  const vercel = typeof window !== 'undefined' && window.location.hostname.endsWith('.vercel.app');
-  let BASE_URL = (vercel
-    ? window.location.origin
-    : local ? import.meta.env.VITE_LOCAL_API_BASE_URL : import.meta.env.VITE_API_BASE_URL)?.replace(/\/+$/, "");
+  let BASE_URL = (local ? import.meta.env.VITE_LOCAL_API_BASE_URL : import.meta.env.VITE_API_BASE_URL)?.replace(/\/+$/, "");
   if (local && BASE_URL) {
     const url = new URL(BASE_URL);
     if (['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) url.hostname = window.location.hostname;
@@ -127,3 +124,4 @@ export function createPortalClient(portal) {
     requestRefresh,
   };
 }
+
