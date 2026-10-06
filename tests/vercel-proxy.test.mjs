@@ -4,11 +4,8 @@ import test from 'node:test';
 
 const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
 
-test('Vercel proxies API requests before static application rewrites', () => {
-  assert.deepEqual(config.rewrites[0], {
-    source: '/api/:path*',
-    destination: 'https://backend.kormic.ai/api/:path*',
-  });
+test('Vercel leaves API paths to the serverless proxy function', () => {
+  assert.equal(config.rewrites.some(({ source }) => source.startsWith('/api/')), false);
 });
 
 test('Vercel browser builds select their own origin for cookie-backed API calls', async () => {
@@ -19,3 +16,4 @@ test('Vercel browser builds select their own origin for cookie-backed API calls'
   assert.match(portalClient, /hostname\.endsWith\('\.vercel\.app'\)/);
   assert.match(portalClient, /vercel\s*\? window\.location\.origin/);
 });
+
