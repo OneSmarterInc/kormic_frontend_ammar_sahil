@@ -13,9 +13,13 @@ const HOP_BY_HOP_HEADERS = new Set([
   'upgrade',
 ]);
 
-function upstreamUrl(requestUrl) {
-  const incoming = new URL(requestUrl, 'https://frontend.invalid');
-  return new URL(`${incoming.pathname}${incoming.search}`, BACKEND_ORIGIN);
+function upstreamUrl(request) {
+  const incoming = new URL(request.url, 'https://frontend.invalid');
+  const path = String(request.query?.path || incoming.searchParams.get('path') || '')
+    .replace(/^\/+/, '');
+  incoming.searchParams.delete('path');
+  const query = incoming.searchParams.toString();
+  return new URL(`/api/${path}${query ? `?${query}` : ''}`, BACKEND_ORIGIN);
 }
 
 function requestHeaders(request) {
@@ -48,7 +52,7 @@ function responseCookies(headers) {
 
 export default async function handler(request, response) {
   try {
-    const upstream = await fetch(upstreamUrl(request.url), {
+    const upstream = await fetch(upstreamUrl(request), {
       method: request.method,
       headers: requestHeaders(request),
       body: await requestBody(request),

@@ -4,8 +4,12 @@ import test from 'node:test';
 
 const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
 
-test('Vercel leaves API paths to the serverless proxy function', () => {
-  assert.equal(config.rewrites.some(({ source }) => source.startsWith('/api/')), false);
+test('Vercel routes API paths to the explicit serverless proxy function', () => {
+  assert.deepEqual(config.rewrites[0], {
+    source: '/api/:path*',
+    destination: '/api/proxy?path=:path*',
+  });
+  assert.deepEqual(config.functions['api/proxy.js'], { maxDuration: 60 });
 });
 
 test('Vercel browser builds select their own origin for cookie-backed API calls', async () => {
