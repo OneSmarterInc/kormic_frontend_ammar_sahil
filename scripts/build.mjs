@@ -13,8 +13,7 @@ await cp(resolve(root,'web'),out,{recursive:true});await cp(resolve(root,'shared
 await writeFile(resolve(out,'config.js'), `(() => {
   const loopback = ['localhost', '127.0.0.1', '[::1]'];
   const local = loopback.includes(window.location.hostname);
-  const vercel = window.location.hostname.endsWith('.vercel.app');
-  const url = new URL(local ? ${JSON.stringify(localOrigin)} : vercel ? window.location.origin : ${JSON.stringify(origin)});
+  const url = new URL(local ? ${JSON.stringify(localOrigin)} : ${JSON.stringify(origin)});
   if (local && loopback.includes(url.hostname)) url.hostname = window.location.hostname;
   window.KORMIC_CONFIG = Object.freeze({apiOrigin: url.origin});
 })();\n`);
@@ -43,3 +42,4 @@ await mkdir(resolve(out,'claim'),{recursive:true});await cp(resolve(out,'student
 const icons=resolve(root,'apps/university/public/icons.svg');
 if(existsSync(icons))await cp(icons,resolve(out,'icons.svg'));
 console.log('Built Kormic as one frontend distribution.');
+
