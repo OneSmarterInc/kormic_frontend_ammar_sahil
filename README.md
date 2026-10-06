@@ -66,7 +66,7 @@ For local auth-cookie testing use the same hostname on frontend and backend, for
 
 `vercel.json` builds and publishes the Student, Institute, University, and Superuser portals as one static frontend distribution. Configure `KORMIC_API_ORIGIN_LOCAL` and `KORMIC_API_ORIGIN_PUBLIC` as Vercel project environment variables (available during build), or in the ignored local `.env` file for local builds. Values are backend origins without `/api`. The Student app's installed name is `Kormic`, with its Kormic launcher icon configured in `apps/student/app.json`.
 
-On `*.vercel.app`, Routing Middleware intercepts the same-origin `/api/*` path and forwards it to `https://backend.kormic.ai/api/*`. This keeps secure, host-only refresh cookies first-party even in browsers that block third-party cookies. The backend CORS/CSRF allow-list must include the exact Vercel production origin. Non-Vercel production hosts continue to use `KORMIC_API_ORIGIN_PUBLIC` directly and therefore need a same-site HTTPS hostname when cookie sessions are used.
+Production browser builds call `KORMIC_API_ORIGIN_PUBLIC` directly. For the current deployment this is `https://backend.kormic.ai`, so API requests go to `https://backend.kormic.ai/api/*`. The backend must allow the exact frontend origin through `DJANGO_CORS_ALLOWED_ORIGINS`, keep credentialed CORS enabled, and use `WEB_COOKIE_SAMESITE=None` for cookie-backed authentication across the Vercel and Kormic domains.
 
 The existing Student claim route remains `/claim?token=...` and is served by the Student web bundle.
 
