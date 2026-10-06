@@ -17,18 +17,29 @@ export const uploadInstituteList = (formData) =>
     .then((r) => r.data);
 
 /**
- * GET /api/institute-lists/lists/ — every roster this institute has uploaded.
+ * GET /api/institute-lists/lists/ — a page of this institute's rosters.
  * Each list object also carries the originally-uploaded file: source_file_url,
  * source_file_name, source_file_size (bytes).
  */
-export const listInstituteLists = (instituteId) =>
+export const listInstituteLists = (instituteId, { page = 1, pageSize = 25, search = "", signal } = {}) =>
   client
-    .get("/institute-lists/lists/", { params: instituteId ? { institute_id: instituteId } : {} })
+    .get("/institute-lists/lists/", {
+      params: { ...(instituteId ? { institute_id: instituteId } : {}), page, page_size: pageSize, ...(search ? { search } : {}) },
+      signal,
+    })
     .then((r) => r.data);
 
-/** GET /api/institute-lists/lists/<list_id>/students/ — the uploaded roster + each row's claim status */
-export const getInstituteListStudents = (listId) =>
-  client.get(`/institute-lists/lists/${encodeURIComponent(listId)}/students/`).then((r) => r.data);
+export const getInstituteListSummary = (instituteId, signal) =>
+  client.get("/institute-lists/summary/", { params: { institute_id: instituteId }, signal }).then((r) => r.data);
+
+export const getInstituteListDetail = (listId, signal) =>
+  client.get(`/institute-lists/lists/${encodeURIComponent(listId)}/`, { signal }).then((r) => r.data);
+
+/** GET /api/institute-lists/lists/<list_id>/students/ — a searchable roster page */
+export const getInstituteListStudents = (listId, { page = 1, pageSize = 25, search = "", status = "", signal } = {}) =>
+  client.get(`/institute-lists/lists/${encodeURIComponent(listId)}/students/`, {
+    params: { page, page_size: pageSize, ...(search ? { search } : {}), ...(status ? { status } : {}) }, signal,
+  }).then((r) => r.data);
 
 /**
  * POST /api/institute-lists/lists/<list_id>/send-invites/ — emails every

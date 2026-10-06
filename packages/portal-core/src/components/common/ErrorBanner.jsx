@@ -1,6 +1,6 @@
 import { AlertTriangle, X } from "lucide-react";
 
-export default function ErrorBanner({ error, onDismiss, className = "" }) {
+export default function ErrorBanner({ error, onRetry, onDismiss, className = "" }) {
   if (!error) return null;
   const message = typeof error === "string" ? error : error.message;
   const status = typeof error === "object" ? error.status : null;
@@ -15,6 +15,11 @@ export default function ErrorBanner({ error, onDismiss, className = "" }) {
         {status && <span className="mr-1.5 font-mono text-xs text-red-500">[{status}]</span>}
         {message}
       </div>
+      {onRetry && (
+        <button type="button" onClick={onRetry} className="shrink-0 font-semibold underline">
+          Retry
+        </button>
+      )}
       {onDismiss && (
         <button
           type="button"

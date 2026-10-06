@@ -18,6 +18,13 @@ export const test = base.extend({
       if (method === 'OPTIONS') return route.fulfill({ status: 204 });
       const body = request.headers()['content-type']?.includes('application/json') ? request.postDataJSON() : request.postData();
       state.calls.push({ method, path, body });
+      if (path === '/auth/refresh/' && method === 'POST') return state.authenticated && body.refresh === 'test-refresh' ? json({ access: 'test-access', refresh: 'test-refresh' }) : json({ detail: 'No session' }, 401);
+      if (path === '/auth/login/' && method === 'POST') return body.password === 'Test-password-123!' ? json({ totp_required: true, mfa_token: 'challenge' }) : json({ detail: 'Invalid credentials' }, 401);
+      if (path === '/auth/verify-totp/' && method === 'POST') {
+        if (body.code !== '123456') return json({ detail: 'Invalid code' }, 400);
+        state.authenticated = true; return json({ access: 'test-access', refresh: 'test-refresh', user: state.user });
+      }
+      if (path === '/auth/logout/' && method === 'POST') { state.authenticated = false; return json({}); }
       if (path === '/auth/web/csrf/' && method === 'GET') return json({ csrfToken: 'test-csrf' });
       if (path.startsWith('/auth/web/') && method === 'POST') {
         expect(request.headers()['x-csrftoken']).toBe('test-csrf'); expect(body.portal).toBe(portal);
@@ -35,11 +42,15 @@ export const test = base.extend({
       }
       expect(request.headers().authorization).toBe('Bearer test-access');
       if (path === '/auth/me/' && method === 'GET') return json(state.user);
+      if (path === '/notifications/unread-count/' && method === 'GET') return json({ count: 0 });
       if (method === 'GET') {
         const data = {
           '/superuser/students/': { students: [] }, '/superuser/universities/': { universities: [] }, '/superuser/users/': { users: [] },
           '/superuser/institutes/': { institutes: state.institutes },
-          '/institute-lists/lists/': { lists: state.lists }, '/institute-lists/lists/11/students/': { students: state.students },
+          '/institute-lists/lists/': { lists: state.lists, pagination: { page: 1, page_size: 25, total: state.lists.length, has_next: false } },
+          '/institute-lists/summary/': { list_count: state.lists.length, total_rows: state.lists.reduce((sum, row) => sum + row.row_count, 0), claimed_count: state.lists.reduce((sum, row) => sum + row.claimed_count, 0), unclaimed_count: state.lists.reduce((sum, row) => sum + row.unclaimed_count, 0), recent_lists: state.lists.slice(0, 5) },
+          '/institute-lists/lists/11/': { list: state.lists[0], invite_counts: { send_eligible: state.students.filter(row => row.status === 'unclaimed' && row.invite_delivery_status !== 'sent').length, resend_eligible: state.students.filter(row => row.status === 'unclaimed').length, queued: 0 } },
+          '/institute-lists/lists/11/students/': { students: state.students, pagination: { page: 1, page_size: 25, total: state.students.length, has_next: false } },
           '/university-admin/profile/': { id: 7, name: 'Test University', setup_status: {} },
           '/university/7/profiles/': { profiles: [] }, '/university/7/queries/': { queries: [] },
           '/university-admin/knowledge/': { knowledge: state.facts },
@@ -76,7 +87,7 @@ export const test = base.extend({
         return json({ list_id: 11, accepted: 1, rejected: [{ row: 3, reason: 'Invalid email' }], skipped_claimed: [] }, 201);
       }
       if (path === '/institute-lists/lists/11/send-invites/' && method === 'POST') {
-        state.students[0].invited_at = '2026-01-01T00:00:00Z'; state.students[0].status = 'invited'; return json({ invites_sent: 1 });
+        state.students[0].invited_at = '2026-01-01T00:00:00Z'; state.students[0].invite_delivery_status = 'sent'; state.lists[0].unclaimed_count = 1; return json({ invites_sent: 1 });
       }
       state.unexpected.push(`${method} ${path}`); return json({ detail: `Unexpected test request: ${method} ${path}` }, 500);
     });

@@ -1,11 +1,12 @@
 import client, { PORTAL, requestRefresh } from "./client.js";
+export const portal = PORTAL;
 
 /** POST /api/auth/register/ */
-export const register = (payload) => client.post("/auth/web/register/", { ...payload, portal: PORTAL }).then((r) => r.data);
+export const register = (payload) => client.post("/auth/register/", { ...payload, portal: PORTAL }).then((r) => r.data);
 
 /** POST /api/auth/login/ — step 1 (password) */
 export const login = (email, password) =>
-  client.post("/auth/web/login/", { email, password, portal: "superuser" }).then((r) => r.data);
+  client.post("/auth/login/", { email, password, portal: "superuser" }).then((r) => r.data);
 
 /** POST /api/auth/totp/enroll/ — Authorization header attached automatically by the client */
 export const totpEnroll = () => client.post("/auth/totp/enroll/").then((r) => r.data);
@@ -16,14 +17,14 @@ export const totpVerifyEnrollment = (code) =>
 
 /** POST /api/auth/verify-totp/ — step 2 (TOTP or backup code) */
 export const verifyTotp = (mfaToken, code) =>
-  client.post("/auth/web/verify-totp/", { mfa_token: mfaToken, code, portal: "superuser" }).then((r) => r.data);
+  client.post("/auth/verify-totp/", { mfa_token: mfaToken, code, portal: "superuser" }).then((r) => r.data);
 
 /** POST /api/auth/refresh/ */
 export const refresh = () => requestRefresh();
 
 /** POST /api/auth/logout/ */
-export const logout = () =>
-  client.post("/auth/web/logout/", { portal: PORTAL }).then((r) => r.data);
+export const logout = (refresh, access) =>
+  client.post("/auth/logout/", { refresh }, { headers: { Authorization: `Bearer ${access}` } }).then((r) => r.data);
 
 /** GET /api/auth/me/ */
 export const me = () => client.get("/auth/me/").then((r) => r.data);

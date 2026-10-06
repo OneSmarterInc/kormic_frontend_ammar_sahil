@@ -16,6 +16,8 @@ import { useAction, useAsync } from "../../hooks/useAsync";
 export default function InstitutesListPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 25;
   const [deleting, setDeleting] = useState(null);
 
   useEffect(() => {
@@ -24,11 +26,12 @@ export default function InstitutesListPage() {
   }, [search]);
 
   const { data, loading, error, refetch } = useAsync(
-    () => listInstitutes(debouncedSearch),
-    [debouncedSearch]
+    (signal) => listInstitutes({ search: debouncedSearch, page, pageSize, signal }),
+    [debouncedSearch, page]
   );
 
   const institutes = data?.institutes || [];
+  const pagination = data?.pagination || { page: 1, page_size: pageSize, total: 0, has_next: false };
 
   const { execute: removeInstitute, loading: removing, error: removeError } = useAction((id) =>
     deleteInstitute(id)
@@ -39,7 +42,8 @@ export default function InstitutesListPage() {
       await removeInstitute(deleting.id);
       toast.success("Institute deleted");
       setDeleting(null);
-      refetch();
+      if (institutes.length === 1 && page > 1) setPage(page - 1);
+      else refetch();
     } catch (err) {
       toast.error(err.message);
     }
@@ -61,7 +65,7 @@ export default function InstitutesListPage() {
           type="text"
           aria-label="Search institutes by name" placeholder="Search by name..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           className="w-full rounded-xl border border-ink-200 bg-white py-2.5 pl-10 pr-4 text-sm transition-all duration-300 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
         />
       </div>
@@ -140,6 +144,20 @@ export default function InstitutesListPage() {
             </table>
           </div>
         </Card>
+      )}
+
+      {!loading && !error && pagination.total > 0 && (
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-ink-500">
+            Showing {(pagination.page - 1) * pagination.page_size + 1}–{Math.min(pagination.page * pagination.page_size, pagination.total)} of {pagination.total} institutes
+          </p>
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" disabled={pagination.page <= 1}
+              onClick={() => setPage(pagination.page - 1)}>Previous</Button>
+            <Button variant="secondary" size="sm" disabled={!pagination.has_next}
+              onClick={() => setPage(pagination.page + 1)}>Next</Button>
+          </div>
+        </div>
       )}
 
       <ConfirmModal

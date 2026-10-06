@@ -42,4 +42,3 @@ await mkdir(resolve(out,'claim'),{recursive:true});await cp(resolve(out,'student
 const icons=resolve(root,'apps/university/public/icons.svg');
 if(existsSync(icons))await cp(icons,resolve(out,'icons.svg'));
 console.log('Built Kormic as one frontend distribution.');
-

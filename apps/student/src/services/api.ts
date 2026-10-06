@@ -345,6 +345,13 @@ export interface AriaHistoryResponse {
   messages?: AriaHistoryMessage[];
 }
 
+export interface AriaUpdatesResponse {
+  messages: AriaHistoryMessage[];
+  escalations: Record<string, string>;
+  last_id: number;
+  has_more: boolean;
+}
+
 async function parseJson<T>(response: Response): Promise<T | undefined> {
   const text = await response.text();
   if (!text) {
@@ -383,30 +390,7 @@ function getApiError(data: ApiErrorBody | undefined, fallback: string) {
 }
 
 async function requestJson<T>(path: string, init: RequestInit, fallbackError: string): Promise<T> {
-  let requestPath = path;
-  if (Platform.OS === 'web' && ['/auth/login/', '/auth/register/', '/auth/verify-totp/', '/auth/refresh/', '/auth/logout/'].includes(path)) {
-    requestPath = path.replace('/auth/', '/auth/web/');
-    const refreshOnly = path === '/auth/refresh/';
-    let csrfToken = '';
-    if (!refreshOnly) {
-      const csrfResponse = await fetch(`${API_BASE_URL}/auth/web/csrf/`, { credentials: 'include' });
-      if (!csrfResponse.ok) throw new Error('Unable to initialize secure session');
-      const csrf = await csrfResponse.json();
-      csrfToken = typeof csrf.csrfToken === 'string' ? csrf.csrfToken : '';
-      if (!csrfToken) throw new Error('Unable to initialize secure session');
-    }
-    init = {
-      ...init,
-      credentials: 'include',
-      headers: {
-        ...init.headers,
-        'Content-Type': 'application/json',
-        ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
-      },
-      body: JSON.stringify({ ...(typeof init.body === 'string' ? JSON.parse(init.body) : {}), portal: 'student' }),
-    };
-  }
-  const response = await fetch(`${API_BASE_URL}${requestPath}`, init);
+  const response = await fetch(`${API_BASE_URL}${path}`, init);
   const data = await parseJson<T & ApiErrorBody>(response);
 
   if (!response.ok) {
@@ -430,7 +414,7 @@ async function performRefresh(refreshToken?: string) {
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(Platform.OS === 'web' ? {} : { refresh: refreshToken }),
+      body: JSON.stringify({ refresh: refreshToken }),
     },
     'Unable to refresh session',
   );
@@ -453,7 +437,7 @@ export function refreshAccessToken(refreshToken?: string) {
     const generation = getTokenGeneration();
     webRefreshPromise = (async () => {
       // Native screens can retain older session objects after token rotation.
-      const current = Platform.OS === 'web' ? undefined : (await getSavedRefreshToken()) || refreshToken;
+      const current = (await getSavedRefreshToken()) || refreshToken;
       const result = await performRefresh(current);
       if (generation !== getTokenGeneration()) throw new Error('Session changed');
       await saveAccessToken(result.access);
@@ -468,11 +452,11 @@ export async function logoutSession(session?: AuthSession) {
   const refresh = (await getSavedRefreshToken()) || session?.refresh;
   // Prevent an in-flight refresh from restoring a session after logout.
   await clearSavedTokens();
-  if (Platform.OS !== 'web' && !refresh) return;
+  if (!refresh) return;
   await requestJson('/auth/logout/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(session?.access ? { Authorization: `Bearer ${session.access}` } : {}) },
-    body: JSON.stringify(Platform.OS === 'web' ? {} : { refresh }),
+    body: JSON.stringify({ refresh }),
   }, 'Unable to sign out');
 }
 
@@ -1200,6 +1184,17 @@ export function getAriaHistory(session: AuthSession) {
       headers: authHeaders(accessToken),
     }),
     'Unable to load agent chat history',
+  );
+}
+
+export function getAriaUpdates(session: AuthSession, afterId: number, queryIds: number[]) {
+  const params = new URLSearchParams({ after_id: String(afterId) });
+  if (queryIds.length) params.set('query_ids', queryIds.join(','));
+  return requestWithSession<AriaUpdatesResponse>(
+    session,
+    `/chat/agent/updates/?${params.toString()}`,
+    (accessToken) => ({ method: 'GET', headers: authHeaders(accessToken) }),
+    'Unable to check university answers',
   );
 }
 

@@ -18,6 +18,7 @@ jest.mock('../src/services/api', () => ({
 jest.mock('../src/services/tokenStorage', () => ({
   getTokenGeneration: jest.fn(() => 0),
   getSavedSessionUser: jest.fn(),
+  getSavedRefreshToken: jest.fn(),
   getSavedTokens: jest.fn(),
   saveAccessToken: jest.fn(),
   saveTokens: jest.fn(),
@@ -36,6 +37,7 @@ beforeEach(() => {
   Object.defineProperty(Platform, 'OS', { configurable: true, value: 'ios' });
   jest.spyOn(Linking, 'getInitialURL').mockResolvedValue(null);
   jest.mocked(storage.getSavedTokens).mockResolvedValue(undefined);
+  jest.mocked(storage.getSavedRefreshToken).mockResolvedValue(undefined);
   jest.mocked(api.getMe).mockResolvedValue(user);
   jest
     .mocked(api.getStudentProfile)
@@ -85,14 +87,16 @@ it('restores native credentials and loads the profile through the extracted sess
   expect(result.current.profile?.name).toBe('Ada');
 });
 
-it('restores a browser session using the refresh cookie when memory is empty', async () => {
+it('restores a browser session using the tab-scoped refresh token when memory is empty', async () => {
   Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' });
-  jest.mocked(api.refreshAccessToken).mockResolvedValue({ access: 'cookie-access', refresh: undefined });
+  jest.mocked(storage.getSavedRefreshToken).mockResolvedValue('tab-refresh');
+  jest.mocked(api.refreshAccessToken).mockResolvedValue({ access: 'token-access', refresh: undefined });
   const inputs = options();
   const { result } = renderHook(() => useStudentSession(inputs));
   await waitFor(() => expect(result.current.restoringSession).toBe(false));
   expect(api.refreshAccessToken).toHaveBeenCalledWith();
-  expect(storage.saveAccessToken).toHaveBeenCalledWith('cookie-access');
+  expect(storage.saveAccessToken).toHaveBeenCalledWith('token-access');
+  expect(inputs.dispatch).toHaveBeenCalledWith({ type: 'SET_AUTH_SESSION', session: expect.objectContaining({ refresh: 'tab-refresh' }) });
   expect(result.current.webSessionMissing).toBe(false);
   expect(inputs.navigate).toHaveBeenCalledWith('Profile');
 });
@@ -117,9 +121,9 @@ it('returns to a signed-out state when a protected request rejects the session',
   expect(result.current.profile).toBeUndefined();
 });
 
-it('marks a browser session missing only after cookie restoration actually fails', async () => {
+it('marks a browser session missing only after token restoration actually fails', async () => {
   Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' });
-  jest.mocked(api.refreshAccessToken).mockRejectedValue(Object.assign(new Error('No cookie session'), { status: 401 }));
+  jest.mocked(api.refreshAccessToken).mockRejectedValue(Object.assign(new Error('No token session'), { status: 401 }));
   const inputs = options();
   const { result } = renderHook(() => useStudentSession(inputs));
   await waitFor(() => expect(result.current.restoringSession).toBe(false));

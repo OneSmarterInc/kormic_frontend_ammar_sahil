@@ -100,7 +100,7 @@ export function AriaBotScreen(props: AriaChatProps) {
               historyLoading={historyLoading}
               selectedThreadId={selectedThreadId}
               onClose={() => setSidebarOpen(false)}
-              onRefresh={() => loadHistory(agentName, true)}
+              onRefresh={() => loadHistory(true)}
               onSelect={(thread) => {
                 setSelectedThreadId(thread.id);
                 setMessages(thread.messages);

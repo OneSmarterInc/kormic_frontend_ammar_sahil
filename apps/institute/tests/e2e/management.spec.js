@@ -1,6 +1,7 @@
 import { test, expect, management } from './fixtures.js';
 test('CSV upload reports rejected rows, displays roster and confirms invitations', async ({ page, api }) => {
   api.authenticated = true;
+  await page.addInitScript(() => sessionStorage.setItem('kormic.refresh.institute', 'test-refresh'));
   await page.goto(`/#${management}`);
   await page.getByLabel(/^Contact name/).fill('Roster Admin');
   await page.getByLabel(/^Contact email/).fill('roster@example.test');
@@ -22,10 +23,10 @@ test('CSV upload reports rejected rows, displays roster and confirms invitations
   await page.getByRole('dialog').getByRole('button', { name: 'Send invites', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
   await expect(page.getByRole('button', { name: 'Send invites', exact: true })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Resend to invited', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Resend to eligible', exact: true })).toBeEnabled();
   expect(api.calls.filter(c => c.path.endsWith('/send-invites/'))).toHaveLength(1);
-  await page.getByRole('button', { name: 'Resend to invited', exact: true }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Resend to all invited' }).click();
+  await page.getByRole('button', { name: 'Resend to eligible', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Resend to all eligible' }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
   await expect.poll(() => api.calls.filter(c => c.path.endsWith('/send-invites/')).length).toBe(2);
   expect(api.calls.filter(c => c.path.endsWith('/send-invites/'))[1].body).toEqual({ resend: true });

@@ -1,22 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, CheckCheck, Inbox, Search, Trash2, X, ArrowUpRight } from "lucide-react";
+import { useVisiblePolling } from "../../hooks/useVisiblePolling.js";
 
 export default function NotificationBell({client,navigate,pollMs=30000}) {
   const [open,setOpen]=useState(false), [items,setItems]=useState([]), [unread,setUnread]=useState(0);
   const [loading,setLoading]=useState(false), [busy,setBusy]=useState(false), [error,setError]=useState("");
   const [page,setPage]=useState(1), [hasNext,setHasNext]=useState(false), [search,setSearch]=useState("");
   const [expanded,setExpanded]=useState(null);
-  const root=useRef(null), sequence=useRef(0);
+  const root=useRef(null), sequence=useRef(0), countSequence=useRef(0), openRef=useRef(open);
+  openRef.current=open;
   const load=useCallback(async()=>{
     const id=++sequence.current;setLoading(true);
     try{const{data}=await client.get("/notifications/",{params:{page,page_size:10,search}});if(id===sequence.current){setItems(data.results||[]);setUnread(data.unread_count||0);setHasNext(data.pagination?.has_next||false);setError("");}}
     catch{if(id===sequence.current)setError("Unable to load notifications. Please try again.");}
     finally{if(id===sequence.current)setLoading(false);}
   },[client,page,search]);
-  useEffect(()=>{let alive=true;const count=async()=>{try{const{data}=await client.get("/notifications/unread-count/");if(alive)setUnread(data.unread_count||0);}catch{}};count();const timer=setInterval(count,pollMs);return()=>{alive=false;clearInterval(timer);};},[client,pollMs]);
-  useEffect(()=>{if(!open)return;load();const timer=setInterval(load,pollMs);const close=e=>{if(!root.current?.contains(e.target))setOpen(false);};const escape=e=>{if(e.key==="Escape")setOpen(false);};document.addEventListener("mousedown",close);document.addEventListener("keydown",escape);return()=>{++sequence.current;clearInterval(timer);document.removeEventListener("mousedown",close);document.removeEventListener("keydown",escape);};},[open,load,pollMs]);
+  const count=useCallback(async()=>{const id=++countSequence.current;try{const{data}=await client.get("/notifications/unread-count/");if(id===countSequence.current&&!openRef.current)setUnread(data.unread_count||0);}catch{}},[client]);
+  useEffect(()=>()=>{++countSequence.current;},[open,client]);
+  // The open inbox response includes unread_count, so only one endpoint is polled at a time.
+  useVisiblePolling(open?load:count,pollMs);
+  useEffect(()=>{if(!open)return;const close=e=>{if(!root.current?.contains(e.target))setOpen(false);};const escape=e=>{if(e.key==="Escape")setOpen(false);};document.addEventListener("mousedown",close);document.addEventListener("keydown",escape);return()=>{++sequence.current;document.removeEventListener("mousedown",close);document.removeEventListener("keydown",escape);};},[open,load]);
   const action=async(path)=>{setBusy(true);++sequence.current;try{await client.post(path);setItems([]);setExpanded(null);if(page!==1)setPage(1);else await load();}catch{setError("Could not update notifications. Please retry.");}finally{setBusy(false);}};
-  const read=async(item)=>{setExpanded(expanded===item.id?null:item.id);if(!item.read_at){try{const{data}=await client.post(`/notifications/${item.id}/read/`);setItems(old=>old.map(n=>n.id===item.id?data:n));setUnread(n=>Math.max(0,n-1));}catch{setError("Unable to mark this notification read.");}}};
+  const read=async(item)=>{setExpanded(expanded===item.id?null:item.id);if(!item.read_at){try{const{data}=await client.post(`/notifications/${item.id}/read/`);setItems(old=>old.map(n=>n.id===item.id?data:n));setUnread(n=>Math.max(0,n-1));await load();}catch{setError("Unable to mark this notification read.");}}};
   return <div className="relative" ref={root}><button aria-label={unread?`Notifications, ${unread} unread`:"Notifications"} aria-expanded={open} onClick={()=>setOpen(!open)} className="relative rounded-xl p-2.5 text-ink-600 hover:bg-ink-100 focus:ring-2 focus:ring-brand-300"><Bell size={20}/>{unread>0&&<span className="absolute -right-1 -top-1 rounded-full bg-brand-600 px-1.5 text-[10px] font-bold leading-4 text-white">{unread>99?"99+":unread}</span>}</button>
     {open&&<section aria-label="Notification inbox" className="fixed right-3 top-14 z-50 w-[calc(100vw-24px)] max-w-md overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-2xl">
       <header className="border-b border-ink-100 px-5 py-4"><div className="flex items-center justify-between"><div><h2 className="text-lg font-semibold text-ink-900">Notifications</h2><p className="mt-1 text-xs text-ink-500">{unread?`${unread} unread updates`:"You're all caught up"}</p></div><button aria-label="Close notifications" onClick={()=>setOpen(false)} className="rounded-lg p-2 hover:bg-ink-50"><X size={18}/></button></div>

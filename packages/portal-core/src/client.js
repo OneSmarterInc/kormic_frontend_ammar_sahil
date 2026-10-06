@@ -3,7 +3,9 @@ import {
   clearAuth,
   getAccessToken,
   getAuthGeneration,
+  getRefreshToken,
   setAccessToken,
+  setRefreshToken,
 } from "./tokenStorage.js";
 
 export function createPortalClient(portal) {
@@ -19,7 +21,7 @@ export function createPortalClient(portal) {
   const client = axios.create({
     baseURL: `${BASE_URL}/api`,
     timeout: 60000,
-    withCredentials: true,
+    withCredentials: false,
   });
 
   const cookieTransport = axios.create({
@@ -63,9 +65,12 @@ export function createPortalClient(portal) {
   function requestRefresh() {
     if (!refreshPromise) {
       const generation = getAuthGeneration();
-      refreshPromise = cookiePost("/auth/web/refresh/")
+      const refresh = getRefreshToken(portal);
+      if (!refresh) return Promise.reject(new Error("Session expired"));
+      refreshPromise = cookieTransport.post("/auth/refresh/", { refresh }, { withCredentials: false })
         .then((response) => {
           if (generation !== getAuthGeneration()) throw new Error("Session changed");
+          if (response.data.refresh) setRefreshToken(portal, response.data.refresh);
           setAccessToken(response.data.access);
           return response.data.access;
         })
@@ -124,4 +129,3 @@ export function createPortalClient(portal) {
     requestRefresh,
   };
 }
-

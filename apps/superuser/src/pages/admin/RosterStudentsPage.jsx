@@ -31,6 +31,9 @@ export default function RosterStudentsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState("");
   const [instituteId, setInstituteId] = useState("");
+  const [selectedInstitute, setSelectedInstitute] = useState(null);
+  const [instituteSearch, setInstituteSearch] = useState("");
+  const [debouncedInstituteSearch, setDebouncedInstituteSearch] = useState("");
   const [accountState, setAccountState] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 25;
@@ -43,8 +46,18 @@ export default function RosterStudentsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const { data: institutesData } = useAsync(() => listInstitutes(), []);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedInstituteSearch(instituteSearch.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [instituteSearch]);
+
+  const { data: institutesData, error: institutesError } = useAsync(
+    (signal) => listInstitutes({ search: debouncedInstituteSearch, pageSize: 25, signal }),
+    [debouncedInstituteSearch]
+  );
   const institutes = institutesData?.institutes || [];
+  const instituteOptions = selectedInstitute && !institutes.some((item) => item.id === selectedInstitute.id)
+    ? [selectedInstitute, ...institutes] : institutes;
 
   const { data, loading, error, refetch } = useAsync(
     () =>
@@ -103,16 +116,34 @@ export default function RosterStudentsPage() {
             ))}
           </select>
 
-          <select
-            value={instituteId}
-            onChange={updateFilter(setInstituteId)}
-            className="rounded-xl border border-ink-200 bg-white px-3 py-2.5 text-sm text-ink-700"
-          >
-            <option value="">All institutes</option>
-            {institutes.map((institute) => (
-              <option key={institute.id} value={institute.id}>{institute.name}</option>
-            ))}
-          </select>
+          <div className="space-y-2">
+            <input
+              value={instituteSearch}
+              onChange={(event) => setInstituteSearch(event.target.value)}
+              aria-label="Find institute"
+              placeholder="Find institute..."
+              className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm text-ink-700"
+            />
+            <select
+              value={instituteId}
+              aria-label="Filter by institute"
+              onChange={(event) => {
+                setInstituteId(event.target.value);
+                setSelectedInstitute(instituteOptions.find((item) => item.id === event.target.value) || null);
+                setPage(1);
+              }}
+              className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2.5 text-sm text-ink-700"
+            >
+              <option value="">All institutes</option>
+              {instituteOptions.map((institute) => (
+                <option key={institute.id} value={institute.id}>{institute.name}</option>
+              ))}
+            </select>
+            {institutesError && <p className="text-xs text-red-600">Could not load institutes.</p>}
+            {institutesData?.pagination?.has_next && (
+              <p className="text-xs text-ink-500">Showing first 25 matches. Refine the search to find another institute.</p>
+            )}
+          </div>
 
           <select
             value={accountState}

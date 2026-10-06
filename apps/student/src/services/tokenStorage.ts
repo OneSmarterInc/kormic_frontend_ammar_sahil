@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 
 const ACCESS_TOKEN_KEY = 'kormic.access';
 const REFRESH_TOKEN_KEY = 'kormic.refresh';
+const WEB_REFRESH_TOKEN_KEY = 'kormic.refresh.student';
 const USER_KEY = 'kormic.session-user';
 
 let webAccess: string | null = null;
@@ -29,19 +30,29 @@ if (Platform.OS === 'web') purgeLegacyWebTokens();
 async function setItem(key: string, value: string) {
   if (Platform.OS === 'web') {
     if (key === ACCESS_TOKEN_KEY) webAccess = value;
-    return; // Refresh tokens are managed exclusively by HttpOnly cookies.
+    if (key === REFRESH_TOKEN_KEY) sessionStorage.setItem(WEB_REFRESH_TOKEN_KEY, value);
+    return;
   }
   await SecureStore.setItemAsync(key, value);
 }
 
 async function getItem(key: string) {
-  if (Platform.OS === 'web') return key === ACCESS_TOKEN_KEY ? webAccess : null;
+  if (Platform.OS === 'web') {
+    if (key === ACCESS_TOKEN_KEY) return webAccess;
+    if (key === REFRESH_TOKEN_KEY) {
+      try { return sessionStorage.getItem(WEB_REFRESH_TOKEN_KEY); } catch { return null; }
+    }
+    return null;
+  }
   return SecureStore.getItemAsync(key);
 }
 
 async function deleteItem(key: string) {
   if (Platform.OS === 'web') {
     if (key === ACCESS_TOKEN_KEY) webAccess = null;
+    if (key === REFRESH_TOKEN_KEY) {
+      try { sessionStorage.removeItem(WEB_REFRESH_TOKEN_KEY); } catch { /* Storage unavailable. */ }
+    }
     purgeLegacyWebTokens();
     return;
   }

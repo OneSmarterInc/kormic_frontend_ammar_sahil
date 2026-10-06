@@ -1,6 +1,21 @@
-/** Existing Kormic browser authentication contract. No tokens are persisted. */
+/** Direct browser authentication. Refresh credentials are scoped to this tab. */
 export const PORTALS = Object.freeze(['student', 'university', 'institute', 'superuser']);
 export const isPortal = (value) => PORTALS.includes(value);
+const refreshKey = (portal) => `kormic.refresh.${portal}`;
+
+function getRefresh(portal) {
+  try { return sessionStorage.getItem(refreshKey(portal)) || ''; } catch { return ''; }
+}
+
+function saveRefresh(portal, token) {
+  if (typeof token !== 'string' || !token) return;
+  try { sessionStorage.setItem(refreshKey(portal), token); }
+  catch { throw new AuthError('Your browser blocked session storage. Allow it and sign in again.'); }
+}
+
+function clearRefresh(portal) {
+  try { sessionStorage.removeItem(refreshKey(portal)); } catch { /* The tab has no stored session. */ }
+}
 
 export class AuthError extends Error {
   constructor(message, status = 0) {
@@ -74,7 +89,7 @@ export function createAuthClient({ origin, fetchImpl = globalThis.fetch, timeout
     if (csrf) headers['X-CSRFToken'] = csrf;
     try {
       const response = await fetchImpl(base + path, {
-        method, headers, credentials: 'include', cache: 'no-store',
+        method, headers, credentials: 'omit', cache: 'no-store',
         redirect: 'error', signal: controller.signal,
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
@@ -101,31 +116,20 @@ export function createAuthClient({ origin, fetchImpl = globalThis.fetch, timeout
     } finally { clearTimeout(timer); }
   }
 
-  async function webPost(path, portal, body = {}) {
-    if (!isPortal(portal)) throw new AuthError('Choose your account type.');
-    const csrf = await request('/auth/web/csrf/');
-    if (typeof csrf.csrfToken !== 'string' || !csrf.csrfToken) {
-      throw new AuthError('The backend did not provide a CSRF token.');
-    }
-    return request(path, { method: 'POST', body: { ...body, portal }, csrf: csrf.csrfToken });
-  }
-
   async function confirmSession(portal) {
-    // Browser refresh only validates the existing HttpOnly cookie. It is a
-    // read-only credential exchange, so it intentionally skips the CSRF
-    // bootstrap required by state-changing auth POSTs.
-    const session = await request('/auth/web/refresh/', {
+    if (!isPortal(portal)) throw new AuthError('Choose your account type.');
+    const refresh = getRefresh(portal);
+    if (!refresh) throw new AuthError('Your sign-in session is missing. Please sign in again.', 401);
+    const session = await request('/auth/refresh/', {
       method: 'POST',
-      body: { portal },
+      body: { refresh },
     });
     if (typeof session.access !== 'string' || !session.access) throw new AuthError('The backend did not return an access token.');
-    // The refresh endpoint has already authenticated the HttpOnly cookie,
-    // re-checked the active account, portal role, and confirmed TOTP device,
-    // and returns the same user representation as /auth/me. Avoid a second
-    // auth request during the browser redirect boundary.
-    const user = session.user ?? await request('/auth/me/', { access: session.access });
+    if (session.refresh) saveRefresh(portal, session.refresh);
+    const user = await request('/auth/me/', { access: session.access });
     if (user?.role !== portal && !(portal === "university" && user?.role === "department")) {
-      try { await webPost('/auth/web/logout/', portal); } catch { /* Still deny access. */ }
+      try { await request('/auth/logout/', { method: 'POST', access: session.access, body: { refresh } }); } catch { /* Still deny access. */ }
+      clearRefresh(portal);
       throw new AuthError('This account is not authorized for the selected portal.', 403);
     }
     roleHome(user); // Validate institution assignment before leaving the login page.
@@ -133,9 +137,24 @@ export function createAuthClient({ origin, fetchImpl = globalThis.fetch, timeout
   }
 
   return Object.freeze({
-    login: (portal, email, password) => webPost('/auth/web/login/', portal, { email: email.trim(), password }),
-    verifyTotp: (portal, mfaToken, code) => webPost('/auth/web/verify-totp/', portal, { mfa_token: mfaToken, code: code.trim() }),
-    logout: (portal) => webPost('/auth/web/logout/', portal),
+    login: (portal, email, password) => {
+      if (!isPortal(portal)) throw new AuthError('Choose your account type.');
+      clearRefresh(portal);
+      return request('/auth/login/', { method: 'POST', body: { portal, email: email.trim(), password } });
+    },
+    verifyTotp: async (portal, mfaToken, code) => {
+      if (!isPortal(portal)) throw new AuthError('Choose your account type.');
+      const result = await request('/auth/verify-totp/', { method: 'POST', body: { portal, mfa_token: mfaToken, code: code.trim() } });
+      if (result.refresh) saveRefresh(portal, result.refresh);
+      return result;
+    },
+    logout: async (portal) => {
+      const refresh = getRefresh(portal);
+      clearRefresh(portal);
+      if (!refresh) return {};
+      const session = await request('/auth/refresh/', { method: 'POST', body: { refresh } });
+      return request('/auth/logout/', { method: 'POST', access: session.access, body: { refresh } });
+    },
     confirmSession,
     enroll: (access) => request('/auth/totp/enroll/', { method: 'POST', access }),
     verifyEnrollment: (access, code) => request('/auth/totp/verify-enrollment/', { method: 'POST', access, body: { code: code.trim() } }),

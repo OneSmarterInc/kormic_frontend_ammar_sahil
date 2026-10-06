@@ -30,51 +30,57 @@ function mockClient(responses) {
   };
   return {client:createAuthClient({origin:'https://backend.kormic.ai',fetchImpl}),calls};
 }
-test('password login preserves CSRF + cookie endpoint and password whitespace',async()=>{
-  const {client,calls}=mockClient([{data:{csrfToken:'csrf'}},{data:{totp_required:true,mfa_token:'mfa'}}]);
+const tabStorage = new Map();
+globalThis.sessionStorage = {
+  getItem: key => tabStorage.get(key) ?? null,
+  setItem: (key, value) => tabStorage.set(key, String(value)),
+  removeItem: key => tabStorage.delete(key),
+};
+
+test('password login calls the backend directly and preserves password whitespace',async()=>{
+  const {client,calls}=mockClient([{data:{totp_required:true,mfa_token:'mfa'}}]);
   const result=await client.login('institute',' name@example.com ',' pass ');
   assert.equal(result.mfa_token,'mfa');
-  assert.deepEqual(calls.map(c=>c.url),['https://backend.kormic.ai/api/auth/web/csrf/','https://backend.kormic.ai/api/auth/web/login/']);
-  assert.deepEqual(calls[1].body,{email:'name@example.com',password:' pass ',portal:'institute'});
-  assert.equal(calls[1].options.headers['X-CSRFToken'],'csrf');
-  assert.equal(calls[1].options.credentials,'include');
-  assert.equal(calls[1].options.redirect,'error');
+  assert.deepEqual(calls.map(c=>c.url),['https://backend.kormic.ai/api/auth/login/']);
+  assert.deepEqual(calls[0].body,{email:'name@example.com',password:' pass ',portal:'institute'});
+  assert.equal(calls[0].options.credentials,'omit');
+  assert.equal(calls[0].options.redirect,'error');
 });
 test('unknown portal does not make a network request',async()=>{
-  const {client,calls}=mockClient([]);await assert.rejects(()=>client.login('bad','a','b'));assert.equal(calls.length,0);
+  const {client,calls}=mockClient([]);assert.throws(()=>client.login('bad','a','b'));assert.equal(calls.length,0);
 });
-test('missing CSRF blocks the credential request',async()=>{
-  const{client,calls}=mockClient([{data:{}}]);await assert.rejects(()=>client.login('student','a','b'),/CSRF/);assert.equal(calls.length,1);
+test('MFA preserves portal and stores the refresh token only for this tab',async()=>{
+  tabStorage.clear();
+  const{client,calls}=mockClient([{data:{access:'access',refresh:'refresh-token'}}]);await client.verifyTotp('student','challenge',' backup-1 ');
+  assert.equal(calls[0].url,'https://backend.kormic.ai/api/auth/verify-totp/');assert.deepEqual(calls[0].body,{mfa_token:'challenge',code:'backup-1',portal:'student'});
+  assert.equal(tabStorage.get('kormic.refresh.student'),'refresh-token');
 });
-test('MFA preserves portal and challenge, never sends a refresh token',async()=>{
-  const{client,calls}=mockClient([{data:{csrfToken:'csrf'}},{data:{access:'access'}}]);await client.verifyTotp('student','challenge',' backup-1 ');
-  assert.equal(calls[1].url,'https://backend.kormic.ai/api/auth/web/verify-totp/');assert.deepEqual(calls[1].body,{mfa_token:'challenge',code:'backup-1',portal:'student'});
-});
-test('cookie restoration uses the HttpOnly refresh cookie without a CSRF round trip',async()=>{
-  const{client,calls}=mockClient([{data:{access:'memory-access',user:user('university')}}]);
-  assert.equal((await client.confirmSession('university')).role,'university');
-  assert.equal(calls.length,1);
-  assert.equal(calls[0].url,'https://backend.kormic.ai/api/auth/web/refresh/');
-  assert.equal(calls[0].options.credentials,'include');
-  assert.equal(calls[0].options.headers['X-CSRFToken'],undefined);
-});
-test('cookie restoration falls back to /me when refresh omits user',async()=>{
+test('session restoration sends the tab token to the backend, then checks the role',async()=>{
+  tabStorage.clear();tabStorage.set('kormic.refresh.university','refresh-token');
   const{client,calls}=mockClient([{data:{access:'memory-access'}},{data:user('university')}]);
   assert.equal((await client.confirmSession('university')).role,'university');
   assert.equal(calls.length,2);
+  assert.equal(calls[0].url,'https://backend.kormic.ai/api/auth/refresh/');
+  assert.deepEqual(calls[0].body,{refresh:'refresh-token'});
   assert.equal(calls[1].url,'https://backend.kormic.ai/api/auth/me/');
 });
-test('cookie rejection never reaches /me or a dashboard',async()=>{
+test('refresh rejection never reaches /me or a dashboard',async()=>{
+  tabStorage.clear();tabStorage.set('kormic.refresh.student','expired-token');
   const{client,calls}=mockClient([{status:401,data:{detail:'Session expired.'}}]);
   await assert.rejects(()=>client.confirmSession('student'),e=>e.status===401);assert.equal(calls.length,1);
 });
-test('wrong server role is denied and selected portal cookie revoked',async()=>{
-  const{client,calls}=mockClient([{data:{access:'access'}},{data:user('superuser')},{data:{csrfToken:'csrf'}},{status:204}]);
+test('wrong server role is denied and the tab session is revoked',async()=>{
+  tabStorage.clear();tabStorage.set('kormic.refresh.student','refresh-token');
+  const{client,calls}=mockClient([{data:{access:'access'}},{data:user('superuser')},{status:205}]);
   await assert.rejects(()=>client.confirmSession('student'),e=>e.status===403);
-  assert.equal(calls.at(-1).url,'https://backend.kormic.ai/api/auth/web/logout/');
+  assert.equal(calls.at(-1).url,'https://backend.kormic.ai/api/auth/logout/');
+  assert.equal(tabStorage.has('kormic.refresh.student'),false);
 });
-test('logout accepts empty 204 response',async()=>{
-  const{client}=mockClient([{data:{csrfToken:'csrf'}},{status:204}]);assert.deepEqual(await client.logout('institute'),{});
+test('logout revokes a stored refresh token',async()=>{
+  tabStorage.clear();tabStorage.set('kormic.refresh.institute','refresh-token');
+  const{client,calls}=mockClient([{data:{access:'access'}},{status:205}]);assert.deepEqual(await client.logout('institute'),{});
+  assert.deepEqual(calls.at(-1).body,{refresh:'refresh-token'});
+  assert.equal(tabStorage.has('kormic.refresh.institute'),false);
 });
 test('TOTP enrollment uses the existing bearer-token endpoint',async()=>{
   const{client,calls}=mockClient([{data:{secret:'EXAMPLE'}},{data:{backup_codes:['one-use']}}]);

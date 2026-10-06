@@ -16,7 +16,7 @@ import {
   shouldOpenAgentChatFromLastNotification,
   unregisterPushNotifications,
 } from '../../services/notifications';
-import { clearSavedTokens, getTokenGeneration, getSavedSessionUser, getSavedTokens, saveAccessToken, saveTokens } from '../../services/tokenStorage';
+import { clearSavedTokens, getTokenGeneration, getSavedRefreshToken, getSavedSessionUser, getSavedTokens, saveAccessToken, saveTokens } from '../../services/tokenStorage';
 import { consumeWebSessionHandoff } from '../../services/webSessionHandoff';
 import { OnboardingAction } from '../../state/onboardingReducer';
 import { isBasicInfoComplete } from '../../utils/validation';
@@ -61,7 +61,7 @@ export function useStudentSession({
 
   const [restoringSession, setRestoringSession] = useState(true);
 
-  // Web redirect decisions must be based on a definitive cookie-restore
+  // Web redirect decisions must be based on a definitive token-restore
   // result, not on whether the reducer has rendered authSession yet. This
   // avoids a successful login briefly rendering and then being sent back to
   // /login during the dispatch/render boundary.
@@ -248,20 +248,18 @@ export function useStudentSession({
 
       if (Platform.OS === 'web' && !tokens) {
         // The login page and student portal are separate documents. A
-        // successful TOTP response can be available before the HttpOnly
-        // refresh cookie is observable by the next document, especially when
-        // the frontend and API are on different origins. Prefer the short-
-        // lived access-token handoff first, then fall back to the cookie.
+        // successful TOTP response carries a short-lived access token for the
+        // redirect boundary. The tab-scoped refresh token handles reloads.
         const handoffAccess = consumeWebSessionHandoff();
         if (handoffAccess) {
           try {
             const handoffUser = await getMe(handoffAccess);
-            tokens = { access: handoffAccess };
+            tokens = { access: handoffAccess, refresh: await getSavedRefreshToken() };
             restoredWebUser = handoffUser;
             await saveAccessToken(handoffAccess);
           } catch {
             // The handoff may have expired or the access token may already be
-            // invalid. Continue with the normal HttpOnly-cookie restore path.
+            // invalid. Continue with the tab-scoped refresh credential.
           }
         }
 
@@ -269,17 +267,14 @@ export function useStudentSession({
         let restored = Boolean(tokens && restoredWebUser);
         if (restored) {
           // The access token is enough to cross the redirect boundary. The
-          // normal refresh-cookie path remains the long-lived browser session.
+          // refresh token handles subsequent access-token renewals.
         }
 
-        // The shared login page stores the browser refresh credential in an
-        // HttpOnly cookie. Restore both the access token and the already
-        // server-validated user in one request. This avoids a second
-        // authentication hop immediately after the cross-document redirect.
+        // Restore directly through the backend token endpoint after reload.
         for (let attempt = 0; !restored && attempt < WEB_SESSION_RESTORE_ATTEMPTS && active; attempt += 1) {
           try {
             const refreshed = await refreshAccessToken();
-            tokens = { access: refreshed.access };
+            tokens = { access: refreshed.access, refresh: await getSavedRefreshToken() };
             restoredWebUser = refreshed.user;
             await saveAccessToken(refreshed.access);
             restored = true;
@@ -319,10 +314,8 @@ export function useStudentSession({
           } catch (restoreError) {
             if (!isSessionRejected(restoreError)) throw restoreError;
             if (Platform.OS === 'web') {
-              // A browser session has no JS refresh token. If the first
-              // access-token request races the cross-document redirect,
-              // re-read the HttpOnly session cookie and retry as a bounded
-              // session restore instead of declaring the user logged out.
+              // Retry with the tab-scoped refresh token if the access token
+              // expired across the document redirect.
               let refreshed = false;
               let refreshError: unknown = restoreError;
               for (let attempt = 0; attempt < WEB_SESSION_RESTORE_ATTEMPTS && active; attempt += 1) {

@@ -18,4 +18,3 @@ test('production browser builds call the configured backend directly', async () 
   assert.match(buildScript, /JSON\.stringify\(origin\)/);
   assert.match(portalClient, /import\.meta\.env\.VITE_API_BASE_URL/);
 });
-

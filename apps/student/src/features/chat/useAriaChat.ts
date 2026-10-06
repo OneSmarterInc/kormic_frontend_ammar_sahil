@@ -9,6 +9,7 @@ import {
   editAriaMessage,
   getAgentName,
   getAriaHistory,
+  getAriaUpdates,
   resumeAriaJob,
   updateAgentName,
 } from '../../services/api';
@@ -20,7 +21,10 @@ import {
   hydrateAriaMessages,
   getWelcomeMessage,
   groupThreadsByDate,
+  latestAriaServerId,
+  mergeAriaUpdates,
   normalizeAriaHistory,
+  pendingAriaQueryIds,
   stripWelcomeMessage,
 } from './chatHistory';
 import { AriaChatProps, ChatMessage } from './types';
@@ -82,6 +86,15 @@ export function useAriaChat({
   const shouldScrollMessagesToEndRef = useRef(true);
   const historyThreads = useMemo(() => buildAriaThreads(historyMessages), [historyMessages]);
   const groupedThreads = useMemo(() => groupThreadsByDate(historyThreads), [historyThreads]);
+  const pendingQueryIds = useMemo(() => pendingAriaQueryIds([...historyMessages, ...messages]),
+    [historyMessages, messages]);
+  const pendingQueryKey = pendingQueryIds.join(',');
+  const historyRef = useRef(historyMessages);
+  const messagesRef = useRef(messages);
+  const selectedThreadRef = useRef(selectedThreadId);
+  historyRef.current = historyMessages;
+  messagesRef.current = messages;
+  selectedThreadRef.current = selectedThreadId;
   const [copiedMessageId, setCopiedMessageId] = useState<string | undefined>();
   const [editingMessage, setEditingMessage] = useState<ChatMessage | undefined>();
   const [editDraft, setEditDraft] = useState('');
@@ -96,55 +109,49 @@ export function useAriaChat({
     scrollMessagesToEnd(false);
   }, [messages, loading, historyLoading]);
   useEffect(() => {
-    if (!session) {
-      return;
-    }
-
-    const hasPendingEscalation = messages.some(
-      (message) => message.role === 'aria' && message.escalationStatus === 'pending',
-    );
-
-    if (!hasPendingEscalation) {
-      return;
-    }
-
-    console.log('[Aria] Pending escalation detected. Starting auto-refresh.');
-
+    if (!session || historyLoading || !pendingQueryKey) return;
     let active = true;
     const generation = cacheGeneration();
-    const interval = setInterval(async () => {
-      if (sendingRef.current) return;
+    let cursor = Math.max(
+      latestAriaServerId(historyRef.current), latestAriaServerId(messagesRef.current),
+    );
+    let timer: ReturnType<typeof setTimeout>;
+    const schedule = (delay: number) => { if (active) timer = setTimeout(poll, delay); };
+    const poll = async () => {
+      if (sendingRef.current) { schedule(5000); return; }
+      const queryIds = pendingAriaQueryIds([...historyRef.current, ...messagesRef.current]);
+      if (!queryIds.length) return;
       try {
-        console.log('[Aria] Checking for university response...');
-
-        const history = await getAriaHistory(session);
-        if (!active || generation !== cacheGeneration() || sendingRef.current) return;
-        const nextHistory = normalizeAriaHistory(history.messages ?? []);
-
-        setHistoryMessages(nextHistory);
-        cacheAriaMessages(session, nextHistory);
-
-        setMessages(nextHistory.length > 0 ? nextHistory : [getWelcomeMessage(agentName)]);
-
-        const stillPending = nextHistory.some(
-          (message) => message.role === 'aria' && message.escalationStatus === 'pending',
+        cursor = Math.max(
+          cursor, latestAriaServerId(historyRef.current), latestAriaServerId(messagesRef.current),
         );
-
-        console.log('[Aria] Auto-refresh result:', {
-          messageCount: nextHistory.length,
-          stillPending,
-        });
-      } catch (error) {
-        console.log('[Aria] Auto-refresh failed:', error);
+        const update = await getAriaUpdates(session, cursor, queryIds);
+        if (!active || generation !== cacheGeneration()) return;
+        if (sendingRef.current) { schedule(5000); return; }
+        cursor = Math.max(cursor, update.last_id);
+        const incoming = normalizeAriaHistory(update.messages ?? []);
+        // Drain a multi-page delta before clearing the last pending status;
+        // otherwise the polling effect could stop before the answer arrives.
+        const statuses = update.has_more ? {} : (update.escalations ?? {});
+        const nextHistory = mergeAriaUpdates(historyRef.current, incoming, statuses);
+        if (nextHistory !== historyRef.current) {
+          historyRef.current = nextHistory;
+          setHistoryMessages(nextHistory);
+          cacheAriaMessages(session, nextHistory, generation);
+        }
+        if (incoming.length || Object.keys(statuses).length) {
+          setMessages((current) => mergeAriaUpdates(
+            current, selectedThreadRef.current ? [] : incoming, statuses,
+          ));
+        }
+        schedule(update.has_more ? 0 : 5000);
+      } catch {
+        schedule(5000);
       }
-    }, 5000);
-
-    return () => {
-      console.log('[Aria] Stopping auto-refresh.');
-      active = false;
-      clearInterval(interval);
     };
-  }, [session, messages, agentName]);
+    schedule(5000);
+    return () => { active = false; clearTimeout(timer); };
+  }, [session, historyLoading, pendingQueryKey]);
   const applyAgentName = (nextAgentName: string) => {
     agentNameRef.current = nextAgentName;
     setAgentName(nextAgentName);
@@ -172,7 +179,7 @@ export function useAriaChat({
       return DEFAULT_AGENT_NAME;
     }
   };
-  const loadHistory = async (nextAgentName = agentName, syncActiveChat = false) => {
+  const loadHistory = async (syncActiveChat = false) => {
     if (!session) return;
 
     const generation = cacheGeneration();
@@ -217,14 +224,14 @@ export function useAriaChat({
       if (!isCurrent()) return;
       if (saved.length) { setMessages(saved); setHistoryMessages(saved); }
       // Name lookup and server history run independently; neither blocks disk hydration.
-      const historyRequest = loadHistory(agentName, true);
+      const historyRequest = loadHistory(true);
       try {
         const result = await resumeAriaJob(session, controller.signal, () => {
           if (isCurrent()) setLoading(true);
         });
         await historyRequest;
         await nameRequest;
-        if (result && isCurrent()) await loadHistory(agentName, true);
+        if (result && isCurrent()) await loadHistory(true);
       } catch (error) {
         if (isCurrent()) setError(error instanceof Error ? error.message : 'Unable to check chat progress.');
       } finally {
@@ -342,7 +349,7 @@ export function useAriaChat({
         return nextMessages;
       });
 
-      await loadHistory(agentName, true);
+      await loadHistory(true);
     } catch (chatError) {
       if (!isCurrent()) return;
       setError(chatError instanceof Error ? chatError.message : `Unable to chat with ${agentName}`);
@@ -395,7 +402,7 @@ export function useAriaChat({
       await editAriaMessage(session, editingMessage.serverId, nextText);
       setEditingMessage(undefined);
       setEditDraft('');
-      await loadHistory(agentName, true);
+      await loadHistory(true);
     } catch (editError) {
       setError(editError instanceof Error ? editError.message : 'Unable to edit message.');
     } finally {

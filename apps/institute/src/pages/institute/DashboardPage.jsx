@@ -14,7 +14,7 @@ import Button from "../../components/common/Button";
 import Spinner from "../../components/common/Spinner";
 import ErrorBanner from "../../components/common/ErrorBanner";
 import EmptyState from "../../components/common/EmptyState";
-import { listInstituteLists } from "../../api/instituteApi";
+import { getInstituteListSummary } from "../../api/instituteApi";
 import { useAsync } from "../../hooks/useAsync";
 import { useAuth } from "../../context/AuthContext";
 
@@ -22,22 +22,20 @@ export default function DashboardPage() {
   const { user } = useAuth();
 
   const { data, loading, error, refetch } = useAsync(
-    () => listInstituteLists(user.institute_id).then((res) => res.lists || []),
+    (signal) => getInstituteListSummary(user.institute_id, signal),
     [user.institute_id]
   );
 
   if (loading) return <Spinner label="Loading dashboard..." />;
   if (error) return <ErrorBanner error={error} onRetry={refetch} />;
 
-  const lists = data || [];
-  const totalRows = lists.reduce((sum, l) => sum + (l.row_count || 0), 0);
-  const totalClaimed = lists.reduce((sum, l) => sum + (l.claimed_count || 0), 0);
-  const totalUnclaimed = lists.reduce((sum, l) => sum + (l.unclaimed_count || 0), 0);
+  const recentLists = data?.recent_lists || [];
+  const listCount = data?.list_count ?? 0;
 
   const stats = [
     {
       title: "Uploaded lists",
-      value: lists.length,
+      value: listCount,
       subtitle: "View all lists",
       color: "blue",
       icon: FileSpreadsheet,
@@ -45,7 +43,7 @@ export default function DashboardPage() {
     },
     {
       title: "Students on rosters",
-      value: totalRows,
+      value: data?.total_rows ?? 0,
       subtitle: "Across every uploaded list",
       color: "purple",
       icon: Users,
@@ -53,7 +51,7 @@ export default function DashboardPage() {
     },
     {
       title: "Claimed invites",
-      value: totalClaimed,
+      value: data?.claimed_count ?? 0,
       subtitle: "Students who confirmed their profile",
       color: "green",
       icon: CheckCircle2,
@@ -61,7 +59,7 @@ export default function DashboardPage() {
     },
     {
       title: "Pending invites",
-      value: totalUnclaimed,
+      value: data?.unclaimed_count ?? 0,
       subtitle: "Not yet claimed",
       color: "orange",
       icon: Clock,
@@ -75,10 +73,6 @@ export default function DashboardPage() {
     orange: { bg: "bg-orange-50", text: "text-orange-600" },
     purple: { bg: "bg-purple-50", text: "text-purple-600" },
   };
-
-  const recentLists = [...lists]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 5);
 
   return (
     <div className="mx-auto max-w-[1650px] px-6 pt-3 pb-6 space-y-5">
@@ -140,7 +134,7 @@ export default function DashboardPage() {
         <CardHeader
           icon={FileSpreadsheet}
           title="Recently uploaded lists"
-          subtitle={`${lists.length} list${lists.length === 1 ? "" : "s"} in total`}
+          subtitle={`${listCount} list${listCount === 1 ? "" : "s"} in total`}
           action={
             <Link to="/institute/lists" className="flex items-center gap-1 text-sm font-medium text-brand-600">
               View All

@@ -105,9 +105,9 @@ export const getAutoDiscoverClusters = (jobId, signal) =>
 
 /**
  * POST /api/university-admin/scrape-urls/auto-discover/<job_id>/clusters/<category>/approve/ —
- * applies the cluster's URLs, scrapes them inline, and tags the resulting facts with the
- * matching knowledge group. Re-approving the same category updates the existing approval
- * record. Runs synchronously — expect a few seconds per URL.
+ * records the approved URL selection and returns a queued scrape job (202).
+ * Poll getAutoDiscoverClusters for status/result. Re-approving after a
+ * completed/failed scrape starts a new job; an active job is returned unchanged.
  */
 export const approveAutoDiscoverCluster = (jobId, category) =>
   client

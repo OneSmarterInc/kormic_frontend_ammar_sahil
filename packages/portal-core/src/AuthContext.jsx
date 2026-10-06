@@ -1,9 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   clearAuth,
+  getAccessToken,
   getCachedUser,
+  getRefreshToken,
   setAccessToken,
   setCachedUser,
+  setRefreshToken,
 } from "./tokenStorage.js";
 
 export function createPortalAuth(authApi) {
@@ -69,6 +72,8 @@ export function createPortalAuth(authApi) {
 
     const completeTotpLogin = useCallback(async (mfaToken, code) => {
       const res = await authApi.verifyTotp(mfaToken, code);
+      if (!res.refresh) throw new Error("The backend did not return a session token.");
+      setRefreshToken(authApi.portal, res.refresh);
       setAccessToken(res.access);
       setCachedUser(res.user);
       setUser(res.user);
@@ -93,9 +98,11 @@ export function createPortalAuth(authApi) {
     }, []);
 
     const logout = useCallback(async () => {
+      const refresh = getRefreshToken(authApi.portal);
+      const access = getAccessToken();
       clearAuth();
       try {
-        await authApi.logout();
+        await authApi.logout(refresh, access);
       } catch {
         // Local access is cleared even if the server is unavailable.
       }

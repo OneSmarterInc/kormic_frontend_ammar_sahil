@@ -17,13 +17,17 @@ import { saveBlob } from "../../utils/download";
 export default function ListsPage() {
   const { user } = useAuth();
   const [downloadingListId, setDownloadingListId] = useState(null);
+  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
 
   const { data, loading, error, refetch } = useAsync(
-    () => listInstituteLists(user.institute_id),
-    [user.institute_id]
+    (signal) => listInstituteLists(user.institute_id, { page, search, signal }),
+    [user.institute_id, page, search]
   );
 
   const lists = data?.lists || [];
+  const pagination = data?.pagination;
 
   const handleDownload = async (list) => {
     setDownloadingListId(list.list_id);
@@ -47,6 +51,11 @@ export default function ListsPage() {
         }
       />
 
+      <form onSubmit={(event) => { event.preventDefault(); setPage(1); setSearch(searchInput.trim()); }} className="mb-4 flex max-w-lg gap-2">
+        <input aria-label="Search uploaded lists" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Search list, file or contact" className="min-w-0 flex-1 rounded-lg border border-ink-200 px-3 py-2 text-sm" />
+        <Button type="submit">Search</Button>
+      </form>
+
       {loading ? (
         <Spinner label="Loading lists..." />
       ) : error ? (
@@ -55,8 +64,8 @@ export default function ListsPage() {
         <Card>
           <EmptyState
             icon={FileSpreadsheet}
-            title="No lists uploaded yet"
-            description="Upload your first student roster to start inviting students."
+            title={pagination?.total ? "No lists on this page" : search ? "No matching lists" : "No lists uploaded yet"}
+            description={pagination?.total ? "Go to the previous page." : search ? "Try another search term." : "Upload your first student roster to start inviting students."}
             action={
               <Button to="/institute/upload" icon={UploadCloud}>Upload a list</Button>
             }
@@ -123,6 +132,13 @@ export default function ListsPage() {
             </table>
           </div>
         </Card>
+      )}
+      {pagination && pagination.total > 0 && (
+        <div className="mt-4 flex items-center justify-between text-sm text-ink-500">
+          <Button variant="secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>
+          <span>Page {pagination.page} · {pagination.total} lists</span>
+          <Button variant="secondary" disabled={!pagination.has_next} onClick={() => setPage(page + 1)}>Next</Button>
+        </div>
       )}
     </div>
   );

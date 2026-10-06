@@ -36,14 +36,15 @@ const TABS = [
 export default function EscalationQueue() {
   const { universityId } = useParams();
   const [tab, setTab] = useState("active");
+  const [page, setPage] = useState(1);
   const [answering, setAnswering] = useState(null); // query object or null
   const [ignoring, setIgnoring] = useState(null); // query object or null
   const [deleting, setDeleting] = useState(null); // query object or null
 
   const activeTab = TABS.find((t) => t.key === tab);
   const { data, loading, error, refetch } = useAsync(
-    (signal) => activeTab.fetcher(universityId, signal),
-    [universityId, tab]
+    (signal) => activeTab.fetcher(universityId, signal, page),
+    [universityId, tab, page]
   );
 
   const queries = data?.queries || [];
@@ -56,7 +57,7 @@ export default function EscalationQueue() {
         {TABS.map((t) => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => { setTab(t.key); setPage(1); }}
             className={clsx(
               "rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors",
               tab === t.key ? "bg-white text-brand-700 shadow-sm" : "text-ink-500 hover:text-ink-800"
@@ -90,6 +91,18 @@ export default function EscalationQueue() {
               onDelete={() => setDeleting(q)}
             />
           ))}
+        </div>
+      )}
+
+      {data?.pagination && (
+        <div className="mt-5 flex items-center justify-between gap-3 text-sm text-ink-500">
+          <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+            Previous
+          </Button>
+          <span>Page {data.pagination.page} · {data.pagination.total} queries</span>
+          <Button variant="secondary" size="sm" disabled={!data.pagination.has_next} onClick={() => setPage(page + 1)}>
+            Next
+          </Button>
         </div>
       )}
 

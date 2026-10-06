@@ -1,7 +1,17 @@
-// Browser credentials live only in memory. Refresh tokens are HttpOnly cookies.
+// Access credentials live in memory; refresh credentials are scoped to this tab.
 let accessToken = "";
 let cachedUser = null;
 let generation = 0;
+const refreshKey = (portal) => `kormic.refresh.${portal}`;
+
+export const getRefreshToken = (portal) => {
+  try { return globalThis.sessionStorage?.getItem(refreshKey(portal)) || ""; }
+  catch { return ""; }
+};
+export const setRefreshToken = (portal, token) => {
+  if (!token) return;
+  globalThis.sessionStorage?.setItem(refreshKey(portal), token);
+};
 
 export function clearLegacyAuthStorage() {
   try {
@@ -23,5 +33,10 @@ export const clearAuth = () => {
   generation += 1;
   accessToken = "";
   cachedUser = null;
+  try {
+    for (const portal of ["student", "university", "institute", "superuser"]) {
+      globalThis.sessionStorage?.removeItem(refreshKey(portal));
+    }
+  } catch { /* Storage may be unavailable. */ }
   clearLegacyAuthStorage();
 };

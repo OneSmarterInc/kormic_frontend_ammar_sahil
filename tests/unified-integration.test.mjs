@@ -38,20 +38,20 @@ test('student browser login and logout use Kormic Login while native remains int
 
 const endpointContracts = {
   'apps/student/src/services/api.ts': [
-    '/auth/web/csrf/', '/auth/login/', '/auth/register/', '/auth/verify-totp/',
+    '/auth/login/', '/auth/register/', '/auth/verify-totp/',
     '/auth/refresh/', '/auth/logout/', '/auth/totp/enroll/',
     '/auth/totp/verify-enrollment/', '/auth/me/'
   ],
   'apps/university/src/api/authApi.js': [
-    '/auth/web/login/', '/auth/web/verify-totp/', '/auth/totp/enroll/',
+    '/auth/login/', '/auth/verify-totp/', '/auth/refresh/', '/auth/logout/', '/auth/totp/enroll/',
     '/auth/totp/verify-enrollment/', '/auth/me/'
   ],
   'apps/institute/src/api/authApi.js': [
-    '/auth/web/login/', '/auth/web/verify-totp/', '/auth/totp/enroll/',
+    '/auth/login/', '/auth/verify-totp/', '/auth/refresh/', '/auth/logout/', '/auth/totp/enroll/',
     '/auth/totp/verify-enrollment/', '/auth/me/'
   ],
   'apps/superuser/src/api/authApi.js': [
-    '/auth/web/login/', '/auth/web/verify-totp/', '/auth/totp/enroll/',
+    '/auth/login/', '/auth/verify-totp/', '/auth/refresh/', '/auth/logout/', '/auth/totp/enroll/',
     '/auth/totp/verify-enrollment/', '/auth/me/'
   ]
 };

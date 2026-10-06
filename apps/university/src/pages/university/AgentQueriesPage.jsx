@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Bot, CheckCircle2, Clock3, Search, ArrowRight, ChevronDown } from "lucide-react";
 import client from "../../api/client";
+import { useVisiblePolling } from "@kormic/portal-core/hooks/useVisiblePolling.js";
 
 export default function AgentQueriesPage() {
   const [params, setParams] = useSearchParams();
@@ -24,7 +25,8 @@ export default function AgentQueriesPage() {
       if (id === generation.current) { setData(response.data); setError(""); }
     } catch (e) { if (id === generation.current) setError(e.message || "Unable to load agent queries."); }
   }, [page, term, status, direction, selected]);
-  useEffect(() => { setData(null); load(); const timer=setInterval(load,30000); return () => { ++generation.current; clearInterval(timer); }; }, [load]);
+  useEffect(() => { setData(null); return () => { ++generation.current; }; }, [load]);
+  useVisiblePolling(load, 30000);
   const answer = async () => {
     setBusy(true); setError("");
     try {

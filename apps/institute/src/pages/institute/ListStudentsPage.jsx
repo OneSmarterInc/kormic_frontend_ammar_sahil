@@ -13,12 +13,11 @@ import ConfirmModal from "../../components/common/ConfirmModal";
 import {
   downloadInstituteListFile,
   getInstituteListStudents,
-  listInstituteLists,
+  getInstituteListDetail,
   sendInstituteListInvites,
   sendInstituteListStudentInvite,
 } from "../../api/instituteApi";
 import { useAction, useAsync } from "../../hooks/useAsync";
-import { useAuth } from "../../context/AuthContext";
 import { saveBlob } from "../../utils/download";
 
 function statusTone(status) {
@@ -33,17 +32,20 @@ function statusTone(status) {
 }
 
 export default function ListStudentsPage() {
-  const { user } = useAuth();
   const { listId } = useParams();
   const navigate = useNavigate();
   const [sendingInvites, setSendingInvites] = useState(false);
   const [resendingInvites, setResendingInvites] = useState(false);
   const [invitingStudentId, setInvitingStudentId] = useState(null);
   const [downloadingFile, setDownloadingFile] = useState(false);
+  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [rowStatus, setRowStatus] = useState("");
 
-  const { data: listsData, loading: listsLoading } = useAsync(
-    () => listInstituteLists(user.institute_id),
-    [user.institute_id]
+  const { data: listData, loading: listLoading, error: listError, refetch: refetchList } = useAsync(
+    (signal) => getInstituteListDetail(listId, signal),
+    [listId]
   );
 
   const {
@@ -51,21 +53,22 @@ export default function ListStudentsPage() {
     loading,
     error,
     refetch,
-  } = useAsync(() => getInstituteListStudents(listId), [listId]);
+  } = useAsync((signal) => getInstituteListStudents(listId, { page, search, status: rowStatus, signal }), [listId, page, search, rowStatus]);
 
-  const listMeta = (listsData?.lists || []).find((l) => String(l.list_id) === String(listId));
+  const listMeta = listData?.list;
   const students = rosterData?.students || [];
+  const pagination = rosterData?.pagination;
 
-  const uninvitedCount = students.filter((s) => s.status === "unclaimed" && (!s.invited_at || s.invite_delivery_status === "failed")).length;
-  const invitedCount = students.filter((s) => s.status === "unclaimed" && s.invite_delivery_status !== "queued").length;
-  const hasPendingInvites = students.some((s) => s.invite_delivery_status === "queued");
+  const uninvitedCount = listData?.invite_counts?.send_eligible ?? 0;
+  const invitedCount = listData?.invite_counts?.resend_eligible ?? 0;
+  const hasPendingInvites = (listData?.invite_counts?.queued ?? 0) > 0;
   useEffect(() => {
     if (!hasPendingInvites) return;
     const timer = setInterval(() => {
-      if (document.visibilityState === "visible") refetch();
+      if (document.visibilityState === "visible") { refetch(); refetchList(); }
     }, 5000);
     return () => clearInterval(timer);
-  }, [hasPendingInvites, refetch]);
+  }, [hasPendingInvites, refetch, refetchList]);
 
   const { execute: sendInvites, loading: sending, error: sendError } = useAction((resend) =>
     sendInstituteListInvites(listId, resend)
@@ -88,7 +91,7 @@ export default function ListStudentsPage() {
       }
       setSendingInvites(false);
       setResendingInvites(false);
-      refetch();
+      refetch(); refetchList();
     } catch (err) {
       toast.error(err.message);
     }
@@ -117,12 +120,11 @@ export default function ListStudentsPage() {
         toast.success(result.invite_delivery_status === "sent"
           ? `Invite sent to ${student.full_name}` : `Invite queued for ${student.full_name}`);
       }
-      refetch();
     } catch (err) {
       toast.error(err.message);
     } finally {
       setInvitingStudentId(null);
-      refetch();
+      refetch(); refetchList();
     }
   };
 
@@ -147,19 +149,20 @@ export default function ListStudentsPage() {
             <Button
               variant="secondary"
               icon={RefreshCw}
-              disabled={invitedCount === 0}
+              disabled={listMeta?.status !== "active" || invitedCount === 0}
               onClick={() => setResendingInvites(true)}
             >
-              Resend to invited
+              Resend to eligible
             </Button>
-            <Button icon={Mail} disabled={uninvitedCount === 0} onClick={() => setSendingInvites(true)}>
+            <Button icon={Mail} disabled={listMeta?.status !== "active" || uninvitedCount === 0} onClick={() => setSendingInvites(true)}>
               Send invites
             </Button>
           </div>
         }
       />
 
-      {!listsLoading && listMeta && (
+      {listError && <ErrorBanner error={listError} onRetry={refetchList} />}
+      {!listLoading && listMeta && (
         <div className="flex flex-wrap gap-2">
           <Badge tone={listMeta.status === "active" ? "success" : "neutral"} className="capitalize">
             {listMeta.status}
@@ -202,12 +205,19 @@ export default function ListStudentsPage() {
           subtitle="Every row from the uploaded CSV, with its invite and claim status."
         />
         <CardBody>
-          {loading && !rosterData ? (
+          <form onSubmit={(event) => { event.preventDefault(); setPage(1); setSearch(searchInput.trim()); }} className="mb-4 flex flex-wrap gap-2">
+            <input aria-label="Search roster" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Search student, email or field" className="min-w-0 flex-1 rounded-lg border border-ink-200 px-3 py-2 text-sm" />
+            <select aria-label="Filter roster status" value={rowStatus} onChange={(event) => { setRowStatus(event.target.value); setPage(1); }} className="rounded-lg border border-ink-200 px-3 py-2 text-sm">
+              <option value="">All statuses</option><option value="unclaimed">Unclaimed</option><option value="claimed">Claimed</option><option value="expired">Expired</option><option value="revoked">Revoked</option>
+            </select>
+            <Button type="submit">Search</Button>
+          </form>
+          {loading ? (
             <Spinner label="Loading roster..." />
           ) : error ? (
             <ErrorBanner error={error} onRetry={refetch} />
           ) : students.length === 0 ? (
-            <EmptyState icon={Users} title="No rows on this list" />
+            <EmptyState icon={Users} title={pagination?.total ? "No rows on this page" : search || rowStatus ? "No matching rows" : "No rows on this list"} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -255,7 +265,7 @@ export default function ListStudentsPage() {
                           size="sm"
                           icon={Mail}
                           loading={invitingStudentId === s.id}
-                          disabled={s.status === "claimed" || invitingStudentId !== null}
+                          disabled={listMeta?.status !== "active" || s.status !== "unclaimed" || s.invite_delivery_status === "queued" || invitingStudentId !== null}
                           onClick={() => handleSendStudentInvite(s)}
                         >
                           {s.invited_at ? "Resend" : "Invite"}
@@ -265,6 +275,13 @@ export default function ListStudentsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+          {pagination && pagination.total > 0 && (
+            <div className="mt-4 flex items-center justify-between text-sm text-ink-500">
+              <Button variant="secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>
+              <span>Page {pagination.page} · {pagination.total} rows</span>
+              <Button variant="secondary" disabled={!pagination.has_next} onClick={() => setPage(page + 1)}>Next</Button>
             </div>
           )}
         </CardBody>
@@ -278,7 +295,7 @@ export default function ListStudentsPage() {
         title="Send invites"
         confirmLabel="Send invites"
         tone="primary"
-        description={`Emails a claim link to the ${uninvitedCount} row${uninvitedCount === 1 ? "" : "s"} on this list that are new or have failed delivery. Sent and queued invitations are skipped.`}
+        description={`Emails a claim link to the ${uninvitedCount} eligible unclaimed row${uninvitedCount === 1 ? "" : "s"} on this list. Sent and queued invitations are skipped.`}
       />
 
       <ConfirmModal
@@ -287,9 +304,9 @@ export default function ListStudentsPage() {
         onConfirm={() => handleSendInvites(true)}
         loading={sending}
         title="Resend invites"
-        confirmLabel="Resend to all invited"
+        confirmLabel="Resend to all eligible"
         tone="danger"
-        description={`Re-sends the claim link email to all ${invitedCount} unclaimed row${invitedCount === 1 ? "" : "s"} on this list. Queued invitations are skipped.`}
+        description={`Sends the claim link email to all ${invitedCount} eligible unclaimed row${invitedCount === 1 ? "" : "s"} on this list, including rows already sent. Queued invitations are skipped.`}
       />
     </div>
   );

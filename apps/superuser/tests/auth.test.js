@@ -2,15 +2,26 @@ import assert from 'node:assert/strict';
 import { beforeEach, afterEach, test } from 'node:test';
 import {
   getAccessToken, setAccessToken,
-  getCachedUser, setCachedUser, clearAuth,
+  getCachedUser, setCachedUser, clearAuth, setRefreshToken,
 } from '../src/lib/tokenStorage.js';
 import { roleHome } from '../src/lib/constants.js';
 
 let previousStorage;
+let previousSessionStorage;
 beforeEach(() => {
   clearAuth();
   previousStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  previousSessionStorage = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage');
   const values = new Map();
+  const sessionValues = new Map();
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    configurable: true,
+    value: {
+      getItem: (key) => sessionValues.get(key) ?? null,
+      setItem: (key, value) => sessionValues.set(key, String(value)),
+      removeItem: (key) => sessionValues.delete(key),
+    },
+  });
   Object.defineProperty(globalThis, 'localStorage', {
     configurable: true,
     value: {
@@ -23,6 +34,8 @@ beforeEach(() => {
 afterEach(() => {
   if (previousStorage) Object.defineProperty(globalThis, 'localStorage', previousStorage);
   else delete globalThis.localStorage;
+  if (previousSessionStorage) Object.defineProperty(globalThis, 'sessionStorage', previousSessionStorage);
+  else delete globalThis.sessionStorage;
 });
 
 test('a fresh session has no credentials or cached user', () => {
@@ -92,8 +105,8 @@ test('password and MFA requests stay bound to this portal', async () => {
   await login('officer@example.com', 'password');
   await verifyTotp('challenge', '123456');
   assert.deepEqual(requests, [
-    { url: '/auth/web/login/', body: { email: 'officer@example.com', password: 'password', portal: 'superuser' } },
-    { url: '/auth/web/verify-totp/', body: { mfa_token: 'challenge', code: '123456', portal: 'superuser' } },
+    { url: '/auth/login/', body: { email: 'officer@example.com', password: 'password', portal: 'superuser' } },
+    { url: '/auth/verify-totp/', body: { mfa_token: 'challenge', code: '123456', portal: 'superuser' } },
   ]);
 });
 
@@ -114,19 +127,19 @@ test('wrong-portal rejection remains a password-stage error without refresh or t
 });
 
 
-test('refresh uses credentials and CSRF without sending a JS-readable refresh token', async () => {
+test('refresh sends the tab-scoped token directly to the backend', async () => {
+  setRefreshToken('superuser', 'refresh-token');
   const requests = [];
   cookieTransport.defaults.adapter = async (config) => {
     requests.push(config);
-    return { data: config.method === 'get' ? { csrfToken: 'masked-token' } : { access: 'fresh-access' }, status: 200, headers: {}, config };
+    return { data: { access: 'fresh-access' }, status: 200, headers: {}, config };
   };
   const result = await Promise.all([requestRefresh(), requestRefresh()]);
   assert.deepEqual(result, ['fresh-access', 'fresh-access']);
-  assert.equal(requests.length, 2);
-  assert.equal(requests[1].url, '/auth/web/refresh/');
-  assert.equal(requests[1].withCredentials, true);
-  assert.equal(requests[1].headers['X-CSRFToken'], 'masked-token');
-  assert.equal(Object.hasOwn(JSON.parse(requests[1].data), 'refresh'), false);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url, '/auth/refresh/');
+  assert.equal(requests[0].withCredentials, false);
+  assert.deepEqual(JSON.parse(requests[0].data), { refresh: 'refresh-token' });
   assert.equal(getAccessToken(), 'fresh-access');
 });
 
@@ -142,10 +155,10 @@ test('legacy persisted credentials are removed while preferences survive', async
 });
 
 test('logout prevents an in-flight refresh from restoring access', async () => {
+  setRefreshToken('superuser', 'refresh-token');
   let finish;
-  cookieTransport.defaults.adapter = (config) => config.method === 'get'
-    ? Promise.resolve({ data: { csrfToken: 'csrf' }, status: 200, headers: {}, config })
-    : new Promise((resolve) => { finish = () => resolve({ data: { access: 'stale-access' }, status: 200, headers: {}, config }); });
+  cookieTransport.defaults.adapter = (config) =>
+    new Promise((resolve) => { finish = () => resolve({ data: { access: 'stale-access' }, status: 200, headers: {}, config }); });
   const pending = requestRefresh();
   while (!finish) await new Promise((resolve) => setImmediate(resolve));
   clearAuth();

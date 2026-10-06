@@ -3,7 +3,10 @@ import {
   cacheAriaMessages,
   getCachedAriaMessages,
   getWelcomeMessage,
+  latestAriaServerId,
+  mergeAriaUpdates,
   normalizeAriaHistory,
+  pendingAriaQueryIds,
 } from '../src/features/chat/chatHistory';
 import { ChatMessage } from '../src/features/chat/types';
 import { normalizeLinkedinHistory } from '../src/features/linkedin/linkedinData';
@@ -82,6 +85,23 @@ describe('feature data contracts', () => {
       confidence: 0,
     });
     expect(messages[1]?.attachments).toHaveLength(1);
+  });
+
+  it('merges an answer delta into an older checking bubble without duplicating messages', () => {
+    const old: ChatMessage = {
+      id: '1', serverId: 1, role: 'aria', text: 'Checking', queryId: 7,
+      escalationStatus: 'pending', pending: true,
+    };
+    const answer: ChatMessage = {
+      id: '2', serverId: 2, role: 'aria', text: 'Answered', queryId: 7,
+      escalationStatus: 'resolved', pending: false,
+    };
+    const merged = mergeAriaUpdates([old], [answer], {'7': 'resolved'});
+    expect(merged.map(message => message.id)).toEqual(['1', '2']);
+    expect(merged[0]).toMatchObject({escalationStatus: 'resolved', pending: false});
+    expect(mergeAriaUpdates(merged, [answer], {'7': 'resolved'})).toBe(merged);
+    expect(pendingAriaQueryIds(merged)).toEqual([]);
+    expect(latestAriaServerId(merged)).toBe(2);
   });
 
   it('groups replies with their question and isolates cached students', () => {

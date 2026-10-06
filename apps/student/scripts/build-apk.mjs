@@ -20,7 +20,7 @@ const env = { ...process.env, JAVA_HOME: java, ANDROID_HOME: sdk,
   PATH: [resolve(java, 'bin'), resolve(process.execPath, '..'), process.env.PATH].join(delimiter) };
 writeFileSync(resolve(app, 'android/local.properties'), `sdk.dir=${sdk.replaceAll('\\', '/')}\n`);
 await syncBranding();
-const result = spawnSync('cmd.exe', ['/d', '/c', 'gradlew.bat', ':app:assembleRelease', '--no-daemon', '--max-workers=2', '-PreactNativeArchitectures=arm64-v8a,armeabi-v7a', `-PkormicCmakeStaging=${process.env.KORMIC_CMAKE_STAGING || resolve(app, '../../../.runtime/student-cxx')}`], { cwd: resolve(app, 'android'), env, stdio: 'inherit' });
+const result = spawnSync('cmd.exe', ['/d', '/c', 'gradlew.bat', ':app:assembleRelease', '--no-daemon', '--max-workers=2', '-Pkotlin.compiler.execution.strategy=in-process', '-PreactNativeArchitectures=arm64-v8a,armeabi-v7a', `-PkormicCmakeStaging=${process.env.KORMIC_CMAKE_STAGING || resolve(app, '../../../.runtime/student-cxx')}`], { cwd: resolve(app, 'android'), env, stdio: 'inherit' });
 if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status || 1);
 const output = resolve(app, 'builds');

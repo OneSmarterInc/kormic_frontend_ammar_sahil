@@ -412,39 +412,37 @@ Notes: `match_tier` defaults to `"unassessed"`, `recommendation` defaults to `"r
 ```
 
 ### 3.7 `GET /api/university/<university_id>/queries/`
-`django_api/views.py:1396` (`UniversityQueriesView`). **All** `PendingQuery` rows for this university (pending + resolved).
-- Response `200`: `{"university_id": "...", "queries": [ <pending-query object — see shape below> ] }`
+`django_api.views.UniversityQueriesView`. Legacy `PendingQuery` list for the signed-in university, including pending, resolved, and ignored rows. Department users see only their assigned groups. Results are newest first, then by descending ID.
+- Query parameters: `page` (default `1`) and `page_size` (default `20`, maximum `100`). Both must be positive integers.
+- Response `200`: `{"university_id":"...","queries":[...],"pagination":{"page":1,"page_size":20,"total":42,"has_next":true}}`.
+- Response `400`: invalid pagination values.
 
-**Pending-query object shape** (used by §3.7, §3.8, §3.9, §4.1 — with minor key-set differences noted):
+**Compact list object** (used by §3.7, §3.8, and §3.9):
 ```json
 {
-  "id": 7,
   "query_id": 7,
-  "university_id": "acme_school_of_engineering",
-  "university": "Acme School of Engineering",
-  "agent_name": "Nova",
-  "student_id": "stu_a1b2c3",
   "student_name": "Jordan Lee",
   "program": "Computer Science",
   "question": "Do you accept spring admits?",
   "status": "pending",
   "priority": "normal",
-  "urgency_reason": null,
+  "urgency_reason": "",
   "display_status": "pending",
-  "escalation_chain": [],
-  "answer": null,
-  "answered_by": null,
-  "answered_at": null,
+  "group": "admissions",
+  "routed_to_name": "Admissions Office",
+  "routed_to_email": "admissions@example.edu",
+  "answer": "",
+  "answered_by": "",
   "timestamp": "2026-07-19T08:05:00Z"
 }
 ```
-`status`: `pending | resolved`. `priority`: `normal | urgent`. `display_status`: `urgent | pending | answered`.
+`status`: `pending | resolved | ignored`. `priority`: `normal | urgent`. `display_status`: `urgent | pending | answered | ignored`. The full serializer used by other endpoints is unchanged.
 
 ### 3.8 `GET /api/university/<university_id>/queries/active/`
-`django_api/views.py:1407` (`UniversityActiveQueriesView`). Same shape as §3.7 but excludes `status=resolved`.
+`django_api.views.UniversityActiveQueriesView`. Same paginated shape as §3.7, excluding resolved and ignored queries.
 
 ### 3.9 `GET /api/university/<university_id>/queries/archive/`
-`django_api/views.py:1418` (`UniversityArchiveQueriesView`). Same shape as §3.7 but only `status=resolved`.
+`django_api.views.UniversityArchiveQueriesView`. Same paginated shape as §3.7, including resolved and ignored queries only.
 
 ### 3.10 `GET /api/university/<university_id>/knowledge/verified/`
 `django_api/views.py:1429` (`VerifiedKnowledgeView`). Durable, human-verified answers (`VerifiedAnswer` table — populated when an officer resolves a pending query, see §4.2/§4.3).

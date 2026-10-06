@@ -69,6 +69,44 @@ export function normalizeAriaHistory(messages: AriaHistoryMessage[]): ChatMessag
     });
 }
 
+export function pendingAriaQueryIds(messages: ChatMessage[]) {
+  return [...new Set(messages
+    .filter((message) => message.role === 'aria' && message.escalationStatus === 'pending' &&
+      typeof message.queryId === 'number')
+    .map((message) => message.queryId as number))].sort((left, right) => left - right);
+}
+
+export function latestAriaServerId(messages: ChatMessage[]) {
+  return messages.reduce((latest, message) => {
+    const id = Number(message.serverId);
+    return Number.isSafeInteger(id) && id > latest ? id : latest;
+  }, 0);
+}
+
+export function mergeAriaUpdates(
+  current: ChatMessage[], incoming: ChatMessage[], statuses: Record<string, string>,
+) {
+  let changed = false;
+  const updated = current.map((message) => {
+    if (typeof message.queryId !== 'number' ||
+        !Object.prototype.hasOwnProperty.call(statuses, String(message.queryId))) return message;
+    const status = statuses[String(message.queryId)];
+    if (message.escalationStatus === status && message.pending === (status === 'pending')) return message;
+    changed = true;
+    return { ...message, escalationStatus: status, pending: status === 'pending' };
+  });
+  const seen = new Set(updated.map((message) => message.id));
+  for (const message of incoming) {
+    if (!seen.has(message.id)) {
+      seen.add(message.id);
+      updated.push(message);
+      changed = true;
+    }
+  }
+  if (!changed) return current;
+  return incoming.length ? stripWelcomeMessage(updated) : updated;
+}
+
 export function getAriaCacheKey(session: AuthSession | undefined) {
   return session?.user?.student_id || session?.user?.email || 'guest';
 }

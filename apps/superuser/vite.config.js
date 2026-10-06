@@ -12,6 +12,12 @@ export default defineConfig({
       '@kormic/portal-core': fileURLToPath(
         new URL('../../packages/portal-core/src', import.meta.url)
       ),
+      'react': fileURLToPath(new URL('./node_modules/react', import.meta.url)),
+      'react-dom': fileURLToPath(new URL('./node_modules/react-dom', import.meta.url)),
+      'react-router-dom': fileURLToPath(new URL('./node_modules/react-router-dom', import.meta.url)),
+      'axios': fileURLToPath(new URL('./node_modules/axios', import.meta.url)),
+      'clsx': fileURLToPath(new URL('./node_modules/clsx', import.meta.url)),
+      'lucide-react': fileURLToPath(new URL('./node_modules/lucide-react', import.meta.url)),
     },
     dedupe: ['react', 'react-dom', 'react-router-dom', 'lucide-react', 'axios', 'clsx'],
     preserveSymlinks: true,

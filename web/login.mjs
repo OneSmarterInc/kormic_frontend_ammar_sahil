@@ -48,12 +48,7 @@ async function run(form, action) {
   }
 }
 async function finish() {
-  let user;
-  try { user = await client.confirmSession(activePortal); }
-  catch (error) {
-    if (error.status === 401) throw new AuthError('Your browser could not restore the sign-in cookie. The frontend and backend must use a same-site HTTPS setup, and cookies must be allowed.');
-    throw error;
-  }
+  const user = await client.confirmSession(activePortal);
   const destination = safeDestination(user, query.get('next'), location.origin);
   clearSecrets();
   location.replace(destination);

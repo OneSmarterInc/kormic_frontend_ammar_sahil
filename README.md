@@ -11,7 +11,7 @@ Open `/login` (or `/`). The **Login as** selector contains:
 - Institute
 - Administrator
 
-The login keeps the existing backend authentication contract: CSRF-protected browser login, portal-specific HttpOnly refresh cookies, MFA/TOTP, password reset and `/auth/me/`. No backend endpoint changes are required.
+The login calls the existing backend token endpoints directly. It supports MFA/TOTP, password reset, and `/auth/me/`. Browser refresh tokens are kept in the current tab's `sessionStorage`.
 
 After authentication the server-confirmed role routes to:
 
@@ -39,7 +39,7 @@ dist/
   shared/
 ```
 
-All five entry points run on the same frontend origin. Existing role-specific API modules are preserved; the unified integration changes only browser entry/routing plus Student web logout/entry behavior.
+All five entry points run on the same frontend origin. Existing role-specific API modules are preserved; the unified integration also uses direct backend requests for browser authentication.
 
 The Student repository also contains Android-native Gradle resources. Those are intentionally not duplicated here because this repository is the consolidated **browser frontend**; the original Student repository remains the source for native Android packaging.
 
@@ -60,13 +60,13 @@ The root `.env` contains `KORMIC_API_ORIGIN_LOCAL` and `KORMIC_API_ORIGIN_PUBLIC
 
 Standalone Expo starts with `npm start` and reads the root `.env`. EAS cloud builds need `EXPO_PUBLIC_API_BASE_URL` and optionally `EXPO_PUBLIC_LOCAL_API_BASE_URL` configured in their build environment.
 
-For local auth-cookie testing use the same hostname on frontend and backend, for example `127.0.0.1:5173` and `127.0.0.1:8000`.
+Browser sign-in calls the backend token endpoints directly. Refresh tokens remain in the current tab's `sessionStorage` and are cleared on logout; installed Android builds continue using secure native storage. A new tab requires a new sign-in.
 
 ## Deployment
 
 `vercel.json` builds and publishes the Student, Institute, University, and Superuser portals as one static frontend distribution. Configure `KORMIC_API_ORIGIN_LOCAL` and `KORMIC_API_ORIGIN_PUBLIC` as Vercel project environment variables (available during build), or in the ignored local `.env` file for local builds. Values are backend origins without `/api`. The Student app's installed name is `Kormic`, with its Kormic launcher icon configured in `apps/student/app.json`.
 
-Production browser builds call `KORMIC_API_ORIGIN_PUBLIC` directly. For the current deployment this is `https://backend.kormic.ai`, so API requests go to `https://backend.kormic.ai/api/*`. The backend must allow the exact frontend origin through `DJANGO_CORS_ALLOWED_ORIGINS`, keep credentialed CORS enabled, and use `WEB_COOKIE_SAMESITE=None` for cookie-backed authentication across the Vercel and Kormic domains.
+Production browser builds call `KORMIC_API_ORIGIN_PUBLIC` directly. For the current deployment this is `https://backend.kormic.ai`, so API requests go to `https://backend.kormic.ai/api/*`. The backend must allow the exact frontend origin through `DJANGO_CORS_ALLOWED_ORIGINS`. Browser authentication does not require third-party cookies or a Vercel API proxy.
 
 The existing Student claim route remains `/claim?token=...` and is served by the Student web bundle.
 
@@ -83,4 +83,3 @@ GitHub Actions installs every portal from its original lockfile, then runs:
 - distribution checks for all role entry points.
 
 See `docs/ACCEPTANCE.md` for the latest verified run and the remaining live-environment checks.
-

@@ -38,6 +38,9 @@ export default function InstituteDetailPage() {
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [downloadingListId, setDownloadingListId] = useState(null);
+  const [listPage, setListPage] = useState(1);
+  const [listSearchInput, setListSearchInput] = useState("");
+  const [listSearch, setListSearch] = useState("");
 
   const {
     data: institute,
@@ -48,10 +51,11 @@ export default function InstituteDetailPage() {
   } = useAsync(() => getInstitute(instituteId), [instituteId]);
 
   const { data: listsData, loading: listsLoading, error: listsError } = useAsync(
-    () => listInstituteLists(instituteId),
-    [instituteId]
+    (signal) => listInstituteLists(instituteId, { page: listPage, search: listSearch, signal }),
+    [instituteId, listPage, listSearch]
   );
   const lists = listsData?.lists || [];
+  const listPagination = listsData?.pagination;
 
   const { execute: remove, loading: removing, error: removeError } = useAction(() =>
     deleteInstitute(instituteId)
@@ -135,12 +139,16 @@ export default function InstituteDetailPage() {
           }
         />
         <CardBody>
+          <form onSubmit={(event) => { event.preventDefault(); setListPage(1); setListSearch(listSearchInput.trim()); }} className="mb-4 flex gap-2">
+            <input aria-label="Search uploaded lists" value={listSearchInput} onChange={(event) => setListSearchInput(event.target.value)} placeholder="Search list, file or contact" className="min-w-0 flex-1 rounded-lg border border-ink-200 px-3 py-2 text-sm" />
+            <Button type="submit">Search</Button>
+          </form>
           {listsLoading ? (
             <Spinner label="Loading lists..." />
           ) : listsError ? (
             <ErrorBanner error={listsError} />
           ) : lists.length === 0 ? (
-            <EmptyState icon={FileSpreadsheet} title="No lists uploaded yet" />
+            <EmptyState icon={FileSpreadsheet} title={listPagination?.total ? "No lists on this page" : listSearch ? "No matching lists" : "No lists uploaded yet"} />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -204,6 +212,13 @@ export default function InstituteDetailPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+          {listPagination && listPagination.total > 0 && (
+            <div className="mt-4 flex items-center justify-between text-sm text-ink-500">
+              <Button variant="secondary" disabled={listPage <= 1} onClick={() => setListPage(listPage - 1)}>Previous</Button>
+              <span>Page {listPagination.page} · {listPagination.total} lists</span>
+              <Button variant="secondary" disabled={!listPagination.has_next} onClick={() => setListPage(listPage + 1)}>Next</Button>
             </div>
           )}
         </CardBody>

@@ -15,8 +15,7 @@ import Card, { CardBody, CardHeader } from "../../components/common/Card";
 import Badge from "../../components/common/Badge";
 import Spinner from "../../components/common/Spinner";
 import ErrorBanner from "../../components/common/ErrorBanner";
-import { getProfile, getKnowledgeSections } from "../../api/universityAdminApi";
-import { listActiveQueries, listUniversityProfiles } from "../../api/universityApi";
+import { getUniversityDashboardSummary } from "../../api/universityApi";
 import { useAsync } from "../../hooks/useAsync";
 import { SETUP_STEPS, setupPercent } from "../../lib/university";
 import { formatDateTime } from "../../lib/text";
@@ -58,22 +57,17 @@ export default function DashboardPage() {
     refetch,
   } = useOutletContext();
 
-  const { data: sectionsData, error: sectionsError, loading: sectionsLoading } = useAsync(getKnowledgeSections, [universityId]);
-  const { data: queriesData, error: queriesError, loading: queriesLoading } = useAsync(
-    (signal) => listActiveQueries(universityId, signal),
-    [universityId]
-  );
-  const { data: profilesData, error: profilesError, loading: profilesLoading } = useAsync(
-    (signal) => listUniversityProfiles(universityId, signal),
+  const { data: summary, error: summaryError, loading: summaryLoading } = useAsync(
+    (signal) => getUniversityDashboardSummary(universityId, signal),
     [universityId]
   );
 
   const percent = setupPercent(profile);
   const complete = profile?.setup_status?.setup_complete;
 
-  const knowledgeFactCount = (sectionsData?.sections || []).reduce((sum, s) => sum + s.count, 0);
-  const pendingCount = queriesData?.queries?.length ?? 0;
-  const profileCount = profilesData?.profiles?.length ?? 0;
+  const knowledgeFactCount = summary?.knowledge_facts ?? 0;
+  const pendingCount = summary?.pending_tasks ?? 0;
+  const profileCount = summary?.student_profiles ?? 0;
 
   const stats = [
     {
@@ -86,7 +80,7 @@ export default function DashboardPage() {
     },
     {
       title: "Knowledge Facts",
-      value: sectionsError ? "Unavailable" : sectionsLoading ? "Loading…" : String(knowledgeFactCount),
+      value: summaryError ? "Unavailable" : summaryLoading ? "Loading…" : String(knowledgeFactCount),
       subtitle: "View knowledge base",
       color: "green",
       icon: BookOpenCheck,
@@ -94,7 +88,7 @@ export default function DashboardPage() {
     },
     {
       title: "Pending Tasks",
-      value: queriesError ? "Unavailable" : queriesLoading ? "Loading…" : String(pendingCount),
+      value: summaryError ? "Unavailable" : summaryLoading ? "Loading…" : String(pendingCount),
       subtitle: "View tasks",
       color: "orange",
       icon: CircleDashed,
@@ -102,7 +96,7 @@ export default function DashboardPage() {
     },
     {
       title: "Student Profiles",
-      value: profilesError ? "Unavailable" : profilesLoading ? "Loading…" : String(profileCount),
+      value: summaryError ? "Unavailable" : summaryLoading ? "Loading…" : String(profileCount),
       subtitle: "View all",
       color: "purple",
       icon: Users,

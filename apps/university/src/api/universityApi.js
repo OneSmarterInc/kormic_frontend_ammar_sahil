@@ -1,6 +1,12 @@
 import client from "./client";
 import { newRequestId, waitForAgentJob } from './agentJobs';
 
+/** GET /api/university/<university_id>/dashboard-summary/ — scoped counters only */
+export const getUniversityDashboardSummary = (universityId, signal) =>
+  client
+    .get(`/university/${encodeURIComponent(universityId)}/dashboard-summary/`, { signal })
+    .then((r) => r.data);
+
 /** GET /api/university/<university_id>/profiles/ — essentials only per student */
 export const listUniversityProfiles = (universityId, signal) =>
   client
@@ -58,21 +64,21 @@ export const deleteUniversityChatHistory = (universityId) =>
   client.delete(`/university/${encodeURIComponent(universityId)}/chat/history/`).then((r) => r.data);
 
 /** GET /api/university/<university_id>/queries/ */
-export const listAllQueries = (universityId, signal) =>
+export const listAllQueries = (universityId, signal, page = 1) =>
   client
-    .get(`/university/${encodeURIComponent(universityId)}/queries/`, { signal })
+    .get(`/university/${encodeURIComponent(universityId)}/queries/`, { signal, params: { page } })
     .then((r) => r.data);
 
 /** GET /api/university/<university_id>/queries/active/ */
-export const listActiveQueries = (universityId, signal) =>
+export const listActiveQueries = (universityId, signal, page = 1) =>
   client
-    .get(`/university/${encodeURIComponent(universityId)}/queries/active/`, { signal })
+    .get(`/university/${encodeURIComponent(universityId)}/queries/active/`, { signal, params: { page } })
     .then((r) => r.data);
 
 /** GET /api/university/<university_id>/queries/archive/ */
-export const listArchivedQueries = (universityId, signal) =>
+export const listArchivedQueries = (universityId, signal, page = 1) =>
   client
-    .get(`/university/${encodeURIComponent(universityId)}/queries/archive/`, { signal })
+    .get(`/university/${encodeURIComponent(universityId)}/queries/archive/`, { signal, params: { page } })
     .then((r) => r.data);
 
 /** GET /api/university/<university_id>/knowledge/verified/ */
