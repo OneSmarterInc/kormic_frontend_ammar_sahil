@@ -4,11 +4,12 @@
   "buildCommand": "npm test && npm run build",
   "outputDirectory": "dist",
   "framework": null,
+  "proxy": {
+    "entrypoint": "proxy.js",
+    "matcher": "/api/:path*"
+  },
   "functions": {
-    "api/[...path].js": {
-      "maxDuration": 60
-    },
-    "api/proxy.js": {
+    "proxy.js": {
       "maxDuration": 60
     }
   },
