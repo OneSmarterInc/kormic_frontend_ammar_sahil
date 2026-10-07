@@ -2,7 +2,7 @@
   "expo": {
     "name": "Kormic",
     "slug": "kormic-student",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "orientation": "portrait",
     "scheme": "kormicstudent",
     "userInterfaceStyle": "dark",
@@ -15,6 +15,7 @@
     },
     "android": {
       "package": "com.kormic.student",
+      "versionCode": 2,
       "googleServicesFile": "./firebase/google-services.json",
       "intentFilters": [
         {

@@ -6,6 +6,21 @@ The app uses the production backend at `https://backend.kormic.ai`. Set
 changing the URL. The backend host must be reachable over HTTPS for sign-in and
 AI features.
 
+Face verification is controlled by the backend. After installing this APK,
+enable `STUDENT_FACE_AUTH_REQUIRED=true` in the backend service environment and
+configure `STUDENT_FACE_ENCRYPTION_KEY` and `FACE_MODEL_DIRECTORY` as described
+in the backend's `deploy/FACE_VERIFICATION.md`. Restart the backend service so
+it reads those values. Otherwise the server issues an ordinary session after
+TOTP and the app has no face challenge to display. When enabled, the scan
+starts with one consent tap and captures the forward/left/right poses
+automatically as the backend accepts them.
+
+For a non-Docker Supervisor deployment, install the models with the backend
+virtual environment's `python manage.py install_face_models` command, point
+`FACE_MODEL_DIRECTORY` at that installed model directory, and add the three
+settings to the environment loaded by the Supervisor API process before
+restarting it.
+
 ## Local Windows build
 
 Install Java 17 and the Android SDK, including Android 36, build-tools 36.0.0,

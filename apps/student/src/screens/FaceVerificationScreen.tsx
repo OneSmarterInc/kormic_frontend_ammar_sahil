@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { deleteAsync } from 'expo-file-system/legacy';
 import { AuthSession } from '../models/onboarding';
@@ -11,6 +11,9 @@ const instructions = {
   left: 'Slowly turn your head to your left',
   right: 'Slowly turn your head to your right',
 };
+const CAPTURE_DELAY_MS = 1900;
+const MAX_AUTO_RETRIES = 5;
+const retriableCaptureError = /Follow the requested head movement|No clear face found|Only one person|Move closer|Improve the lighting|Hold the requested pose|Use a fresh camera capture/i;
 
 export default function FaceVerificationScreen({ session, onComplete, onCancel }: {
   session: AuthSession;
@@ -20,6 +23,7 @@ export default function FaceVerificationScreen({ session, onComplete, onCancel }
   const camera = useRef<CameraView>(null);
   const inFlight = useRef(false);
   const mounted = useRef(true);
+  const completed = useRef(false);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const [permission, requestPermission] = useCameraPermissions();
   const [challenge, setChallenge] = useState<FaceChallenge>();
@@ -27,24 +31,45 @@ export default function FaceVerificationScreen({ session, onComplete, onCancel }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [active, setActive] = useState(AppState.currentState !== 'background' && AppState.currentState !== 'inactive');
+  const [retries, setRetries] = useState(0);
+  const [paused, setPaused] = useState(false);
   const enrolled = Boolean(session.user?.face_enrolled);
+
+  useEffect(() => {
+    const listener = AppState.addEventListener('change', state => setActive(state === 'active'));
+    return () => listener.remove();
+  }, []);
+
+  // The backend checks the live image and advances the pose. No capture tap is needed.
+  useEffect(() => {
+    if (!challenge || !ready || busy || paused || sessionExpired || !active || completed.current) return;
+    const timer = setTimeout(() => { void capture(challenge); }, CAPTURE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [challenge, ready, busy, paused, sessionExpired, active, retries]);
 
   async function start() {
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
     setError('');
+    setPaused(false);
+    setRetries(0);
+    setReady(false);
+    setChallenge(undefined);
+    completed.current = false;
     try {
       const granted = permission?.granted || (await requestPermission()).granted;
       if (!granted) { setError('Camera access is needed to verify your face. Enable it in your device settings.'); return; }
-      setChallenge(await startFaceVerification(session));
+      const next = await startFaceVerification(session);
+      if (mounted.current) setChallenge(next);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Unable to start verification. Please retry.');
     } finally { inFlight.current = false; setBusy(false); }
   }
 
-  async function capture() {
-    if (!challenge || !camera.current || inFlight.current) return;
+  async function capture(currentChallenge: FaceChallenge) {
+    if (!camera.current || inFlight.current || completed.current || !mounted.current) return;
     inFlight.current = true;
     setBusy(true);
     setError('');
@@ -54,20 +79,26 @@ export default function FaceVerificationScreen({ session, onComplete, onCancel }
       const photo = await camera.current.takePictureAsync({ base64: true, quality: 0.55, imageType: 'jpg' });
       capturedUri = photo?.uri;
       if (!photo?.base64) throw new Error('The camera could not capture a photo. Please retry.');
-      const result = await submitFaceCapture(session, challenge, photo.base64);
+      const result = await submitFaceCapture(session, currentChallenge, photo.base64);
       if (!mounted.current) return;
       if ('passed' in result && result.passed) {
+        completed.current = true;
         await onComplete({ access: result.access, refresh: result.refresh, user: result.user, mustEnrollTotp: false, totpRequired: false });
       } else if ('action' in result) {
         setChallenge(result);
       }
     } catch (failure) {
       const message = failure instanceof Error ? failure.message : 'Unable to verify this capture. Please retry.';
-      setError(message);
+      if (!mounted.current) return;
+      const canRetry = retriableCaptureError.test(message) && retries < MAX_AUTO_RETRIES;
+      setError(canRetry ? `${message} Scanning again automatically…` : message);
+      if (canRetry) setRetries(value => value + 1);
+      else setPaused(true);
       if (/expired|already been used|sign in again|fresh TOTP/i.test(message)) setSessionExpired(true);
     } finally {
       if (capturedUri?.startsWith('file://')) await deleteAsync(capturedUri, { idempotent: true }).catch(() => undefined);
-      inFlight.current = false; setBusy(false);
+      inFlight.current = false;
+      if (mounted.current) setBusy(false);
     }
   }
 
@@ -86,10 +117,11 @@ export default function FaceVerificationScreen({ session, onComplete, onCancel }
       </View>
       <Text accessibilityLiveRegion="polite" style={styles.step}>Step {challenge.step + 1} of {challenge.total_steps}</Text>
       <Text style={styles.instruction}>{instructions[challenge.action]}</Text>
-      <Text style={styles.body}>Keep your whole face visible in good light. Hold the pose briefly, then capture.</Text>
-      <Pressable accessibilityRole="button" disabled={busy || !ready} onPress={capture} style={[styles.button, (busy || !ready) && styles.disabled]}>
-        {busy ? <ActivityIndicator color={colors.onAccent} /> : <Text style={styles.buttonText}>Capture and verify</Text>}
-      </Pressable>
+      <Text style={styles.body}>Keep your whole face visible in good light. The camera scans automatically as you turn.</Text>
+      <View style={styles.scanStatus} accessibilityLiveRegion="polite">
+        {!paused && <ActivityIndicator color={colors.coral} />}
+        <Text style={styles.statusText}>{paused ? 'Scan paused. Restart to try again.' : !active ? 'Return to the app to continue scanning.' : !ready ? 'Opening camera…' : busy ? 'Checking your face…' : 'Hold this pose — scanning automatically…'}</Text>
+      </View>
     </> : !sessionExpired ? <>
       <View style={styles.notice}><Text style={styles.body}>Your camera captures are processed to check your face and head movements. Kormic stores an encrypted face template for account matching; the captures are not saved by the verification service.</Text></View>
       <Pressable accessibilityRole="button" disabled={busy} onPress={start} style={[styles.button, busy && styles.disabled]}>
@@ -112,6 +144,8 @@ const styles = StyleSheet.create({
   oval: { height: 265, width: 200, borderWidth: 3, borderColor: colors.onAccent, borderRadius: 120 },
   step: { textAlign: 'center', color: colors.muted, fontSize: 13 },
   instruction: { textAlign: 'center', color: colors.text, fontSize: 20, fontWeight: '600' },
+  scanStatus: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 12, borderRadius: 16, backgroundColor: colors.accentSoft },
+  statusText: { color: colors.textSoft, fontSize: 14, flexShrink: 1 },
   notice: { padding: 18, borderRadius: 18, backgroundColor: colors.accentSoft },
   button: { minHeight: 52, borderRadius: 16, backgroundColor: colors.coral, alignItems: 'center', justifyContent: 'center', padding: 14 },
   buttonText: { color: colors.onAccent, fontSize: 16, fontWeight: '600' },
