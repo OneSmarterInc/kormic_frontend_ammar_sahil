@@ -93,7 +93,7 @@ export default function UniversityLayout() {
 
 function UniversityAdminLayout() {
   const { user } = useAuth();
-  const profileState = useAsync(getProfile, [user.university_id]);
+  const profileState = useAsync(getProfile, [user.university_id], { cacheKey: 'profile' });
   const groups = NAV_GROUPS.map(group => ({...group, items: group.items.map(item => ({...item, to: `/university/${user.university_id}/${item.to}`}))}));
   const [desktop, setDesktop] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
   const [collapsed, setCollapsed] = useState(() => { try { return localStorage.getItem('kormic.university.sidebar.collapsed') === 'true'; } catch { return false; } });

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
+import { getAuthGeneration, getCachedUser } from '@kormic/portal-core/tokenStorage.js';
+import { cacheEpoch, readPageCache, writePageCache } from '@kormic/portal-core/pageCache.js';
 
 /**
  * Runs `fn` whenever `deps` change, tracking loading/data/error state.
@@ -10,44 +12,66 @@ import axios from "axios";
  * unmount mid-flight) is actually cancelled instead of just having its
  * result discarded.
  */
-export function useAsync(fn, deps, { enabled = true } = {}) {
-  const [data, setData] = useState(null);
+export function useAsync(fn, deps, { enabled = true, cacheKey = null } = {}) {
+  const key = cacheKey && getCachedUser() ? JSON.stringify([getAuthGeneration(), getCachedUser(), cacheKey, deps]) : null;
+  const [data, updateData] = useState(() => enabled && key ? readPageCache(key) : null);
+  const dataRef = useRef(data);
+  const setData = useCallback(value => {
+    const next = typeof value === 'function' ? value(dataRef.current) : value;
+    dataRef.current = next;
+    updateData(next);
+    if (key) writePageCache(key, next);
+  }, [key]);
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(enabled);
+  const [loading, setLoading] = useState(enabled && !data);
+  const [refreshing, setRefreshing] = useState(false);
   const requestId = useRef(0);
   const controllerRef = useRef(null);
 
-  const run = useCallback(() => {
+  const run = useCallback((force = true) => {
     controllerRef.current?.abort();
+    const id = ++requestId.current;
     if (!enabled) {
       setLoading(false);
       return;
     }
+    const cached = key ? readPageCache(key) : null;
+    if (force === false && cached) {
+      dataRef.current = cached; updateData(cached); setLoading(false); setError(null);
+      return;
+    }
+    const epoch = cacheEpoch();
+    const generation = getAuthGeneration();
     const controller = new AbortController();
     controllerRef.current = controller;
-    const id = ++requestId.current;
-    setLoading(true);
+    setLoading(!dataRef.current);
+    setRefreshing(true);
     setError(null);
     fn(controller.signal)
       .then((result) => {
-        if (id === requestId.current) setData(result);
+        if (id === requestId.current && generation === getAuthGeneration() && !controller.signal.aborted) {
+          dataRef.current = result; updateData(result);
+          if (key) writePageCache(key, result, epoch);
+        }
       })
       .catch((err) => {
         if (axios.isCancel(err)) return;
         if (id === requestId.current) setError(err);
       })
       .finally(() => {
-        if (id === requestId.current) setLoading(false);
+        if (id === requestId.current) { setLoading(false); setRefreshing(false); }
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, [...deps, enabled, key]);
 
   useEffect(() => {
-    run();
+    dataRef.current = key ? readPageCache(key) : null;
+    updateData(dataRef.current);
+    run(false);
     return () => controllerRef.current?.abort();
   }, [run]);
 
-  return { data, error, loading, refetch: run, setData };
+  return { data, error, loading, refreshing, refetch: run, setData };
 }
 
 /**

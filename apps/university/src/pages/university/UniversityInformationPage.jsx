@@ -13,8 +13,8 @@ import { FORM_SECTIONS, OVERVIEW_FIELDS, COURSE_LEVELS, courseLevel, missingFiel
 const ICONS = [Building2, GraduationCap, Wallet, House, Award, ClipboardList, Globe, HeartHandshake, BriefcaseBusiness, FolderOpen];
 
 export default function UniversityInformationPage() {
-  const { data, loading, error, refetch, setData } = useAsync(listInformationEntities, []);
-  const overview = useAsync(getInformationOverview, []);
+  const { data, loading, error, refetch, setData } = useAsync(listInformationEntities, [], { cacheKey: 'information-entities' });
+  const overview = useAsync(getInformationOverview, [], { cacheKey: 'information-overview' });
   const [sectionId, setSectionId] = useState('overview');
   const [query, setQuery] = useState('');
   const [missingFilter, setMissingFilter] = useState('all');

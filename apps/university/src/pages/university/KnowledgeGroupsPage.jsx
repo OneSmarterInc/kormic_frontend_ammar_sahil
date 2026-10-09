@@ -18,7 +18,7 @@ import { formatDateTime } from "../../lib/text";
 export default function KnowledgeGroupsPage() {
   const { data, loading, error, refetch, setData } = useAsync(
     universityAdminApi.listKnowledgeGroups,
-    []
+    [], { cacheKey: 'knowledge-groups' }
   );
   const [viewingGroup, setViewingGroup] = useState(null); // group object or null
 

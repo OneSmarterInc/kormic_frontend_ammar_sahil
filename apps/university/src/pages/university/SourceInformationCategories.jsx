@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { clearPageCache } from '@kormic/portal-core/pageCache.js';
 import { BookOpen, ChevronDown, Pencil, Search, Check, X, RotateCw } from "lucide-react";
 import toast from "react-hot-toast";
 import Button from "../../components/common/Button";
@@ -25,18 +26,28 @@ const display = (value) => typeof value === "string" ? value : JSON.stringify(va
 const categoryOf = (fact) => CATEGORIES.some(([id]) => id === fact.category) ? fact.category : "other";
 
 export default function SourceInformationCategories() {
-  const { data, loading, error, refetch, setData } = useAsync(listUniversityInformation, []);
   const [tab, setTab] = useState("categories");
   const [query, setQuery] = useState("");
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  useEffect(() => {
+    const timer = setTimeout(() => { setSearch(query.trim()); setPage(1); }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+  const { data, loading, error, refetch, setData } = useAsync(
+    signal => listUniversityInformation(signal, { page, search, category_group: tab }),
+    [page, search, tab], { cacheKey: 'source-information' });
   const [editing, setEditing] = useState(null);
   const [limits, setLimits] = useState({});
   const facts = data?.knowledge || [];
-  const filtered = facts.filter((fact) => `${fact.topic} ${fact.content} ${JSON.stringify(fact.details || {})}`.toLowerCase().includes(query.toLowerCase().trim()));
-  const otherCount = facts.filter((fact) => categoryOf(fact) === "other").length;
+  const filtered = useMemo(() => data?.pages ? facts : facts.filter((fact) => !query.trim() || `${fact.topic} ${fact.content} ${JSON.stringify(fact.details || {})}`.toLowerCase().includes(query.toLowerCase().trim())), [data, query]);
+  const otherCount = data?.category_counts?.other ?? facts.filter((fact) => categoryOf(fact) === "other").length;
+  const categoryCount = data?.category_counts?.categories ?? facts.length - otherCount;
 
   function saved(updated, originalId) {
     setData((previous) => ({ ...previous, knowledge: previous.knowledge.map((fact) => fact.id === originalId ? updated : fact) }));
     setEditing(null);
+    clearPageCache();
     toast.success("Saved to the knowledge base. New student answers will use this information.");
   }
 
@@ -47,8 +58,8 @@ export default function SourceInformationCategories() {
     </div>
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div role="tablist" aria-label="Information sections" className="flex gap-2">
-        {[["categories", `Categories (${facts.length - otherCount})`], ["other", `Other (${otherCount})`]].map(([id, title]) =>
-          <button key={id} role="tab" disabled={editing !== null} aria-selected={tab === id} aria-controls="information-panel" id={`tab-${id}`} onClick={() => setTab(id)} className={`rounded-lg border px-4 py-2 text-sm font-medium ${tab === id ? "border-brand-600 bg-brand-600 text-white" : "border-ink-200 bg-white text-ink-700"}`}>{title}</button>)}
+        {[["categories", `Categories (${categoryCount})`], ["other", `Other (${otherCount})`]].map(([id, title]) =>
+          <button key={id} role="tab" disabled={editing !== null} aria-selected={tab === id} aria-controls="information-panel" id={`tab-${id}`} onClick={() => { setTab(id); setPage(1); }} className={`rounded-lg border px-4 py-2 text-sm font-medium ${tab === id ? "border-brand-600 bg-brand-600 text-white" : "border-ink-200 bg-white text-ink-700"}`}>{title}</button>)}
       </div>
       <label className="flex items-center gap-2"><Search className="h-4 w-4 text-ink-400" /><span className="sr-only">Search information</span><Input value={query} disabled={editing !== null} onChange={(e) => setQuery(e.target.value)} placeholder="Search criteria, deadlines, courses…" /></label>
       <Button variant="secondary" size="sm" icon={RotateCw} disabled={editing !== null || loading} onClick={refetch}>Refresh sources</Button>
@@ -76,6 +87,11 @@ export default function SourceInformationCategories() {
           </details>;
         })}
       </div>}
+    {data?.pages > 1 && <div className="flex items-center justify-between gap-3">
+      <Button variant="secondary" disabled={loading || page <= 1 || editing !== null} onClick={() => setPage(value => value - 1)}>Previous</Button>
+      <span className="text-sm">Page {data.page} of {data.pages} · {data.count} matching records</span>
+      <Button variant="secondary" disabled={loading || page >= data.pages || editing !== null} onClick={() => setPage(value => value + 1)}>Next</Button>
+    </div>}
   </div>;
 }
 

@@ -1,7 +1,7 @@
 import client from "./client";
 
-export const listUniversityInformation = (signal) =>
-  client.get("/university-admin/information/", { signal }).then((r) => r.data);
+export const listUniversityInformation = (signal, params) =>
+  client.get("/university-admin/information/", { signal, params }).then((r) => r.data);
 
 export const createUniversityInformation = (payload) =>
   client.post('/university-admin/information/entities/', payload).then((r) => r.data);
@@ -139,13 +139,15 @@ export const approveAutoDiscoverCluster = (jobId, category) =>
     .then((r) => r.data);
 
 /** GET /api/university-admin/knowledge/ — optional ?section=<source_type>&source_url=<url>&group=<slug> */
-export const listKnowledge = ({ section, sourceUrl, group } = {}, signal) =>
+export const listKnowledge = ({ section, sourceUrl, group, page, search } = {}, signal) =>
   client
     .get("/university-admin/knowledge/", {
       params: {
         ...(section ? { section } : {}),
         ...(sourceUrl ? { source_url: sourceUrl } : {}),
         ...(group ? { group } : {}),
+        ...(page ? { page } : {}),
+        ...(search ? { search } : {}),
       },
       signal,
     })

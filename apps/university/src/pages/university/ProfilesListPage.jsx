@@ -16,7 +16,7 @@ export default function ProfilesListPage() {
 
   const { data, loading, error, refetch } = useAsync(
     (signal) => listUniversityProfiles(universityId, signal),
-    [universityId]
+    [universityId], { cacheKey: 'student-profiles' }
   );
 
   const profiles = data?.profiles || [];

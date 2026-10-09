@@ -27,6 +27,9 @@ export default function KnowledgeBasePage() {
   const [editingFactId, setEditingFactId] = useState(null);
   const [section, setSection] = useState(null);
   const [sourceUrl, setSourceUrl] = useState(null);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [searchDraft, setSearchDraft] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -36,9 +39,11 @@ export default function KnowledgeBasePage() {
     setSourceUrl(null);
   }, [section]);
 
+  useEffect(() => { setPage(1); setSelectedIds([]); }, [section, sourceUrl, search]);
+
   const { data, loading, error, refetch, setData } = useAsync(
-    (signal) => universityAdminApi.listKnowledge({ section, sourceUrl }, signal),
-    [section, sourceUrl]
+    (signal) => universityAdminApi.listKnowledge({ section, sourceUrl, page, search }, signal),
+    [section, sourceUrl, page, search], { cacheKey: 'knowledge' }
   );
 
   const { data: sectionsData, refetch: refetchSections } = useAsync(
@@ -86,10 +91,12 @@ export default function KnowledgeBasePage() {
     if (okIds.length > 0) {
       const okSet = new Set(okIds);
       setData((prev) => ({
+        ...prev,
         knowledge: (prev?.knowledge || []).filter((f) => !okSet.has(f.id)),
       }));
       refetchSections();
       refetchUrls();
+      refetch();
       if (okSet.has(editingFactId)) setEditingFactId(null);
     }
 
@@ -108,29 +115,35 @@ export default function KnowledgeBasePage() {
 
   const handleDeleted = (id) => {
     setData((prev) => ({
+      ...prev,
       knowledge: prev.knowledge.filter((f) => f.id !== id),
     }));
     setSelectedIds((prev) => prev.filter((x) => x !== id));
     refetchSections();
     refetchUrls();
+    refetch();
     if (editingFactId === id) setEditingFactId(null);
   };
 
   const handleCreated = (fact) => {
     if ((!section || section === fact.source_type) && (!sourceUrl || sourceUrl === fact.source_url)) {
       setData((prev) => ({
+        ...prev,
         knowledge: [fact, ...(prev?.knowledge || [])],
       }));
     }
     refetchSections();
     refetchUrls();
+    refetch();
   };
 
   const handleUpdated = (updated) => {
     setData((prev) => ({
+      ...prev,
       knowledge: prev.knowledge.map((f) => (f.id === updated.id ? updated : f)),
     }));
     setEditingFactId(null);
+    refetch();
   };
 
   return (
@@ -209,6 +222,10 @@ export default function KnowledgeBasePage() {
         />
 
         <CardBody>
+          <form className="mb-4 flex gap-2" onSubmit={event => { event.preventDefault(); setSearch(searchDraft.trim()); }}>
+            <Input aria-label="Search knowledge" value={searchDraft} onChange={event => setSearchDraft(event.target.value)} placeholder="Search all knowledge" />
+            <Button type="submit">Search</Button>
+          </form>
           {loading ? (
             <Spinner label="Loading knowledge base..." />
           ) : error ? (
@@ -231,7 +248,7 @@ export default function KnowledgeBasePage() {
                   />
                   {selectedIds.length > 0
                     ? `${selectedIds.length} selected`
-                    : "Select all"}
+                    : "Select this page"}
                 </label>
 
                 {selectedIds.length > 0 && (
@@ -263,6 +280,11 @@ export default function KnowledgeBasePage() {
               ))}
             </div>
           )}
+          {data?.pages > 1 && <div className="mt-4 flex items-center justify-between gap-3">
+            <Button variant="secondary" disabled={loading || page <= 1 || editingFactId !== null || bulkDeleting} onClick={() => setPage(value => value - 1)}>Previous</Button>
+            <span className="text-sm">Page {data.page} of {data.pages} · {data.count} facts</span>
+            <Button variant="secondary" disabled={loading || page >= data.pages || editingFactId !== null || bulkDeleting} onClick={() => setPage(value => value + 1)}>Next</Button>
+          </div>}
         </CardBody>
       </Card>
 

@@ -14,7 +14,7 @@ export default function KnowledgePage() {
   const { universityId } = useParams();
   const { data, loading, error, refetch } = useAsync(
     (signal) => listVerifiedKnowledge(universityId, signal),
-    [universityId]
+    [universityId], { cacheKey: 'verified-knowledge' }
   );
 
   const answers = data?.verified_answers || [];

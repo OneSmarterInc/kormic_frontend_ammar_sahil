@@ -59,7 +59,7 @@ export default function DashboardPage() {
 
   const { data: summary, error: summaryError, loading: summaryLoading } = useAsync(
     (signal) => getUniversityDashboardSummary(universityId, signal),
-    [universityId]
+    [universityId], { cacheKey: 'dashboard-summary' }
   );
 
   const percent = setupPercent(profile);

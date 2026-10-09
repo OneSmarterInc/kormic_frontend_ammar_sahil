@@ -1,4 +1,5 @@
 import axios from "axios";
+import { clearPageCache } from './pageCache.js';
 import {
   clearAuth,
   getAccessToken,
@@ -42,6 +43,7 @@ export function createPortalClient(portal) {
   }
 
   client.interceptors.request.use(async (config) => {
+    if (!['get', 'head', 'options'].includes(config.method)) clearPageCache();
     const token = getAccessToken();
     if (token) config.headers.Authorization = `Bearer ${token}`;
     if (config.url?.startsWith("/auth/web/") && config.method === "post") {
@@ -80,7 +82,10 @@ export function createPortalClient(portal) {
   }
 
   client.interceptors.response.use(
-    (response) => response,
+    (response) => {
+      if (!['get', 'head', 'options'].includes(response.config.method)) clearPageCache();
+      return response;
+    },
     async (error) => {
       if (axios.isCancel(error)) return Promise.reject(error);
 

@@ -1,4 +1,5 @@
 // Access credentials live in memory; refresh credentials are scoped to this tab.
+import { clearPageCache } from './pageCache.js';
 let accessToken = "";
 let cachedUser = null;
 let generation = 0;
@@ -27,9 +28,13 @@ clearLegacyAuthStorage();
 export const getAccessToken = () => accessToken;
 export const setAccessToken = (token) => { accessToken = token || ""; };
 export const getCachedUser = () => cachedUser;
-export const setCachedUser = (user) => { cachedUser = user; };
+export const setCachedUser = (user) => {
+  if (JSON.stringify(cachedUser) !== JSON.stringify(user)) clearPageCache();
+  cachedUser = user;
+};
 export const getAuthGeneration = () => generation;
 export const clearAuth = () => {
+  clearPageCache();
   generation += 1;
   accessToken = "";
   cachedUser = null;

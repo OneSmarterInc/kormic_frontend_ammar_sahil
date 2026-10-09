@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { clearPageCache } from '@kormic/portal-core/pageCache.js';
 import toast from "react-hot-toast";
 import {
   AlertTriangle,
@@ -73,7 +74,7 @@ export default function ScrapeSourcesPage() {
 
   const { data, loading, error, refetch } = useAsync(
     universityAdminApi.getScrapeUrls,
-    []
+    [], { cacheKey: 'scrape-urls' }
   );
 
   // The website that Auto-discover crawls lives on the university profile.
@@ -92,6 +93,7 @@ export default function ScrapeSourcesPage() {
   // Pull the saved-URL list again without flipping the card into its loading
   // spinner — used to reflect URLs a scrape/crawl just added without a page reload.
   const refreshSavedUrls = useCallback(async () => {
+    clearPageCache();
     try {
       const res = await universityAdminApi.getScrapeUrls();
       setUrls(res.scrape_urls || []);
