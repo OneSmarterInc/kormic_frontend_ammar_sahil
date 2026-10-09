@@ -31,6 +31,7 @@ import ConfirmDialog from "../../components/common/ConfirmDialog";
 import * as universityAdminApi from "../../api/universityAdminApi";
 import { useAction, useAsync } from "../../hooks/useAsync";
 import { isValidUrl } from "../../lib/validators";
+import SourceInformationCategories from './SourceInformationCategories';
 
 const ACTIVE_JOB_STATUSES = ["queued", "running"];
 const SCRAPE_ACTIVE_STATUSES = ["queued", "running"];
@@ -459,9 +460,12 @@ export default function ScrapeSourcesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Knowledge Sources"
-        description="Save your program's official pages — scraping pulls durable facts straight into the knowledge base."
+        description="Review your university’s collected information by category and manage the websites that keep it up to date."
       />
 
+      <details className="rounded-xl border border-ink-200 bg-white">
+      <summary className="cursor-pointer px-5 py-4 font-semibold text-ink-900">Manage website & crawl <span className="ml-2 text-xs font-normal text-ink-500">{jobIsActive ? `Crawl in progress · ${job?.pages_crawled || 0} pages visited` : `${urls.length} saved sources`}</span></summary>
+      <div className="space-y-4 border-t border-ink-100 p-4">
       <Card>
         <CardHeader
           icon={Compass}
@@ -951,6 +955,11 @@ export default function ScrapeSourcesPage() {
           )}
         </CardBody>
       </Card>
+
+      </div>
+      </details>
+
+      <SourceInformationCategories />
 
       <ScrapeResultModal
         open={!!resultModal}

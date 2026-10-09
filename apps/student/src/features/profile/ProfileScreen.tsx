@@ -19,7 +19,6 @@ import { ProfileMenu, sectionTitle } from './components/ProfileMenu';
 import { ProfileOverview } from './components/ProfileOverview';
 import { ProfileError } from './components/ProfileSections';
 import { ResumeManager } from './components/ResumeManager';
-import { SourceEditor } from './components/SourceEditor';
 import { normalizeStudentProfile } from './normalizeProfile';
 import { sampleProfile } from './sampleProfile';
 import { ProfileScreenProps, ProfileSection } from './types';
@@ -136,14 +135,12 @@ export function ProfileScreen({
     removeResume,
   } = useResumes({ session, services, section, setSectionError, onProfileChanged });
   const {
-    githubAccepted,
     githubAnalysis,
     githubHistory,
     githubLoading,
     githubConnected,
     message,
     loadGithubHistory,
-    runGithubAnalysis,
     handleConnectGitHub,
   } = useGithubProfile({ session, section, setSectionError, setActionLoading, onProfileChanged });
   const {
@@ -363,25 +360,8 @@ export function ProfileScreen({
                 </View>
               ) : (
                 <>
-                  <SourceEditor
-                    title="GitHub"
-                    description={
-                      profile.github
-                        ? 'Run a fresh analysis on your connected GitHub account.'
-                        : 'Your GitHub account is connected. Run analysis to get insights.'
-                    }
-                    value=""
-                    onChange={() => undefined}
-                    primaryLabel="Save"
-                    secondaryLabel="Analyze GitHub"
-                    showUrlField={false}
-                    showPrimaryAction={false}
-                    disabled={actionLoading}
-                    error={sectionError}
-                    onPrimary={() => undefined}
-                    onSecondary={runGithubAnalysis}
-                  />
-                  {actionLoading && githubAccepted ? <PrimaryButton label="Continue in background" onPress={() => selectSection('aria')} /> : null}
+                  <GithubProfilePanel session={session} compact onConnect={handleConnectGitHub}
+                    onProfileChanged={async () => { await loadGithubHistory(); await onProfileChanged?.(); }} />
                   {message ? <Text style={styles.successText}>{message}</Text> : null}
                   {sectionError ? <Text style={styles.errorTextMsg}>{sectionError}</Text> : null}
                   <GithubAnalysisDetails

@@ -1,5 +1,25 @@
 import client from "./client";
 
+export const listUniversityInformation = (signal) =>
+  client.get("/university-admin/information/", { signal }).then((r) => r.data);
+
+export const createUniversityInformation = (payload) =>
+  client.post('/university-admin/information/entities/', payload).then((r) => r.data);
+export const listInformationEntities = (signal) =>
+  client.get('/university-admin/information/entities/', { signal }).then((r) => r.data);
+export const getInformationOverview = (signal) =>
+  client.get('/university-admin/information/overview/', { signal }).then((r) => r.data);
+export const updateInformationOverview = (payload) =>
+  client.patch('/university-admin/information/overview/', payload).then((r) => r.data);
+
+export const updateUniversityInformation = (id, payload) => {
+  if (String(id).startsWith("research:")) {
+    const [, kind, recordId] = id.split(":");
+    return client.patch(`/university-admin/information/research/${encodeURIComponent(kind)}/${encodeURIComponent(recordId)}/`, payload).then((r) => r.data);
+  }
+  return updateKnowledge(id, payload);
+};
+
 /** GET /api/university-admin/profile/ */
 export const getProfile = (signal) =>
   client.get("/university-admin/profile/", { signal }).then((r) => r.data);

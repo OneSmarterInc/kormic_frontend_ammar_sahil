@@ -17,6 +17,7 @@ const DashboardPage = lazy(() => import("./pages/university/DashboardPage"));
 const SettingsProfilePage = lazy(() => import("./pages/university/SettingsProfilePage"));
 const ScrapeSourcesPage = lazy(() => import("./pages/university/ScrapeSourcesPage"));
 const KnowledgeBasePage = lazy(() => import("./pages/university/KnowledgeBasePage"));
+const UniversityInformationPage = lazy(() => import("./pages/university/UniversityInformationPage"));
 const KnowledgeGroupsPage = lazy(() => import("./pages/university/KnowledgeGroupsPage"));
 const AgentPreviewPage = lazy(() => import("./pages/university/AgentPreviewPage"));
 const ProfilesListPage = lazy(() => import("./pages/university/ProfilesListPage"));
@@ -64,6 +65,7 @@ function App() {
                     <Route path="settings/profile" element={<SettingsProfilePage />} />
                     <Route path="settings/sources" element={<ScrapeSourcesPage />} />
                     <Route path="settings/knowledge-base" element={<KnowledgeBasePage />} />
+                    <Route path="information" element={<UniversityInformationPage />} />
                     <Route path="settings/knowledge-groups" element={<KnowledgeGroupsPage />} />
                     <Route path="settings/agent-preview" element={<AgentPreviewPage />} />
                     <Route path="profiles" element={<ProfilesListPage />} />

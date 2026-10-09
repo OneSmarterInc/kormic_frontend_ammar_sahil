@@ -91,7 +91,7 @@ export function useGithubProfile({
     }
   }, [section, session?.access, session?.user?.student_id]);
 
-  const runGithubAnalysis = async () => {
+  const runGithubAnalysis = async (repositoryIds: number[]) => {
     if (!session) {
       setSectionError('Please sign in again to update GitHub.');
       return;
@@ -106,7 +106,7 @@ export function useGithubProfile({
       const controller = new AbortController();
       analysisController.current = controller;
       setGithubAccepted(false);
-      const result = await analyzeGithub(session, { signal: controller.signal, onProgress: setMessage, onAccepted: () => setGithubAccepted(true) });
+      const result = await analyzeGithub(session, { repositoryIds, signal: controller.signal, onProgress: setMessage, onAccepted: () => setGithubAccepted(true) });
       if (controller.signal.aborted) return;
       setGithubAnalysis(result);
       await loadGithubHistory();

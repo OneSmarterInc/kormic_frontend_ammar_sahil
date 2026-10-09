@@ -22,6 +22,11 @@ const NAV_GROUPS = [
         icon: Compass,
       },
       {
+        to: "information",
+        label: "University Information",
+        icon: BookOpenCheck,
+      },
+      {
         to: "settings/sources",
         label: "Knowledge Sources",
         icon: Globe,

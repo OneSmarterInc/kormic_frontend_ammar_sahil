@@ -6,6 +6,7 @@ import { getGithubOverview, getGithubRepositories, startGithubSync, GithubOvervi
 import { colors, fonts } from '../../theme/tokens';
 import { getBoldSegments } from '../chat/components/FormattedMessageText';
 import { ChipGroup } from '../profile/components/ProfileSections';
+import { GithubRepositoryPicker } from './GithubRepositoryPicker';
 
 export function GithubProfilePanel({ session, onConnect, onProfileChanged, compact = false }: {
   session?: AuthSession;
@@ -16,6 +17,8 @@ export function GithubProfilePanel({ session, onConnect, onProfileChanged, compa
   const [data, setData] = useState<GithubOverviewResponse>();
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  const [selected, setSelected] = useState<number[]>([]);
+  const [selectionReady, setSelectionReady] = useState(false);
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState(false);
   const [page, setPage] = useState(1);
@@ -96,7 +99,7 @@ export function GithubProfilePanel({ session, onConnect, onProfileChanged, compa
     let active = true;
     setRepos(undefined);
     setRepoError('');
-    getGithubRepositories(session, page).then((response) => {
+    getGithubRepositories(session, page, '', true).then((response) => {
       if (active) setRepos(response);
     }).catch((e: unknown) => {
       if (active) setRepoError(e instanceof Error ? e.message : 'Unable to load repositories.');
@@ -105,11 +108,11 @@ export function GithubProfilePanel({ session, onConnect, onProfileChanged, compa
   }, [session, expanded, page, retry, data?.profile?.synced_at, data?.sync?.status]);
 
   const sync = async () => {
-    if (!session || starting || syncing) return;
+    if (!session || starting || syncing || !selectionReady || !selected.length || selected.length > 5) return;
     setStarting(true);
     setError('');
     try {
-      const job = await startGithubSync(session);
+      const job = await startGithubSync(session, selected);
       if (!alive.current) return;
       setData((previous) => ({ connected: true, profile: previous?.profile || null, sync: job }));
       await refresh();
@@ -122,6 +125,11 @@ export function GithubProfilePanel({ session, onConnect, onProfileChanged, compa
 
   if (loading) return <View style={styles.loading}><ActivityIndicator color={colors.coral} /><Text style={styles.muted}>Loading GitHub profile…</Text></View>;
   const profile = data?.profile;
+  const hasAnalysis = Boolean(profile?.synced_at && !syncing && data?.sync?.status !== 'failed');
+  const selection = !hasAnalysis && !syncing && session ? <>
+    <GithubRepositoryPicker session={session} selected={selected} onChange={setSelected} onReadyChange={setSelectionReady} disabled={starting} />
+    <PrimaryButton label="Analyse selected repositories" disabled={!selectionReady || !selected.length || starting} loading={starting} onPress={() => void sync()} />
+  </> : null;
   if (compact) return <View style={styles.card}>
     <Text style={styles.cardTitle}>GitHub</Text>
     {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
@@ -129,7 +137,8 @@ export function GithubProfilePanel({ session, onConnect, onProfileChanged, compa
       <Text style={styles.body}>{syncing ? 'Your GitHub profile is processing.' : profile?.synced_at ? `Last synced ${new Date(profile.synced_at).toLocaleString()}` : 'Your GitHub account is connected.'}</Text>
       {syncing ? <View style={styles.notice} accessibilityLiveRegion="polite"><ActivityIndicator color={colors.coral} /><Text style={styles.body}>{data.sync?.progress || 'Analysis is under process…'}</Text></View> : null}
       {data.sync?.status === 'failed' ? <Text accessibilityRole="alert" style={styles.error}>{data.sync.error}</Text> : null}
-      <PrimaryButton label={syncing ? 'GitHub processing…' : 'Sync GitHub'} disabled={syncing} loading={starting} onPress={() => void sync()} />
+      {selection}
+      {hasAnalysis ? <Text style={styles.body}>Your selected repositories have been analysed.</Text> : null}
     </> : <PrimaryButton label="Connect GitHub" onPress={onConnect} />}
   </View>;
   return (
@@ -153,9 +162,9 @@ export function GithubProfilePanel({ session, onConnect, onProfileChanged, compa
             </View>
           </View>
           {profile?.identity.bio ? <Text style={styles.body}>{profile.identity.bio}</Text> : null}
-          <PrimaryButton label={syncing ? 'Sync in progress' : profile?.synced_at ? 'Sync GitHub' : 'Create GitHub overview'} onPress={() => void sync()} loading={starting} disabled={syncing} />
+          {selection}
           {syncing ? <View accessibilityLiveRegion="polite" style={styles.notice}><ActivityIndicator color={colors.coral} /><Text style={styles.body}>GitHub profile is processing.{'\n'}{data.sync?.progress || 'Collecting your GitHub profile…'}{'\n'}You can leave this tab; extraction continues in the background.</Text></View> : null}
-          {data.sync?.status === 'failed' ? <Text accessibilityRole="alert" style={styles.error}>{data.sync.error || 'Sync could not finish. Try syncing again.'}</Text> : null}
+          {data.sync?.status === 'failed' ? <Text accessibilityRole="alert" style={styles.error}>{data.sync.error || 'Analysis could not finish. Review your repository selection and retry.'}</Text> : null}
           {profile?.synced_at ? (
             <>
               <View style={styles.stats}>
@@ -166,7 +175,7 @@ export function GithubProfilePanel({ session, onConnect, onProfileChanged, compa
               {profile.technologies.length ? <View style={styles.card}><Text style={styles.cardTitle}>Source-backed technologies</Text><ChipGroup items={profile.technologies.map((row) => row.name)} /></View> : null}
               <View style={styles.card}>
                 <Pressable accessibilityRole="button" accessibilityLabel="Repos" accessibilityState={{ expanded }} onPress={() => setExpanded((value) => !value)} style={styles.repoToggle}>
-                  <Text style={styles.cardTitle}>Repos</Text><Text style={styles.buttonText}>{repositoryCount}  {expanded ? '−' : '+'}</Text>
+                  <Text style={styles.cardTitle}>Selected repositories</Text><Text style={styles.buttonText}>{repositoryCount}  {expanded ? '−' : '+'}</Text>
                 </Pressable>
                 {expanded ? (
                   <View style={styles.stack}>
@@ -183,11 +192,11 @@ export function GithubProfilePanel({ session, onConnect, onProfileChanged, compa
                   </View>
                 ) : null}
               </View>
-              {profile.warnings.length ? <View style={styles.notice}><Text style={styles.body}>Some information could not be collected or analyzed. Your available results are saved; sync again to retry.</Text></View> : null}
+              {profile.warnings.length ? <View style={styles.notice}><Text style={styles.body}>Some information could not be collected or analysed. Available results and their limitations are saved.</Text></View> : null}
               {profile.coverage.note ? <Text style={styles.scope}>{profile.coverage.note}</Text> : null}
               <Text style={styles.muted}>Last collected {new Date(profile.synced_at).toLocaleString()}</Text>
             </>
-          ) : !syncing ? <Text style={styles.body}>Create your overview to collect your GitHub profile and repositories.</Text> : null}
+          ) : !syncing ? <Text style={styles.body}>Choose up to five repositories above to build your GitHub overview.</Text> : null}
         </>
       ) : null}
     </View>

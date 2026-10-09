@@ -8,7 +8,7 @@ export interface LivenessService {
 }
 
 export interface GitHubService {
-  analyze(session: AuthSession | undefined): Promise<void>;
+  analyze(session: AuthSession | undefined, repositoryIds: number[]): Promise<void>;
 }
 
 export interface LinkedInService {
@@ -87,12 +87,12 @@ export const mockOnboardingServices: OnboardingServices = {
     },
   },
   github: {
-    async analyze(session: AuthSession | undefined) {
+    async analyze(session: AuthSession | undefined, repositoryIds: number[]) {
       await wait(900);
       if (!session) {
         throw new Error('Missing auth session');
       }
-      await analyzeGithub(session);
+      await analyzeGithub(session, { repositoryIds });
     },
   },
   linkedin: {

@@ -284,7 +284,7 @@ export interface GithubAnalysisResponse {
   message?: string;
 }
 
-export type GithubSyncJob = GithubAnalysisResponse & GithubJob<GithubAnalysisResponse>;
+export type GithubSyncJob = GithubAnalysisResponse & GithubJob<GithubAnalysisResponse> & { mode?: 'inventory' | 'analysis' };
 export interface GithubOverviewResponse {
   connected: boolean;
   sync: GithubSyncJob | null;
@@ -302,6 +302,10 @@ export interface GithubOverviewResponse {
 }
 export interface GithubRepositoryPage {
   count: number;
+  total_count: number;
+  max_selection: number;
+  sync: GithubSyncJob | null;
+  selected_repositories: Array<{ id: number; name: string }>;
   page: number;
   page_size: number;
   total_pages: number;
@@ -852,14 +856,14 @@ export function getGithubStatus(session: AuthSession) {
   );
 }
 
-export function startGithubSync(session: AuthSession) {
+export function startGithubSync(session: AuthSession, repositoryIds: number[]) {
   return requestWithSession<GithubSyncJob>(
     session,
     '/profile/github/',
     (accessToken) => ({
       method: 'POST',
       headers: authHeaders(accessToken),
-      body: JSON.stringify({}),
+      body: JSON.stringify({ repository_ids: repositoryIds }),
     }),
     'Unable to analyze GitHub',
   );
@@ -870,8 +874,8 @@ export function getGithubSyncJob(session: AuthSession, id: string) {
     (token) => ({ method: 'GET', headers: authHeaders(token) }), 'Unable to check GitHub extraction');
 }
 
-export async function analyzeGithub(session: AuthSession, options: { signal?: AbortSignal; onProgress?: (message: string) => void; onAccepted?: () => void } = {}) {
-  const job = await startGithubSync(session);
+export async function analyzeGithub(session: AuthSession, options: { repositoryIds: number[]; signal?: AbortSignal; onProgress?: (message: string) => void; onAccepted?: () => void }) {
+  const job = await startGithubSync(session, options.repositoryIds);
   options?.onAccepted?.();
   return waitForGithubJob<GithubAnalysisResponse>(job, (id) => getGithubSyncJob(session, id), options);
 }
@@ -881,9 +885,14 @@ export function getGithubOverview(session: AuthSession) {
     (token) => ({ method: 'GET', headers: authHeaders(token) }), 'Unable to load GitHub profile');
 }
 
-export function getGithubRepositories(session: AuthSession, page = 1) {
-  return requestWithSession<GithubRepositoryPage>(session, `/profile/github/repos/?page=${page}`,
+export function getGithubRepositories(session: AuthSession, page = 1, search = '', selectedOnly = false) {
+  return requestWithSession<GithubRepositoryPage>(session, `/profile/github/repos/?page=${page}&search=${encodeURIComponent(search)}${selectedOnly ? '&scope=selected' : ''}`,
     (token) => ({ method: 'GET', headers: authHeaders(token) }), 'Unable to load repositories');
+}
+
+export function refreshGithubRepositories(session: AuthSession) {
+  return requestWithSession<GithubSyncJob>(session, '/profile/github/repos/',
+    token => ({ method: 'POST', headers: authHeaders(token), body: '{}' }), 'Unable to refresh repository names');
 }
 
 export function getGithubHistory(session: AuthSession) {

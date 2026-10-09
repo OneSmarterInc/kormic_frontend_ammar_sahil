@@ -5,7 +5,8 @@ import { PrimaryButton } from '../components/PrimaryButton';
 import { ScreenShell } from '../components/ScreenShell';
 import { OnboardingState } from '../models/onboarding';
 import { OnboardingServices } from '../services/onboardingServices';
-import { analyzeGithub, getGithubConnectUrl, getGithubStatus, GithubAnalysisResponse } from '../services/api';
+import { analyzeGithub, getGithubConnectUrl, getGithubStatus, getGithubOverview, GithubAnalysisResponse } from '../services/api';
+import { GithubRepositoryPicker } from '../features/github/GithubRepositoryPicker';
 import { OnboardingAction } from '../state/onboardingReducer';
 import { colors, fonts, radii, type } from '../theme/tokens';
 
@@ -55,6 +56,8 @@ export function GitHubScreen({ state, dispatch, onContinue }: GitHubScreenProps)
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [accepted, setAccepted] = useState(false);
+  const [selected, setSelected] = useState<number[]>([]);
+  const [selectionReady, setSelectionReady] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -79,6 +82,8 @@ export function GitHubScreen({ state, dispatch, onContinue }: GitHubScreenProps)
 
       if (nextStatus.connected) {
         dispatch({ type: 'SET_GITHUB_CONNECTED', handle: nextStatus.github_username ?? 'GitHub' });
+        const overview = await getGithubOverview(state.authSession);
+        if (overview.sync && ['queued', 'running', 'completed'].includes(overview.sync.status || '')) setAccepted(true);
       }
 
       return nextStatus;
@@ -198,6 +203,7 @@ export function GitHubScreen({ state, dispatch, onContinue }: GitHubScreenProps)
   };
 
   const analyze = async () => {
+    if (!selectionReady || !selected.length || selected.length > 5) return;
     setMessage('');
     setError('');
 
@@ -209,7 +215,7 @@ export function GitHubScreen({ state, dispatch, onContinue }: GitHubScreenProps)
     try {
       setAnalyzing(true);
       setAccepted(false);
-      const result = await analyzeGithub(state.authSession, { onProgress: setMessage, onAccepted: () => setAccepted(true) });
+      const result = await analyzeGithub(state.authSession, { repositoryIds: selected, onProgress: setMessage, onAccepted: () => setAccepted(true) });
       setAnalysis(result);
       dispatch({ type: 'SET_GITHUB_CONNECTED', handle: status.github_username ?? state.githubHandle ?? 'GitHub' });
       setMessage('GitHub processing complete. You can continue.');
@@ -231,14 +237,15 @@ export function GitHubScreen({ state, dispatch, onContinue }: GitHubScreenProps)
 
   return (
     <ScreenShell
-      scroll={false}
+      scroll
       footer={
         <>
           <PrimaryButton
             testID="connect-github-button"
-            label={accepted ? 'Continue' : connected ? 'Analyze GitHub' : 'Connect GitHub'}
+            label={accepted ? 'Continue' : connected ? 'Analyse selected repositories' : 'Connect GitHub'}
             onPress={accepted ? onContinue : connected ? analyze : connect}
             loading={connecting || (analyzing && !accepted)}
+            disabled={!accepted && connected && (!selectionReady || !selected.length)}
           />
           <PrimaryButton label="Skip for now" onPress={() => setSkipVisible(true)} variant="secondary"/>
         </>
@@ -267,6 +274,9 @@ export function GitHubScreen({ state, dispatch, onContinue }: GitHubScreenProps)
             <Text style={styles.cardText}>You will be redirected to GitHub to approve access.</Text>
           </View>
         )}
+
+        {connected && !accepted && state.authSession ? <GithubRepositoryPicker session={state.authSession}
+          selected={selected} onChange={setSelected} onReadyChange={setSelectionReady} disabled={analyzing} /> : null}
 
         {analysis?.skills_added && analysis.skills_added.length > 0 ? (
           <Text style={styles.success}>Skills added: {analysis.skills_added.join(', ')}</Text>

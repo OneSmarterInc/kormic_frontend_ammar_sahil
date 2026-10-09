@@ -4,7 +4,7 @@ import { GithubProfilePanel } from '../src/features/github/GithubProfilePanel';
 import { ProfileMenu } from '../src/features/profile/components/ProfileMenu';
 import * as api from '../src/services/api';
 
-jest.mock('../src/services/api', () => ({ getGithubOverview: jest.fn(), getGithubRepositories: jest.fn(), startGithubSync: jest.fn() }));
+jest.mock('../src/services/api', () => ({ getGithubOverview: jest.fn(), getGithubRepositories: jest.fn(), refreshGithubRepositories: jest.fn(), startGithubSync: jest.fn() }));
 const session = { access: 'test-only', mustEnrollTotp: false };
 const fixture: api.GithubOverviewResponse = {
   connected: true, sync: { job_id: 'job-test', status: 'completed' },
@@ -16,7 +16,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(api.getGithubOverview).mockResolvedValue(fixture);
   jest.mocked(api.getGithubRepositories).mockImplementation(async (_session, page = 1) => ({
-    count: 23, page, page_size: 10, total_pages: 3,
+    count: 23, total_count: 23, max_selection: 5, sync: null, selected_repositories: [], page, page_size: 10, total_pages: 3,
     results: Array.from({ length: page === 3 ? 3 : 10 }, (_, i) => ({ id: (page-1)*10+i, name: `ada/repo-${(page-1)*10+i+1}` })),
   }));
 });
@@ -85,7 +85,8 @@ it('restores an active sync after reopening and polls until completion', async (
   await act(async () => { await Promise.resolve(); });
   expect(screen.getByText(/Inspecting source/)).toBeTruthy();
   await act(async () => { jest.advanceTimersByTime(2500); await Promise.resolve(); });
-  expect(screen.getByText('Sync GitHub')).toBeTruthy();
+  expect(screen.queryByText('Sync GitHub')).toBeNull();
+  expect(screen.queryByText('Analyse selected repositories')).toBeNull();
   screen.unmount();
   jest.useRealTimers();
 });
@@ -106,7 +107,8 @@ it('recovers automatically after repeated network failures during processing', a
     await act(async () => { jest.advanceTimersByTime(5000); });
     await act(async () => { jest.advanceTimersByTime(10000); });
     expect(screen.queryByText('Connection interrupted. Retrying automatically…')).toBeNull();
-    expect(screen.getByText('Sync GitHub')).toBeTruthy();
+    expect(screen.queryByText('Sync GitHub')).toBeNull();
+    expect(screen.queryByText('Analyse selected repositories')).toBeNull();
     expect(api.getGithubOverview).toHaveBeenCalledTimes(4);
     screen.unmount();
   } finally { jest.useRealTimers(); }
