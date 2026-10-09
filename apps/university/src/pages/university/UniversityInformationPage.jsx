@@ -11,13 +11,10 @@ import { listInformationEntities, updateUniversityInformation, createUniversityI
 import { FORM_SECTIONS, OVERVIEW_FIELDS, COURSE_LEVELS, courseLevel, missingFields, matchesMissingFilter, sectionFor, valuesFor, formPayload } from '../../lib/informationForms';
 
 const ICONS = [Building2, GraduationCap, Wallet, House, Award, ClipboardList, Globe, HeartHandshake, BriefcaseBusiness, FolderOpen];
-const loadInformation = async signal => {
-  const [information, overview] = await Promise.all([listInformationEntities(signal), getInformationOverview(signal)]);
-  return { ...information, overview };
-};
 
 export default function UniversityInformationPage() {
-  const { data, loading, error, refetch, setData } = useAsync(loadInformation, []);
+  const { data, loading, error, refetch, setData } = useAsync(listInformationEntities, []);
+  const overview = useAsync(getInformationOverview, []);
   const [sectionId, setSectionId] = useState('overview');
   const [query, setQuery] = useState('');
   const [missingFilter, setMissingFilter] = useState('all');
@@ -54,7 +51,7 @@ export default function UniversityInformationPage() {
   }
   async function saved(record, originalId) {
     if (record.details?.information_type === 'fees') {
-      const refreshed = await loadInformation();
+      const refreshed = await listInformationEntities();
       setData(refreshed); setDirty(false); setAdding(false);
       toast.success('Cost saved to the knowledge base and shown with its owner.');
       return;
@@ -71,10 +68,10 @@ export default function UniversityInformationPage() {
     <PageHeader title="University information" description="Maintain the details students need to choose, apply and prepare for university." />
     <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-brand-200 bg-brand-50 px-5 py-4">
       <div className="flex items-start gap-3"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" /><div><p className="text-sm font-semibold text-ink-900">One place for accurate university information</p><p className="mt-1 text-sm text-ink-600">Your saved changes update the knowledge base used in student answers.</p></div></div>
-      <Button variant="secondary" size="sm" icon={RotateCw} disabled={dirty || loading} onClick={refetch}>Refresh information</Button>
+      <Button variant="secondary" size="sm" icon={RotateCw} disabled={dirty || loading || overview.loading} onClick={() => { refetch(); overview.refetch(); }}>Refresh information</Button>
     </div>
     {destination && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4"><p className="text-sm text-amber-900">You have unsaved changes. Save this form or discard your changes before switching sections.</p><div className="flex gap-2"><Button variant="secondary" onClick={() => setDestination(null)}>Keep editing</Button><Button onClick={() => { setDirty(false); setDirtyCost(false); setExpanded(false); setSectionId(destination); setDestination(null); setOpenId(null); setAdding(false); setQuery(''); setMissingFilter('all'); setLimit(12); }}>Discard and continue</Button></div></div>}
-    {loading ? <Spinner label="Loading information forms…" /> : error ? <ErrorBanner error={error} onRetry={refetch} /> : <div className="grid items-start gap-6 xl:grid-cols-[240px_minmax(0,1fr)]">
+    <div className="grid items-start gap-6 xl:grid-cols-[240px_minmax(0,1fr)]">
       <label className="block text-sm font-medium text-ink-700 sm:hidden">Information section<Select aria-label="Information section" value={sectionId} onChange={event => navigate(event.target.value)}>{FORM_SECTIONS.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</Select></label>
       <nav aria-label="Information categories" className="hidden rounded-xl border border-ink-200 bg-white p-2 sm:block xl:sticky xl:top-5">
         <p className="px-3 pb-2 pt-3 text-xs font-semibold uppercase tracking-wider text-ink-400">Information sections</p>
@@ -85,7 +82,7 @@ export default function UniversityInformationPage() {
       </nav>
       <section className="min-w-0 space-y-4" aria-labelledby="section-title">
         <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 id="section-title" className="text-xl font-semibold text-ink-900">{section.label}</h2><p className="mt-1 text-sm text-ink-500">{section.description}</p></div></div>
-        {sectionId === 'overview' ? <OverviewForm key={data.overview.revision} record={data.overview} onDirty={setDirty} onSaved={overview => { setData(previous => ({ ...previous, overview })); setDirty(false); toast.success('University details saved to the knowledge base.'); }} /> : <>
+        {sectionId === 'overview' ? (overview.loading ? <Spinner label="Loading university details…" /> : overview.error ? <ErrorBanner error={overview.error} onRetry={overview.refetch} /> : overview.data && <OverviewForm key={overview.data.revision} record={overview.data} onDirty={setDirty} onSaved={record => { overview.setData(record); setDirty(false); toast.success('University details saved to the knowledge base.'); }} />) : loading ? <Spinner label="Loading information forms…" /> : error ? <ErrorBanner error={error} onRetry={refetch} /> : <>
           <div className="space-y-3 rounded-xl border border-ink-200 bg-white p-4">
             <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)]">
               <label className="block text-xs font-medium text-ink-600"><span className="mb-2 block">Search entries</span><span className="relative block"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-ink-400" /><Input aria-label={`Search ${section.label}`} className="pl-9" value={query} disabled={dirty || adding} onChange={event => { setQuery(event.target.value); setLimit(12); }} placeholder={`Search ${section.label.toLowerCase()}…`} /></span></label>
@@ -127,7 +124,7 @@ export default function UniversityInformationPage() {
         </>}
 
       </section>
-    </div>}
+    </div>
   </div>;
 }
 

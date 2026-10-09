@@ -22,7 +22,7 @@ export const updateUniversityInformation = (id, payload) => {
 
 /** GET /api/university-admin/profile/ */
 export const getProfile = (signal) =>
-  client.get("/university-admin/profile/", { signal }).then((r) => r.data);
+  client.get("/university-admin/profile/", { signal, params: { include_sources: false } }).then((r) => r.data);
 
 /** PATCH /api/university-admin/profile/ — send only the fields being changed */
 export const updateProfile = (payload) =>

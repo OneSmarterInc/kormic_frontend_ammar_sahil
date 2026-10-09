@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import toast from "react-hot-toast";
 import StickySaveBar from "../../layouts/StickySaveBar";
 import {
@@ -25,7 +26,7 @@ import Button from "../../components/common/Button";
 import ErrorBanner from "../../components/common/ErrorBanner";
 import Spinner from "../../components/common/Spinner";
 import * as universityAdminApi from "../../api/universityAdminApi";
-import { useAction, useAsync } from "../../hooks/useAsync";
+import { useAction } from "../../hooks/useAsync";
 import { setupPercent } from "../../lib/university";
 import { isValidUrl, isValidPhone, isValidEmail } from "../../lib/validators";
 
@@ -66,10 +67,7 @@ export default function SettingsProfilePage() {
     const [form, setForm] = useState(EMPTY_FORM);
     const [formErrors, setFormErrors] = useState({});
     const [openSection, setOpenSection] = useState("program");
-    const { data: profile, error: loadError, loading, refetch, setData: setProfile } = useAsync(
-        universityAdminApi.getProfile,
-        []
-    );
+    const { data: profile, error: loadError, loading, refetch, setData: setProfile } = useOutletContext();
 
     useEffect(() => {
         if (!profile) return;

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, test, vi } from 'vitest';
 import UniversityInformationPage from '../../src/pages/university/UniversityInformationPage';
@@ -11,6 +11,30 @@ const scholarship = { id: 1, topic: 'Merit award', content: 'GPA 3.0 required', 
 beforeEach(() => {
   vi.clearAllMocks(); api.listInformationEntities.mockResolvedValue({ knowledge: [scholarship] });
   api.getInformationOverview.mockResolvedValue(overview);
+});
+
+test('overview is editable before entities finish and background loading preserves its draft', async () => {
+  let resolveEntities;
+  api.listInformationEntities.mockReturnValue(new Promise(resolve => { resolveEntities = resolve; }));
+  const user = userEvent.setup();
+  render(<UniversityInformationPage />);
+  const name = await screen.findByLabelText('University name');
+  await user.type(name, ' edited');
+  await act(async () => resolveEntities({ knowledge: [scholarship] }));
+  expect(name).toHaveValue('Example University edited');
+  expect(api.listInformationEntities).toHaveBeenCalledTimes(1);
+});
+
+test('entity failure does not hide the overview and can be retried in its section', async () => {
+  api.listInformationEntities.mockRejectedValueOnce(new Error('Entities unavailable'));
+  const user = userEvent.setup();
+  render(<UniversityInformationPage />);
+  expect(await screen.findByLabelText('University name')).toBeVisible();
+  await user.click(screen.getByRole('button', { name: /Scholarships/ }));
+  expect(await screen.findByText('Entities unavailable')).toBeVisible();
+  api.listInformationEntities.mockResolvedValue({ knowledge: [scholarship] });
+  await user.click(screen.getByRole('button', { name: /retry/i }));
+  expect(await screen.findByRole('button', { name: /Scholarships.*Manage individual/ })).toBeVisible();
 });
 
 test('edits labeled university details and saves using the current revision', async () => {

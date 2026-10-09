@@ -5,6 +5,7 @@ import { Building2, ClipboardList, ChevronLeft, GraduationCap, History, Landmark
 import { useAuth } from "../context/AuthContext";
 import { getProfile } from "../api/universityAdminApi";
 import { useAsync } from "../hooks/useAsync";
+import { preloadScreen } from "../lib/preloadScreen";
 import TopBar from "../components/layout/TopBar";
 
 const NAV_GROUPS = [
@@ -152,5 +153,5 @@ function UniversityAdminLayout() {
   </div>;
 }
 function NavItem({item}) {
-  return <NavLink to={item.to} className={({isActive}) => clsx('flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-white', isActive ? 'bg-brand-600 text-white' : 'text-slate-200 hover:bg-white/10')}><item.icon className="h-5 w-5 shrink-0" /><span>{item.label}</span></NavLink>;
+  return <NavLink to={item.to} onPointerEnter={() => preloadScreen(item.to)} onFocus={() => preloadScreen(item.to)} onTouchStart={() => preloadScreen(item.to)} className={({isActive}) => clsx('flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-white', isActive ? 'bg-brand-600 text-white' : 'text-slate-200 hover:bg-white/10')}><item.icon className="h-5 w-5 shrink-0" /><span>{item.label}</span></NavLink>;
 }

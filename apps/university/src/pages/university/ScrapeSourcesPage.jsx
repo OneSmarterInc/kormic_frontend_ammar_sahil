@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
   AlertTriangle,
@@ -80,7 +81,7 @@ export default function ScrapeSourcesPage() {
     data: profile,
     loading: profileLoading,
     setData: setProfile,
-  } = useAsync(universityAdminApi.getProfile, []);
+  } = useOutletContext();
 
   const websiteUrl = profile?.website_url || "";
 
