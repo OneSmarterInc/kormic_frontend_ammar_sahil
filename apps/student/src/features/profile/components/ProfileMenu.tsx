@@ -69,12 +69,18 @@ export function ProfileMenu({
           <Text style={[styles.sidebarItemText, styles.sidebarLogoutText]}>Logout</Text>
         </Pressable>
       ) : null}
+      <View style={styles.developerFooter}>
+        <Text style={styles.developerCredit}>
+          Developed by <Text style={styles.developerName}>One Smarter Inc</Text>
+        </Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   sidebar: {
+    flexGrow: 1,
     backgroundColor: colors.panelInk,
     borderColor: colors.line,
     borderRadius: 8,
@@ -101,5 +107,24 @@ const styles = StyleSheet.create({
   },
   sidebarLogoutText: {
     color: colors.error,
+  },
+  developerFooter: {
+    marginTop: 'auto',
+    borderTopColor: colors.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 12,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  developerCredit: {
+    color: colors.muted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  developerName: {
+    color: colors.textSoft,
+    fontFamily: fonts.bodyMedium,
   },
 });
