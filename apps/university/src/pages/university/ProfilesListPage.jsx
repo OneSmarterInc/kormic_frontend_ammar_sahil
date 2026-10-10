@@ -6,10 +6,14 @@ import Card from "../../components/common/Card";
 import Spinner from "../../components/common/Spinner";
 import ErrorBanner from "../../components/common/ErrorBanner";
 import EmptyState from "../../components/common/EmptyState";
-import Badge, { matchTierTone } from "../../components/common/Badge";
+import Badge from "../../components/common/Badge";
 import { listUniversityProfiles } from "../../api/universityApi";
 import { useAsync } from "../../hooks/useAsync";
 import { previewText } from "../../lib/text";
+
+const isQualified = (profile) => profile.qualification_status
+  ? profile.qualification_status === "qualified"
+  : profile.qualified === true;
 
 export default function ProfilesListPage() {
   const { universityId } = useParams();
@@ -21,23 +25,17 @@ export default function ProfilesListPage() {
 
   const profiles = data?.profiles || [];
   const [search, setSearch] = useState("");
-  const [qualificationFilter, setQualificationFilter] = useState("all");
+  const [qualificationFilter, setQualificationFilter] = useState("qualified");
 
-  const qualifiedCount = profiles.filter(
-    (p) => p.qualification_status === "qualified" || p.qualified === true
-  ).length;
-  const notQualifiedCount = profiles.filter(
-    (p) => p.qualification_status === "not_qualified"
-  ).length;
+  const qualifiedCount = profiles.filter(isQualified).length;
+  const notQualifiedCount = profiles.length - qualifiedCount;
 
   const filteredProfiles = profiles.filter((p) => {
     const matchesQualification =
-      qualificationFilter === "all" ? true : qualificationFilter === "unassessed" ? !["qualified", "not_qualified"].includes(p.qualification_status) && p.qualified !== true : qualificationFilter === "qualified"
-        ? p.qualification_status === "qualified" || p.qualified === true
-        : p.qualification_status === "not_qualified";
+      qualificationFilter === "qualified" ? isQualified(p) : !isQualified(p);
     if (!matchesQualification) return false;
 
-    const query = search.toLowerCase();
+    const query = search.trim().toLowerCase();
 
     return (
       (p.name || "").toLowerCase().includes(query) ||
@@ -51,7 +49,7 @@ export default function ProfilesListPage() {
     <div>
       <PageHeader
         title="Interested students"
-        description="Students who have searched your university and expressed interest in your program."
+        description="Interested students grouped by whether they meet your university's configured eligibility requirements."
       />
 
       <div className="mb-4 flex items-center">
@@ -69,9 +67,9 @@ export default function ProfilesListPage() {
       </div>
 
       <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-ink-200 bg-white p-1.5 shadow-sm">
-        {[['all', 'All students'], ['unassessed', 'Awaiting assessment']].map(([value, label]) => <button key={value} onClick={() => setQualificationFilter(value)} aria-pressed={qualificationFilter === value} className={`rounded-lg px-4 py-2 text-sm font-semibold ${qualificationFilter === value ? 'bg-brand-600 text-white' : 'text-ink-600'}`}>{label}</button>)}
         <button
           type="button"
+          aria-pressed={qualificationFilter === "qualified"}
           onClick={() => setQualificationFilter("qualified")}
           className={
             qualificationFilter === "qualified"
@@ -79,11 +77,12 @@ export default function ProfilesListPage() {
               : "rounded-lg px-4 py-2 text-sm font-medium text-ink-600 transition hover:bg-ink-50"
           }
         >
-          Qualified Students ({qualifiedCount})
+          Qualified ({qualifiedCount})
         </button>
 
         <button
           type="button"
+          aria-pressed={qualificationFilter === "not_qualified"}
           onClick={() => setQualificationFilter("not_qualified")}
           className={
             qualificationFilter === "not_qualified"
@@ -91,9 +90,15 @@ export default function ProfilesListPage() {
               : "rounded-lg px-4 py-2 text-sm font-medium text-ink-600 transition hover:bg-ink-50"
           }
         >
-          Not Qualified Students ({notQualifiedCount})
+          Not qualified ({notQualifiedCount})
         </button>
       </div>
+
+      {qualificationFilter === "not_qualified" && (
+        <p className="mb-5 text-sm text-ink-500">
+          Includes students who do not meet the requirements and those whose qualification cannot yet be confirmed because information or requirements are missing.
+        </p>
+      )}
 
       {loading ? (
         <Spinner label="Loading profiles..." />
@@ -104,7 +109,7 @@ export default function ProfilesListPage() {
           <EmptyState
             icon={Users}
             title="No profiles yet"
-            description="Students haven't created profiles yet."
+            description="No students have expressed interest in your university yet."
           />
         </Card>
       ) : filteredProfiles.length === 0 ? (
@@ -112,14 +117,14 @@ export default function ProfilesListPage() {
           <EmptyState
             icon={Search}
             title={
-              qualificationFilter === "qualified"
+              search.trim() ? "No matching students" : qualificationFilter === "qualified"
                 ? "No qualified students"
                 : "No not-qualified students"
             }
             description={
-              qualificationFilter === "qualified"
+              search.trim() ? "Try a different name, ID, major or institution in this tab." : qualificationFilter === "qualified"
                 ? "No interested students currently meet the university's configured requirements."
-                : "No interested students currently fail the university's configured eligibility requirements."
+                : "All listed interested students meet the configured eligibility requirements."
             }
           />
         </Card>
@@ -155,10 +160,14 @@ export default function ProfilesListPage() {
                     </div>
                   </div>
 
-                  <Badge tone={matchTierTone(p.match_tier)}>
-                    {p.match_tier || "Unassessed"}
+                  <Badge tone={isQualified(p) ? "success" : "warning"}>
+                    {isQualified(p) ? "Qualified" : "Not qualified"}
                   </Badge>
                 </div>
+
+                {!isQualified(p) && p.qualification_status !== "not_qualified" && (
+                  <p className="mt-3 text-xs text-ink-500">Qualification not yet confirmed</p>
+                )}
 
                 {(() => {
                   const stats = [
