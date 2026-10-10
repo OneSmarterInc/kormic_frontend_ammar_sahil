@@ -3,6 +3,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AuthSession } from '../../../models/onboarding';
 import { UniversityReference, readUniversityResearch } from '../../../services/api';
+import { isRetryableRead } from '../../../services/retryPolicy';
 import { colors, fonts } from '../../../theme/tokens';
 import { getLinkSegments } from './FormattedMessageText';
 
@@ -47,22 +48,37 @@ export function UniversityReferences({ meta, session, text = '' }: { meta?: Reco
 function UniversityCard({ initial, session }: { initial: UniversityReference; session?: AuthSession }) {
   const researchId = initial.research_id || (initial.id.startsWith('public:') ? initial.id : '');
   const [ref, setRef] = useState(initial);
+  const [pollError, setPollError] = useState('');
+  const [retry, setRetry] = useState(0);
   useEffect(() => { setRef(initial); }, [initial]);
   useEffect(() => {
     if (!session || !researchId) return;
     let active = true;
+    let failures = 0;
+    setPollError('');
     let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
       try {
         const next = await readUniversityResearch(session, researchId);
         if (!active) return;
         setRef(next);
+        failures = 0;
+        setPollError('');
         if (next.processing) timer = setTimeout(() => void poll(), 5000);
-      } catch { /* Keep the saved source date visible when a status poll fails. */ }
+      } catch (error) {
+        if (!active) return;
+        failures += 1;
+        if (isRetryableRead(error) && failures < 4) {
+          setPollError('Connection interrupted. Retrying source status…');
+          timer = setTimeout(() => void poll(), Math.min(15000, 2000 * 2 ** (failures - 1)));
+        } else {
+          setPollError('Unable to check source status. Retry when connected.');
+        }
+      }
     };
     void poll();
     return () => { active = false; clearTimeout(timer); };
-  }, [session, researchId]);
+  }, [session, researchId, retry]);
   return <View style={styles.card}>
     <View style={styles.row}>
       <Text style={styles.name}>{ref.name}</Text>
@@ -71,7 +87,7 @@ function UniversityCard({ initial, session }: { initial: UniversityReference; se
     {ref.url && /^https?:\/\//i.test(ref.url) ? <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(ref.url)}><Text style={styles.link}>Official university website ↗</Text></Pressable> : null}
     {researchId ? <>
       <Text style={styles.muted}>{ref.updated_at ? `Sources collected ${new Date(ref.updated_at).toLocaleDateString()}${ref.stale ? ' · May be outdated' : ''}` : 'Official website research pending'}</Text>
-      {ref.processing ? <View accessibilityLiveRegion="polite" style={styles.row}><ActivityIndicator size="small" color={colors.coral} /><Text style={styles.muted}>{ref.progress || 'Information is being processed…'}</Text></View> : null}
+      {pollError ? <View accessibilityLiveRegion="polite"><Text style={styles.muted}>{pollError}</Text><Pressable accessibilityRole="button" accessibilityLabel="Retry source status" onPress={() => setRetry(value => value + 1)}><Text style={styles.link}>Retry</Text></Pressable></View> : ref.processing ? <View accessibilityLiveRegion="polite" style={styles.row}><ActivityIndicator size="small" color={colors.coral} /><Text style={styles.muted}>{ref.progress || 'Information is being processed…'}</Text></View> : null}
     </> : null}
   </View>;
 }

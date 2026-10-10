@@ -1,4 +1,5 @@
 import axios from "axios";
+import { validationMessage } from './apiErrors.js';
 import { clearPageCache } from './pageCache.js';
 import {
   clearAuth,
@@ -106,6 +107,7 @@ export function createPortalClient(portal) {
 
       const status = error.response?.status ?? null;
       const rawMessage =
+        validationMessage(error.response?.data) ||
         error.response?.data?.message ||
         error.response?.data?.error ||
         error.response?.data?.detail ||
