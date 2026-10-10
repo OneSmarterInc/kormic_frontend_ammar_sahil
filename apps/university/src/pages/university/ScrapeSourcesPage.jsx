@@ -652,6 +652,16 @@ export default function ScrapeSourcesPage() {
                 <ErrorBanner error={job.error_message} />
               )}
 
+              {job.status === "completed" && job.coverage?.review_required && (
+                <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  {job.coverage.status === "partial"
+                    ? `Crawl finished with partial coverage. ${job.pages_crawled} pages visited; ${job.failed_count || 0} failed; ${job.coverage.pending_urls || 0} URLs remain unvisited. `
+                    : "Crawl finished. "}
+                  {job.coverage.limit_reached && "A crawl limit was reached. "}
+                  Review the extracted information and missing fields before treating the university profile as complete.
+                </div>
+              )}
+
               {/* <div className="flex flex-wrap gap-2">
                 <Badge tone="success">{job.relevant_count} relevant</Badge>
                 <Badge tone="warning">{job.review_count} review</Badge>
